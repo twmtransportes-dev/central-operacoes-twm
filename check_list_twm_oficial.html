@@ -2030,19 +2030,21 @@ function voltarDataLink() {
 </div>
 
 
+
+
+
+
 <script>
-// ── MODAL SOLICITAÇÃO DE MANUTENÇÃO MULTI-FROTA ──────────────
-// _solicitacoes já declarada no script principal
+// ── MODAL SOLICITAÇÃO DE MANUTENÇÃO MULTI-FROTA ──
+var _solicitacoes = (typeof _solicitacoes !== 'undefined') ? _solicitacoes : [];
 
 function abrirModalManutencao() {
   var container = document.getElementById('manut-linhas-container');
   if (!container) return;
-
   var html = '<div style="display:flex;gap:8px;margin-bottom:6px;padding:0 20px">' +
     '<div style="width:100px;font-size:9px;font-weight:700;text-transform:uppercase;color:#F97316;letter-spacing:.5px">VP / RB</div>' +
     '<div style="flex:1;font-size:9px;font-weight:700;text-transform:uppercase;color:#F97316;letter-spacing:.5px">Problemas apresentados</div>' +
   '</div>';
-
   for (var i = 0; i < 20; i++) {
     var s = _solicitacoes[i] || {frota:'', problema:''};
     html += '<div class="manut-linha">' +
@@ -2051,7 +2053,7 @@ function abrirModalManutencao() {
         'autocapitalize="characters" oninput="this.value=this.value.toUpperCase()" ' +
         'value="'+escHtml(s.frota)+'">' +
       '<textarea class="manut-prob-inp" id="ms-prob-'+i+'" ' +
-        'placeholder="lâmpada, pneu furado, vazamento..." ' +
+        'placeholder="lâmpada, pneu furado..." ' +
         'rows="2">'+escHtml(s.problema)+'</textarea>' +
     '</div>';
   }
@@ -2059,7 +2061,9 @@ function abrirModalManutencao() {
   document.getElementById('modal-manut-overlay').classList.add('on');
 }
 
-function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
 function fecharModalManutencao() {
   document.getElementById('modal-manut-overlay').classList.remove('on');
@@ -2075,7 +2079,6 @@ function salvarSolicitacaoManut() {
     if (frota && problema) _solicitacoes.push({frota: frota, problema: problema});
   }
   fecharModalManutencao();
-
   var preview = document.getElementById('solic-manut-preview');
   if (preview) {
     if (_solicitacoes.length === 0) {
@@ -2083,16 +2086,12 @@ function salvarSolicitacaoManut() {
     } else {
       var html = '';
       _solicitacoes.forEach(function(s) {
-        html += '<div class="sp-item">' +
-          '<span class="sp-frota">🔧 '+s.frota+'</span> &nbsp;' +
-          '<span class="sp-prob">'+s.problema+'</span>' +
-        '</div>';
+        html += '<div class="sp-item"><span class="sp-frota">🔧 '+s.frota+'</span> &nbsp;<span class="sp-prob">'+s.problema+'</span></div>';
       });
       preview.innerHTML = html;
       preview.style.display = 'block';
     }
   }
-
   var btn = document.getElementById('btn-solic-manut');
   if (btn) {
     if (_solicitacoes.length > 0) {
@@ -2103,7 +2102,6 @@ function salvarSolicitacaoManut() {
       btn.style.background = '';
     }
   }
-  // Salva no sessionStorage para garantir acesso no momento do registro
   try { sessionStorage.setItem('twm_sols_manut', JSON.stringify(_solicitacoes)); } catch(e) {}
 }
 
@@ -2119,8 +2117,8 @@ function limparSolicitacaoManut() {
 }
 </script>
 
-
 <script>
+// ── Config da Frota (admin_master) ──
 function cfgClEditar(vp) {
   var frotas = cfgClGetFrota();
   var f = frotas.find(function(x){ return x.vp===vp; });
