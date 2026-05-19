@@ -201,27 +201,27 @@ html,body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--tx);m
   <div class="col ca">
     <div class="col-hd"><div class="col-title">🔴 Aberta <span class="col-cnt" id="lbl-aberta">0</span></div></div>
     <div class="col-cards" id="col-aberta"></div>
-    <div class="add-card" onclick="abrirNovaOS('aberta')">＋ Nova O.S.</div>
+    <div class="add-card" data-col="aberta" onclick="abrirNovaOS(this.dataset.col)">＋ Nova O.S.</div>
   </div>
   <div class="col an">
     <div class="col-hd"><div class="col-title">🟡 Andamento <span class="col-cnt" id="lbl-andando">0</span></div></div>
     <div class="col-cards" id="col-andando"></div>
-    <div class="add-card" onclick="abrirNovaOS('andando')">＋ Nova O.S.</div>
+    <div class="add-card" data-col="andando" onclick="abrirNovaOS(this.dataset.col)">＋ Nova O.S.</div>
   </div>
   <div class="col ag">
     <div class="col-hd"><div class="col-title">🔵 Aguardando Peça <span class="col-cnt" id="lbl-agpeca">0</span></div></div>
     <div class="col-cards" id="col-agpeca"></div>
-    <div class="add-card" onclick="abrirNovaOS('agpeca')">＋ Nova O.S.</div>
+    <div class="add-card" data-col="agpeca" onclick="abrirNovaOS(this.dataset.col)">＋ Nova O.S.</div>
   </div>
   <div class="col ex">
     <div class="col-hd"><div class="col-title">🏭 Oficina Externa <span class="col-cnt" id="lbl-externa">0</span></div></div>
     <div class="col-cards" id="col-externa"></div>
-    <div class="add-card" onclick="abrirNovaOS('externa')">＋ Nova O.S.</div>
+    <div class="add-card" data-col="externa" onclick="abrirNovaOS(this.dataset.col)">＋ Nova O.S.</div>
   </div>
   <div class="col ok">
     <div class="col-hd"><div class="col-title">✅ Concluída <span class="col-cnt" id="lbl-concl">0</span></div></div>
     <div class="col-cards" id="col-concl"></div>
-    <div class="add-card" style="color:var(--gr);border-color:rgba(16,185,129,.2)" onclick="abrirNovaOS('concl')">＋ Nova O.S.</div>
+    <div class="add-card" style="color:var(--gr);border-color:rgba(16,185,129,.2)" data-col="concl" onclick="abrirNovaOS(this.dataset.col)">＋ Nova O.S.</div>
   </div>
 </div>
 
