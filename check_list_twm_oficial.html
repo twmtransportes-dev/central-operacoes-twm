@@ -784,6 +784,8 @@ const CAMPOS = [
 let usuarioLogado = null;
 let caminhaoAtual = null;
 let formDados = {};
+  _solicitacoes = [];
+  try { sessionStorage.removeItem('twm_sols_manut'); } catch(e) {}
   // Pré-preenche todos os campos simnao com 'Sim'
   CAMPOS.filter(f => f.tipo === 'simnao').forEach(f => { formDados[f.id] = 'Sim'; });
 let checklists = JSON.parse(localStorage.getItem('twm_checklists') || '[]');
@@ -1281,7 +1283,7 @@ function fecharForm() {
   showPage('detalhe');
 }
 
-function salvarChecklist() {
+async function salvarChecklist() {
   try {
   // Validar campos obrigatórios
   const campos_required = CAMPOS.filter(f => f.required && f.id);
@@ -1319,11 +1321,18 @@ function salvarChecklist() {
     ...formDados,
     justificativa: document.getElementById('f_justificativa')?.value || '',
     solicitacao_manutencao: (function(){
-      var sols = (typeof _solicitacoes !== 'undefined') ? _solicitacoes : [];
-      if (!sols || !sols.length) return '';
+      var sols = [];
+      try { sols = JSON.parse(sessionStorage.getItem('twm_sols_manut') || '[]'); } catch(e) {}
+      if (!sols.length && typeof _solicitacoes !== 'undefined') sols = _solicitacoes || [];
+      if (!sols.length) return '';
       return sols.map(function(s){ return s.frota + ': ' + s.problema; }).join(' | ');
     })(),
-    solicitacoes_manutencao: (typeof _solicitacoes !== 'undefined') ? (_solicitacoes || []) : [],
+    solicitacoes_manutencao: (function(){
+      var sols = [];
+      try { sols = JSON.parse(sessionStorage.getItem('twm_sols_manut') || '[]'); } catch(e) {}
+      if (!sols.length && typeof _solicitacoes !== 'undefined') sols = _solicitacoes || [];
+      return sols;
+    })(),
   };
 
   // Versão sem foto para salvar localmente (evita erro de quota)
@@ -1350,9 +1359,11 @@ function salvarChecklist() {
     try {
       var ordens = JSON.parse(localStorage.getItem('twm_manutencao_os') || '[]');
       var dataHoje = new Date().toLocaleDateString('pt-BR');
-      _sols.forEach(function(s, idx) {
+      var novasOS = [];
+
+      _sols.forEach(function(s, i) {
         var novaOS = {
-          id:        'OS-' + (Date.now() + idx).toString(36).toUpperCase(),
+          id:        'OS-' + (Date.now() + i).toString(36).toUpperCase(),
           frota:     s.frota || registroLocal.frota || '—',
           prioridade:'normal',
           status:    'aberta',
@@ -1360,45 +1371,48 @@ function salvarChecklist() {
           origem_id: registroLocal.id || '',
           motorista: registroLocal.motorista || '—',
           data_aber: dataHoje,
-          ts:        Date.now() + idx,
+          ts:        Date.now() + i,
           servicos: [{
-            id:       'SV-' + (Date.now() + idx).toString(36).toUpperCase(),
-            tipo:     '[44] OUTROS SERVIÇOS',
+            id:        'SV-' + (Date.now() + i).toString(36).toUpperCase(),
+            tipo:      '[44] OUTROS SERVIÇOS',
             descricao: s.problema,
             mecanico:  '',
             tempo:     '',
             status:    'aberta',
             solucao:   '',
             pendencia: false,
-            ts:        Date.now() + idx
+            ts:        Date.now() + i
           }]
         };
+        novasOS.push(novaOS);
         ordens.unshift(novaOS);
       });
+
+      // Salva localmente PRIMEIRO
       localStorage.setItem('twm_manutencao_os', JSON.stringify(ordens));
 
-      // Envia cada OS para a planilha do Drive
-      try {
-        var scriptUrlM = (JSON.parse(localStorage.getItem('twm_config')||'{}').scriptUrl) ||
-          'https://script.google.com/macros/s/AKfycbw4BZz60sy9BsFACdqKktKpzJOfP8mj0U6s1G7Em5pwhaC_kQHCk-GPbLNZOlwjvrOwsw/exec';
-        if (navigator.onLine && scriptUrlM) {
-          ordens.slice(0, _sols.length).forEach(function(os_env) {
-            var pMan = new URLSearchParams({
-              action:     'salvarManutencao',
-              id_os:      os_env.id,
-              frota:      os_env.frota,
-              prioridade: os_env.prioridade,
-              status:     os_env.status,
-              origem:     os_env.origem,
-              motorista:  os_env.motorista || '',
-              data_aber:  os_env.data_aber,
-              obs:        'Aberta pelo Check List Frota — Motorista: ' + (os_env.motorista||''),
-              servicos:   JSON.stringify(os_env.servicos || [])
-            });
-            fetch(scriptUrlM + '?' + pMan.toString()).catch(function(){});
+      // Envia para planilha E para check list — aguarda resposta
+      const scriptUrlM = (JSON.parse(localStorage.getItem('twm_config')||'{}').scriptUrl) ||
+        'https://script.google.com/macros/s/AKfycbw4BZz60sy9BsFACdqKktKpzJOfP8mj0U6s1G7Em5pwhaC_kQHCk-GPbLNZOlwjvrOwsw/exec';
+
+      if (navigator.onLine && scriptUrlM) {
+        // Envia todas as OS em paralelo e AGUARDA
+        await Promise.allSettled(novasOS.map(function(os_env) {
+          var pMan = new URLSearchParams({
+            action:    'salvarManutencao',
+            id_os:     os_env.id,
+            frota:     os_env.frota,
+            prioridade:os_env.prioridade,
+            status:    os_env.status,
+            origem:    os_env.origem,
+            motorista: os_env.motorista || '',
+            data_aber: os_env.data_aber,
+            obs:       'Aberta pelo Check List Frota — ' + (os_env.motorista||''),
+            servicos:  JSON.stringify(os_env.servicos || [])
           });
-        }
-      } catch(eSc) {}
+          return fetch(scriptUrlM + '?' + pMan.toString());
+        }));
+      }
 
     } catch(e) {}
   }
@@ -2089,6 +2103,8 @@ function salvarSolicitacaoManut() {
       btn.style.background = '';
     }
   }
+  // Salva no sessionStorage para garantir acesso no momento do registro
+  try { sessionStorage.setItem('twm_sols_manut', JSON.stringify(_solicitacoes)); } catch(e) {}
 }
 
 function limparSolicitacaoManut() {
