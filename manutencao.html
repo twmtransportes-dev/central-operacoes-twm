@@ -628,10 +628,11 @@ function abrirAddSV(osId){
           '<span class="sv-tag '+(sv.status==='concl'?'t-ok':sv.status==='pend'?'t-pend':'t-ab')+'">'+
             (sv.status==='concl'?'✅ Concluído':sv.status==='pend'?'⏸ Pendência':'Aberta')+
           '</span>'+
-          '<button class="btn-split" onclick="splitServico(''+osId+'',''+sv.id+'')">✂️ Dividir</button>'+
+          '<button class="btn-split" data-oid="'+osId+'" data-sid="'+sv.id+'" onclick="splitServico(this.dataset.oid,this.dataset.sid)">&#9986; Dividir</button>'+
         '</div>'+
         '<textarea class="svc-exist-desc" id="desc-exist-'+sv.id+'" rows="2" '+
-          'onblur="salvarDescExist(''+osId+'',''+sv.id+'',this.value)">'+sv.descricao+'</textarea>'+
+          'data-oid="'+osId+'" data-sid="'+sv.id+'" '+
+          'onblur="salvarDescExist(this.dataset.oid,this.dataset.sid,this.value)">'+sv.descricao+'</textarea>'+
       '</div>';
     }).join('');
     existDiv.style.display = '';
@@ -1077,12 +1078,53 @@ function manutCfgSalvar(){
   toast('✅ Configurações salvas','ok');
 }
 
+// Carrega OS do servidor e mescla com locais
+function carregarDoServidor(){
+  if(!SCRIPT_URL || !navigator.onLine) return;
+  fetch(SCRIPT_URL+'?action=getManutencoes&status=all&_='+Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(resp){
+      if(!resp.ok || !resp.ordens || !resp.ordens.length) return;
+      var local = lerOS();
+      var idsLocal = local.map(function(o){ return o.id; });
+      var novos = 0;
+      resp.ordens.forEach(function(o){
+        if(idsLocal.indexOf(o.id) < 0){
+          o.ts = o.ts || Date.now();
+          local.unshift(o);
+          novos++;
+        } else {
+          // Atualiza status de OS existentes se mudou no servidor
+          var idx = local.findIndex(function(l){ return l.id===o.id; });
+          if(idx >= 0 && local[idx].status !== o.status){
+            local[idx].status = o.status;
+            novos++;
+          }
+        }
+      });
+      if(novos > 0){
+        ordens = local;
+        salvarOS();
+        render();
+        toast('↓ Módulo atualizado ('+novos+' mudança(s))','ok');
+      }
+    })
+    .catch(function(){});
+}
+
 window.onload = function(){
   render();
+
+  // Busca do servidor ao abrir — sincroniza para todos os dispositivos
+  carregarDoServidor();
+
+  // Polling a cada 30 segundos — atualização automática em tempo real
+  setInterval(carregarDoServidor, 30000);
+
   // Mostra botão Config só para admin_master
   var btn=document.getElementById('btn-manut-cfg');
   if(btn) btn.style.display=_isAdminMasterManut()?'':'none';
-  // Pré-carrega valores
+  // Pré-carrega valores config
   var cfg=JSON.parse(localStorage.getItem('twm_config')||'{}');
   var eu=document.getElementById('manut-cfg-url'); if(eu&&cfg.scriptUrl) eu.value=cfg.scriptUrl;
   var ep=document.getElementById('manut-cfg-plan'); if(ep&&cfg.manutencaoId) ep.value=cfg.manutencaoId;
