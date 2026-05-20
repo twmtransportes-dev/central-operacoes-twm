@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#7B3FE4"><title>TWM — Check List Frota</title><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet"><script>
+(function(){var p=localStorage.getItem('twm_tema')||'auto';var claro;if(p==='claro')claro=true;else if(p==='escuro')claro=false;else{var h=new Date().getHours();claro=h>=6&&h<18;}function ap(){if(claro)document.body.classList.add('light');}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ap);else ap();})();
+</script><style>
+  :root {
+    --purple: #7B2FBE;
+    --purple-dark: #5a1f8f;
+    --purple-light: #9b4fd4;
+    --purple-faint: #f3eafc;
+    --white: #ffffff;
+    --gray-50: #f8f9fa;
+    --gray-100: #f0f0f0;
+    --gray-200: #e0e0e0;
+    --gray-400: #999;
+    --gray-600: #555;
+    --gray-800: #222;
+    --green: #22c55e;
+    --red: #ef4444;
+    --orange: #f97316;
+    --radius: 12px;
+    --shadow: 0 2px 12px rgba(123,47,190,0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { overscroll-behavior: none; overscroll-behavior-y: none; }
+  body { font-family: 'Inter', sans-serif; background: var(--gray-50); color: var(--gray-800); min-height: 100vh; overscroll-behavior: none; overscroll-behavior-y: none; }
+
+  /* ===== SCREENS ===== */
+  .screen { display: none; min-height: 100vh; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* ===== LOGIN ===== */
+  
+  
+  
+  .login-logo 
+  .login-logo h1 { font-family: 'Rajdhani', sans-serif; font-size: 26px; font-weight: 700; color: #fff; letter-spacing: 2px; }
+  .login-logo p { color: rgba(255,255,255,0.7); font-size: 13px; margin-top: 4px; }
+  
+  .login-form h2 { font-size: 18px; font-weight: 600; color: var(--gray-800); margin-bottom: 20px; }
+  .field-group { margin-bottom: 16px; }
+  .field-group label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .field-group input, .field-group select, .field-group textarea {
+    width: 100%; padding: 13px 14px; border: 2px solid var(--gray-200);
+    border-radius: var(--radius); font-size: 15px; font-family: 'Inter', sans-serif;
+    color: var(--gray-800); background: #fff; outline: none; transition: border-color 0.2s;
+    appearance: none; -webkit-appearance: none;
+  }
+  .field-group input:focus, .field-group select:focus, .field-group textarea:focus { border-color: var(--purple); }
+  .field-group textarea { resize: none; min-height: 80px; }
+  
+  .btn-primary:active { background: var(--purple-dark); transform: scale(0.98); }
+  
+
+  
+  
+  
+  
+
+  /* ===== HEADER ===== */
+  .app-header {
+    background: var(--purple); color: #fff; padding: 0 16px;
+    height: 60px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(123,47,190,0.3);
+    flex-shrink: 0;
+  }
+  .app-header .logo-sm {
+    font-family: 'Rajdhani', sans-serif; font-size: 20px; font-weight: 700;
+    letter-spacing: 1px; display: flex; align-items: center; gap: 10px;
+  }
+  .app-header .logo-sm .badge {
+    width: 34px; height: 34px; background: rgba(255,255,255,0.2);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; border: 1.5px solid rgba(255,255,255,0.3);
+  }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .user-chip {
+    background: rgba(255,255,255,0.15); border-radius: 20px;
+    padding: 4px 12px; font-size: 13px; font-weight: 500;
+  }
+  .btn-logout {
+    background: rgba(255,255,255,0.15); border: none; color: #fff;
+    padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer;
+    font-family: 'Inter', sans-serif; font-weight: 500;
+  }
+
+  /* ===== BOTTOM NAV ===== */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 64px;
+    background: #fff; border-top: 1px solid var(--gray-200);
+    display: flex; z-index: 100; box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 4px; cursor: pointer; border: none;
+    background: none; font-family: 'Inter', sans-serif; color: var(--gray-400);
+    font-size: 11px; font-weight: 500; transition: color 0.2s; padding: 0;
+  }
+  .nav-item.active { color: var(--purple); }
+  .nav-item svg { width: 22px; height: 22px; }
+  .page-content { flex: 1; overflow-y: auto; padding: 16px 16px 84px; }
+
+  /* ===== CAMINHOES LIST ===== */
+  .section-title { font-family: 'Rajdhani', sans-serif; font-size: 22px; font-weight: 700; color: var(--gray-800); margin-bottom: 4px; }
+  .section-sub { font-size: 13px; color: var(--gray-400); margin-bottom: 16px; }
+  .search-bar {
+    display: flex; align-items: center; background: #fff; border: 2px solid var(--gray-200);
+    border-radius: var(--radius); padding: 0 12px; margin-bottom: 16px; gap: 8px;
+  }
+  .search-bar input { flex: 1; border: none; outline: none; padding: 12px 0; font-size: 15px; font-family: 'Inter', sans-serif; }
+  .search-bar svg { color: var(--gray-400); flex-shrink: 0; }
+  .truck-card {
+    background: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+    box-shadow: var(--shadow); display: flex; align-items: center; gap: 14px;
+    cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; border: 2px solid transparent;
+  }
+  .truck-card:active { transform: scale(0.98); box-shadow: 0 1px 6px rgba(123,47,190,0.10); }
+
+  /* Carros de serviço */
+  .carro-card {
+    background: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+    box-shadow: var(--shadow); cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    border-left: 5px solid var(--green);
+    position: relative; overflow: hidden;
+  }
+  .carro-card.em-uso {
+    border-left-color: var(--red);
+    background: #FFF5F5;
+  }
+  .carro-card:active { transform: scale(0.98); }
+  .carro-card-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
+  }
+  .carro-placa {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 20px; font-weight: 700; color: var(--purple-dark);
+    letter-spacing: 2px;
+  }
+  .carro-status {
+    font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .carro-status.disponivel { background: #DCFCE7; color: #15803D; }
+  .carro-status.em-uso { background: #FEE2E2; color: #DC2626; }
+  .carro-modelo { font-size: 13px; color: var(--gray-500); margin-bottom: 4px; }
+  .carro-info { font-size: 12px; color: var(--gray-400); }
+  .carro-em-uso-detalhe {
+    margin-top: 8px; padding-top: 8px;
+    border-top: 1px dashed #fca5a5;
+    font-size: 12px; color: #DC2626;
+  }
+  .truck-icon {
+    width: 48px; height: 48px; background: var(--purple-faint); border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .truck-icon svg { width: 26px; height: 26px; color: var(--purple); }
+  .truck-info { flex: 1; }
+  .truck-vp { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 700; color: var(--purple); }
+  .truck-placa { font-size: 13px; color: var(--gray-600); font-weight: 500; margin-top: 1px; }
+  .truck-modelo { font-size: 12px; color: var(--gray-400); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+  .truck-arrow { color: var(--gray-400); }
+
+  /* ===== DETAIL ===== */
+  .back-btn {
+    display: flex; align-items: center; gap: 6px; color: #fff;
+    background: none; border: none; font-size: 15px; font-family: 'Inter', sans-serif;
+    cursor: pointer; padding: 0; font-weight: 500;
+  }
+  .detail-header-info { background: var(--purple-faint); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; }
+  .detail-vp { font-family: 'Rajdhani', sans-serif; font-size: 28px; font-weight: 700; color: var(--purple); }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .detail-field label { font-size: 10px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; }
+  .detail-field p { font-size: 14px; font-weight: 600; color: var(--gray-800); margin-top: 1px; }
+  .btn-add {
+    width: 100%; padding: 15px; background: var(--purple); color: #fff;
+    border: none; border-radius: var(--radius); font-size: 16px; font-weight: 600;
+    font-family: 'Inter', sans-serif; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; gap: 8px; margin-bottom: 20px;
+    box-shadow: 0 4px 14px rgba(123,47,190,0.3);
+  }
+  .btn-add:active { background: var(--purple-dark); }
+  .hist-title { font-size: 14px; font-weight: 600; color: var(--gray-600); margin-bottom: 10px; }
+  .checklist-hist-item {
+    background: #fff; border-radius: var(--radius); padding: 14px; margin-bottom: 10px;
+    box-shadow: var(--shadow); border-left: 4px solid var(--green);
+    cursor: pointer;
+  }
+  .checklist-hist-item.has-issues { border-left-color: var(--orange); }
+  .hist-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .hist-motorista { font-weight: 600; font-size: 14px; color: var(--gray-800); }
+  .hist-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+  .hist-badge.ok { background: #dcfce7; color: #16a34a; }
+  .hist-badge.issue { background: #ffedd5; color: #c2410c; }
+  .hist-date { font-size: 12px; color: var(--gray-400); }
+  .hist-km { font-size: 12px; color: var(--gray-400); }
+  .no-items { text-align: center; padding: 32px; color: var(--gray-400); font-size: 14px; }
+
+  /* ===== CHECKLIST FORM ===== */
+  .form-header {
+    background: var(--purple); color: #fff; padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+  }
+  .form-header h2 { font-family: 'Rajdhani', sans-serif; font-size: 20px; font-weight: 700; }
+  .form-body { flex: 1; overflow-y: auto; padding: 16px 16px 100px; }
+  .form-section-title {
+    font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 700;
+    color: var(--purple); text-transform: uppercase; letter-spacing: 1px;
+    padding: 12px 0 8px; border-bottom: 2px solid var(--purple-faint);
+    margin-bottom: 12px; margin-top: 8px;
+  }
+  .form-item { margin-bottom: 14px; }
+  .form-item-label { font-size: 14px; font-weight: 500; color: var(--gray-800); margin-bottom: 8px; line-height: 1.4; }
+  .form-item-label .required { color: var(--purple); margin-left: 2px; }
+  .btn-group { display: flex; gap: 8px; }
+  .btn-sim, .btn-nao {
+    flex: 1; padding: 12px; border-radius: 10px; border: 2px solid var(--gray-200);
+    font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif;
+    cursor: pointer; transition: all 0.15s; background: #fff; color: var(--gray-600);
+  }
+  .btn-sim.selected { background: var(--green); border-color: var(--green); color: #fff; }
+  .btn-nao.selected { background: var(--red); border-color: var(--red); color: #fff; }
+  .btn-sim:active { transform: scale(0.97); }
+  .btn-nao:active { transform: scale(0.97); }
+  .photo-btn {
+    width: 100%; padding: 20px; border: 2px dashed var(--gray-200);
+    border-radius: var(--radius); background: var(--gray-50);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    cursor: pointer; font-size: 14px; color: var(--gray-400); font-family: 'Inter', sans-serif;
+  }
+  .photo-btn svg { width: 28px; height: 28px; }
+  .photo-preview { width: 100%; border-radius: var(--radius); overflow: hidden; margin-top: 8px; }
+  .photo-preview img { width: 100%; max-height: 200px; object-fit: cover; }
+  .form-footer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #fff; padding: 12px 16px; border-top: 1px solid var(--gray-200);
+    display: flex; gap: 10px; box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+  }
+  .btn-cancel {
+    flex: 1; padding: 14px; border: 2px solid var(--gray-200); border-radius: var(--radius);
+    background: #fff; color: var(--gray-600); font-size: 15px; font-weight: 600;
+    font-family: 'Inter', sans-serif; cursor: pointer;
+  }
+  .btn-save {
+    flex: 2; padding: 14px; background: var(--purple); border: none; border-radius: var(--radius);
+    color: #fff; font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif;
+    cursor: pointer; box-shadow: 0 4px 14px rgba(123,47,190,0.3);
+  }
+  .btn-save:active { background: var(--purple-dark); }
+
+  /* ===== HISTORICO ===== */
+  .hist-filter { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
+  .filter-chip {
+    padding: 6px 14px; border-radius: 20px; border: 2px solid var(--gray-200);
+    font-size: 13px; font-weight: 500; white-space: nowrap; cursor: pointer;
+    background: #fff; color: var(--gray-600); font-family: 'Inter', sans-serif;
+    flex-shrink: 0;
+  }
+  .filter-chip.active { background: var(--purple); border-color: var(--purple); color: #fff; }
+
+  /* ===== MODAL DETAIL ===== */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200;
+    display: none; align-items: flex-end;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-sheet {
+    background: #fff; border-radius: 20px 20px 0 0; width: 100%;
+    max-height: 85vh; overflow-y: auto; padding: 20px 16px 40px;
+  }
+  .modal-handle { width: 40px; height: 4px; background: var(--gray-200); border-radius: 2px; margin: 0 auto 16px; }
+  .modal-title { font-family: 'Rajdhani', sans-serif; font-size: 22px; font-weight: 700; color: var(--purple); margin-bottom: 16px; }
+  .modal-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
+  .modal-row:last-child { border-bottom: none; }
+  .modal-row-label { font-size: 13px; color: var(--gray-400); flex: 1; }
+  .modal-row-val { font-size: 14px; font-weight: 600; color: var(--gray-800); flex: 1; text-align: right; }
+  .modal-row-val.sim { color: var(--green); }
+  .modal-row-val.nao { color: var(--red); }
+  .modal-section { font-size: 11px; font-weight: 700; color: var(--purple); text-transform: uppercase; letter-spacing: 1px; margin: 14px 0 6px; }
+  .modal-close {
+    width: 100%; padding: 14px; background: var(--purple); color: #fff;
+    border: none; border-radius: var(--radius); font-size: 15px; font-weight: 600;
+    font-family: 'Inter', sans-serif; cursor: pointer; margin-top: 16px;
+  }
+
+  .toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--gray-800); color: #fff; padding: 12px 20px; border-radius: 10px;
+    font-size: 14px; font-weight: 500; z-index: 300; opacity: 0; transition: all 0.3s;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ===== MENU PERFIL (3 pontinhos) ===== */
+  .btn-menu-perfil {
+    background: rgba(255,255,255,0.15); border: none; color: #fff;
+    width: 36px; height: 36px; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 3px;
+    flex-direction: column; flex-shrink: 0;
+  }
+  .btn-menu-perfil span {
+    width: 4px; height: 4px; background: #fff; border-radius: 50%; display: block;
+  }
+  .perfil-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    z-index: 400; display: none;
+  }
+  .perfil-overlay.open { display: block; }
+  .perfil-drawer {
+    position: fixed; top: 0; left: -300px; bottom: 0; width: 280px;
+    background: #fff; z-index: 401; transition: left 0.3s cubic-bezier(.4,0,.2,1);
+    display: flex; flex-direction: column; overflow-y: auto;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+  }
+  .perfil-drawer.open { left: 0; }
+  .perfil-drawer-header {
+    background: linear-gradient(135deg, var(--purple-dark), var(--purple));
+    padding: 48px 20px 24px; color: #fff;
+  }
+  .perfil-avatar {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.45);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Rajdhani', sans-serif; font-size: 32px; font-weight: 700;
+    color: #fff; margin-bottom: 12px; cursor: pointer;
+    position: relative; overflow: hidden;
+  }
+  .perfil-avatar img {
+    width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+  }
+  .perfil-avatar-edit {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.45); padding: 4px 0;
+    font-size: 10px; font-weight: 600; color: #fff;
+    text-align: center; letter-spacing: 0.5px;
+  }
+  .perfil-nome { font-family: 'Rajdhani', sans-serif; font-size: 20px; font-weight: 700; }
+  .perfil-perfil { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 2px; }
+  .perfil-secao { padding: 16px 20px; border-bottom: 1px solid var(--gray-100); }
+  .perfil-secao-titulo {
+    font-size: 10px; font-weight: 700; color: var(--gray-400);
+    text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;
+  }
+  .perfil-linha { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+  .perfil-linha:last-child { margin-bottom: 0; }
+  .perfil-linha-icone {
+    width: 32px; height: 32px; border-radius: 8px; background: var(--purple-faint);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .perfil-linha-icone svg { width: 16px; height: 16px; color: var(--purple); }
+  .perfil-linha-label { font-size: 10px; color: var(--gray-400); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .perfil-linha-valor { font-size: 14px; font-weight: 600; color: var(--gray-800); margin-top: 1px; word-break: break-all; }
+  .perfil-btn-sair {
+    margin: auto 20px 24px; padding: 13px; border: 2px solid var(--gray-200);
+    border-radius: var(--radius); background: #fff; color: var(--gray-600);
+    font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif;
+    cursor: pointer; text-align: center;
+  }
+  .perfil-btn-sair:active { background: var(--gray-50); }
+
+  /* ===== CARRETA RESERVA ===== */
+  .carreta-reserva-wrap {
+    background: #fff8f0; border: 2px solid #f97316;
+    border-radius: var(--radius); padding: 14px;
+  }
+  .carreta-reserva-wrap .cr-label {
+    font-size: 12px; font-weight: 600; color: #c2410c;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 4px; display: flex; align-items: center; gap: 6px;
+  }
+  .carreta-reserva-wrap .cr-hint {
+    font-size: 12px; color: var(--gray-400); margin-bottom: 10px; line-height: 1.4;
+  }
+  .carreta-reserva-wrap input {
+    width: 100%; padding: 12px 14px; border: 2px solid #fed7aa;
+    border-radius: var(--radius); font-size: 15px; font-family: 'Inter', sans-serif;
+    color: var(--gray-800); background: #fff; outline: none; transition: border-color 0.2s;
+  }
+  .carreta-reserva-wrap input:focus { border-color: #f97316; }
+
+/* ── TEMA CLARO ─────────────────────────────────────────────── */
+body.light{--bg:#F4F3FF;--bg2:#FFFFFF;--bg3:#FAFAFA;--border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);--text:#1A1A2E;--muted:#6B6880}
+body.light .app-header{box-shadow:0 1px 8px rgba(0,0,0,.08)}
+body.light .list-card{box-shadow:0 1px 6px rgba(0,0,0,.06)}
+body.light .modal-box{box-shadow:0 -4px 32px rgba(0,0,0,.12)}
+body.light .pneu-card{box-shadow:0 1px 6px rgba(0,0,0,.06)}
+body.light{--bg:#F4F3FF;--bg2:#FFFFFF;--bg3:#FAFAFA;--border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);--text:#1A1A2E;--muted:#6B6880}
+body.light .app-header{box-shadow:0 1px 8px rgba(0,0,0,.08)}
+
+/* Botão solicitação de manutenção */
+.btn-solic-manut{width:100%;padding:14px;background:linear-gradient(135deg,#F97316,#FB923C);border:none;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(249,115,22,.3)}
+.btn-solic-manut:active{opacity:.88}
+.solic-preview{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.25);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:12px;color:var(--text)}
+.solic-preview .sp-item{margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(249,115,22,.15)}
+.solic-preview .sp-item:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.solic-preview .sp-frota{font-weight:700;color:#F97316;font-family:'Barlow Condensed',sans-serif;font-size:14px}
+.solic-preview .sp-prob{font-size:11px;color:var(--text);margin-top:2px}
+
+/* Modal manutenção */
+.modal-manut-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:flex-end;justify-content:center}
+.modal-manut-overlay.on{display:flex}
+.modal-manut{background:var(--bg2,#fff);border-radius:20px 20px 0 0;padding:20px 16px 30px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;border-top:3px solid #F97316}
+.modal-manut-title{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#F97316;margin-bottom:4px}
+.modal-manut-sub{font-size:11px;color:var(--muted,#888);margin-bottom:16px}
+.manut-linha{display:flex;gap:8px;margin-bottom:10px;align-items:flex-start}
+.manut-num{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#F97316;min-width:20px;padding-top:10px}
+.manut-frota-inp{width:100px;flex-shrink:0;background:var(--bg3,#f4f4f4);border:1.5px solid var(--border2,#ddd);border-radius:9px;padding:9px 10px;font-size:13px;font-family:'Barlow',sans-serif;color:var(--text,#1a1a1a);outline:none}
+.manut-prob-inp{flex:1;background:var(--bg3,#f4f4f4);border:1.5px solid var(--border2,#ddd);border-radius:9px;padding:9px 10px;font-size:13px;font-family:'Barlow',sans-serif;color:var(--text,#1a1a1a);outline:none;resize:none;min-height:42px}
+.manut-frota-inp:focus,.manut-prob-inp:focus{border-color:#F97316}
+.btn-salvar-solic{width:100%;padding:14px;background:linear-gradient(135deg,#F97316,#FB923C);border:none;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#fff;cursor:pointer;margin-top:8px}
+.btn-limpar-solic{width:100%;padding:11px;background:transparent;border:1px solid rgba(249,115,22,.3);border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;color:#F97316;cursor:pointer;margin-top:6px}
+
+
+/* Histórico Geral */
+.filter-chip{padding:6px 12px;border-radius:20px;border:1.5px solid var(--purple,#7B3FE4);background:transparent;color:var(--purple,#7B3FE4);font-size:11px;font-weight:700;cursor:pointer;font-family:'Barlow Condensed',sans-serif;letter-spacing:.5px;transition:.15s}
+.filter-chip.active{background:var(--purple,#7B3FE4);color:#fff}
+.filter-chip.filter-warn{border-color:#EF4444;color:#EF4444}.filter-chip.filter-warn.active{background:#EF4444;color:#fff}
+.filter-chip.filter-orange{border-color:#F97316;color:#F97316}.filter-chip.filter-orange.active{background:#F97316;color:#fff}
+.hist-card{background:var(--bg2,#fff);border:1px solid var(--border,#e5e5e5);border-radius:14px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:.15s;border-left:4px solid var(--purple,#7B3FE4)}
+.hist-card:active{opacity:.88}
+.hist-card.has-issues{border-left-color:#EF4444}
+.hist-card.has-manut{border-left-color:#F97316}
+.hist-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.hist-veiculo{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:var(--purple,#7B3FE4)}
+.hist-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px}
+.hist-badge.ok{background:rgba(16,185,129,.12);color:#10B981}
+.hist-badge.warn{background:rgba(239,68,68,.12);color:#EF4444}
+.hist-badge.manut{background:rgba(249,115,22,.12);color:#F97316}
+.hist-row{display:flex;gap:12px;font-size:11px;color:#888;margin-bottom:4px;flex-wrap:wrap}
+.hist-row b{color:var(--text,#1a1a1a);font-weight:600}
+.hist-manut-line{margin-top:8px;padding:8px 10px;background:rgba(249,115,22,.08);border-radius:8px;border-left:3px solid #F97316;font-size:11px;color:#F97316;font-weight:600;line-height:1.5}
+
+</style></head>
+<body>
+<div id="screen-app" class="screen">
+  <header class="app-header">
+    <div class="logo-sm">
+      <button class="btn-menu-perfil" onclick="abrirPerfil()" aria-label="Menu do motorista">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="badge" style="margin-left:4px;">TWM</div>
+      <span id="header-title">CAMINHÕES</span>
+    </div>
+    <div class="header-right">
+      <button id="btn-voltar-datalink" onclick="voltarDataLink()"
+        style="display:none;background:rgba(255,255,255,0.1);border:none;border-radius:8px;padding:6px 14px;color:white;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.5px;">
+        ← Voltar
+      </button>
+      <span class="user-chip" id="user-chip"></span>
+    </div>
+  </header>
+
+  <!-- Página: Caminhões -->
+  <div id="page-caminhoes" class="page-content" style="display:none">
+    <div class="section-title">Caminhões</div>
+    <div class="section-sub" id="frota-count"></div>
+    <div class="search-bar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="search-input" placeholder="Buscar por VP ou placa..." oninput="filtrarCaminhoes()">
+    </div>
+    <div id="lista-caminhoes"></div>
+  </div>
+
+  <!-- Página: Detalhe Caminhão -->
+  <div id="page-detalhe" class="page-content" style="display:none">
+    <div class="detail-header-info">
+      <div class="detail-vp" id="det-vp"></div>
+      <div class="detail-grid">
+        <div class="detail-field"><label>Placa</label><p id="det-placa"></p></div>
+        <div class="detail-field"><label>Carreta</label><p id="det-carreta"></p></div>
+        <div class="detail-field"><label>Marca / Tipo</label><p id="det-marca"></p></div>
+        <div class="detail-field"><label>Ano</label><p id="det-ano"></p></div>
+        <div class="detail-field" style="grid-column:span 2"><label>Modelo</label><p id="det-modelo"></p></div>
+      </div>
+    </div>
+    <button class="btn-add" onclick="abrirFormChecklist()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20"><path d="M12 5v14M5 12h14"/></svg>
+      Adicionar Check List
+    </button>
+    <div class="hist-title">CHECK LISTs registrados</div>
+    <div id="hist-caminhao"></div>
+  </div>
+
+  <!-- Page Histórico Geral -->
+  <div id="page-historico" class="page-content" style="display:none;overflow-y:auto;height:calc(100vh - 52px - 60px)">
+  <!-- Header fixo do histórico -->
+  <div style="padding:12px 16px 8px;background:var(--bg,#fff);border-bottom:1px solid var(--border,#eee);position:sticky;top:0;z-index:10">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;text-transform:uppercase;color:var(--purple,#7B3FE4)">📋 Histórico Geral</div>
+      <div id="hist-total" style="font-size:11px;color:#888;font-weight:600"></div>
+    </div>
+    <!-- Filtros -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button id="hf-todos" class="filter-chip active" onclick="renderHistoricoFiltrado('todos')">Todos</button>
+      <button id="hf-ok" class="filter-chip" onclick="renderHistoricoFiltrado('ok')">✅ OK</button>
+      <button id="hf-nao" class="filter-chip filter-warn" onclick="renderHistoricoFiltrado('issues')">⚠️ Com NÃO</button>
+      <button id="hf-manut" class="filter-chip filter-orange" onclick="renderHistoricoFiltrado('manutencao')">🔧 Manutenção</button>
+    </div>
+    <!-- Busca -->
+    <div style="position:relative;margin-top:8px">
+      <input id="hist-busca" type="text" placeholder="🔍 Buscar veículo, motorista, data..."
+        oninput="filtrarHistBusca(this.value)"
+        style="width:100%;padding:9px 12px;border:1.5px solid var(--border,#ddd);border-radius:10px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;background:var(--bg2,#f9f9f9)">
+    </div>
+  </div>
+  <!-- Lista -->
+  <div id="lista-historico" style="padding:12px 16px"></div>
+</div>
+  <!-- Page Config Frotas -->
+  <div id="page-config-cl" class="page-content" style="display:none;padding:16px;overflow-y:auto;height:calc(100vh - 52px - 60px)">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--purple,#7B3FE4);margin-bottom:4px">⚙️ Configuração da Frota</div>
+    <div style="font-size:12px;color:#888;margin-bottom:16px">Adicione, edite ou remova veículos da lista do check list</div>
+
+    <!-- Adicionar novo -->
+    <div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--purple,#7B3FE4);margin-bottom:10px">➕ Adicionar / Editar Veículo</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div><label style="font-size:9px;font-weight:700;text-transform:uppercase;color:#888;display:block;margin-bottom:3px">VP / Prefixo *</label>
+          <input id="cfg-cl-vp" type="text" placeholder="VP-183" autocapitalize="characters" oninput="this.value=this.value.toUpperCase()"
+            style="width:100%;padding:9px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none"></div>
+        <div><label style="font-size:9px;font-weight:700;text-transform:uppercase;color:#888;display:block;margin-bottom:3px">Placa</label>
+          <input id="cfg-cl-placa" type="text" placeholder="ABC-1234" autocapitalize="characters" oninput="this.value=this.value.toUpperCase()"
+            style="width:100%;padding:9px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none"></div>
+      </div>
+      <div style="margin-bottom:8px"><label style="font-size:9px;font-weight:700;text-transform:uppercase;color:#888;display:block;margin-bottom:3px">Carreta(s) / RB</label>
+        <input id="cfg-cl-carreta" type="text" placeholder="RB-175 / RB-176"
+          style="width:100%;padding:9px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div><label style="font-size:9px;font-weight:700;text-transform:uppercase;color:#888;display:block;margin-bottom:3px">Marca / Modelo</label>
+          <input id="cfg-cl-marca" type="text" placeholder="Mercedes Benz Actros"
+            style="width:100%;padding:9px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none"></div>
+        <div><label style="font-size:9px;font-weight:700;text-transform:uppercase;color:#888;display:block;margin-bottom:3px">Ano</label>
+          <input id="cfg-cl-ano" type="number" placeholder="2024"
+            style="width:100%;padding:9px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none"></div>
+      </div>
+      <div style="margin-bottom:12px"><label style="font-size:9px;font-weight:700;text-transform:uppercase;color:#888;display:block;margin-bottom:3px">Configuração / Eixos</label>
+        <input id="cfg-cl-modelo" type="text" placeholder="BITRENS 09 EIXOS"
+          style="width:100%;padding:9px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none"></div>
+      <button onclick="cfgClSalvarVeiculo()"
+        style="width:100%;padding:12px;background:linear-gradient(135deg,#7B3FE4,#A855F7);border:none;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#fff;cursor:pointer">
+        ✓ Salvar Veículo
+      </button>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#888;margin-bottom:8px">Veículos cadastrados (<span id="cfg-cl-count">0</span>)</div>
+    <div id="cfg-cl-lista"></div>
+  </div>
+
+    <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-caminhoes" onclick="showPage('caminhoes')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 4v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      CAMINHÕES
+    </button>
+    <button class="nav-item" id="nav-historico" onclick="showPage('historico')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+      HISTÓRICO
+    </button>
+    <button class="nav-item" id="nav-config-cl" onclick="showPage('config-cl')" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      CONFIG
+    </button>
+
+  </nav>
+</div>
+
+<div id="screen-form" class="screen">
+  <div class="form-header">
+    <button class="back-btn" onclick="fecharForm()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    </button>
+    <h2>CHECK LIST Form</h2>
+  </div>
+  <div class="form-body" id="form-body">
+    <!-- gerado dinamicamente -->
+  </div>
+  <div class="form-footer">
+    <button class="btn-cancel" onclick="fecharForm()">Cancelar</button>
+    <button class="btn-save" id="btn-salvar-cl" onclick="salvarChecklistOnce()">Salvar</button>
+  </div>
+</div>
+
+<!-- ===== MENU PERFIL ===== -->
+<div class="perfil-overlay" id="perfil-overlay" onclick="fecharPerfil()"></div>
+<div class="perfil-drawer" id="perfil-drawer">
+  <div class="perfil-drawer-header">
+    <div class="perfil-avatar" id="perfil-avatar" onclick="document.getElementById('foto-perfil-input').click()">
+      ?
+      <div class="perfil-avatar-edit">📷 Editar</div>
+    </div>
+    <input type="file" id="foto-perfil-input" accept="image/*" capture="user" style="display:none" onchange="atualizarFotoPerfil(this)">
+    <div class="perfil-nome" id="perfil-nome">—</div>
+    <div class="perfil-perfil" id="perfil-cargo">Motorista · TWM Transportes</div>
+  </div>
+  <div class="perfil-secao">
+    <div class="perfil-secao-titulo">Dados do Motorista</div>
+    <div class="perfil-linha">
+      <div class="perfil-linha-icone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>
+      </div>
+      <div>
+        <div class="perfil-linha-label">Registro / Matrícula</div>
+        <div class="perfil-linha-valor" id="perfil-registro">—</div>
+      </div>
+    </div>
+    <div class="perfil-linha">
+      <div class="perfil-linha-icone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      </div>
+      <div>
+        <div class="perfil-linha-label">E-mail</div>
+        <div class="perfil-linha-valor" id="perfil-email">—</div>
+      </div>
+    </div>
+    <div class="perfil-linha">
+      <div class="perfil-linha-icone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+      <div>
+        <div class="perfil-linha-label">Nome Completo</div>
+        <div class="perfil-linha-valor" id="perfil-nome-completo">—</div>
+      </div>
+    </div>
+  </div>
+  <button class="perfil-btn-sair" onclick="logout()">Sair do App</button>
+</div>
+
+<!-- Modal detalhe checklist -->
+<div class="modal-overlay" id="modal-overlay" onclick="fecharModal(event)">
+  <div class="modal-sheet" id="modal-sheet">
+    <div class="modal-handle"></div>
+    <div id="modal-content"></div>
+    <button class="modal-close" onclick="fecharModalBtn()">Fechar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+
+
+<!-- Modal Solicitação de Manutenção Multi-Frota -->
+<div class="modal-manut-overlay" id="modal-manut-overlay">
+  <div class="modal-manut">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+      <div>
+        <div class="modal-manut-title">🔧 Solicitação de Manutenção</div>
+        <div class="modal-manut-sub">Preencha VP/RB e os problemas de cada equipamento</div>
+      </div>
+      <button onclick="fecharModalManutencao()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;padding:0 4px">✕</button>
+    </div>
+    <div id="manut-linhas-container"></div>
+    <button class="btn-salvar-solic" onclick="salvarSolicitacaoManut()">✓ Confirmar Solicitações</button>
+    <button class="btn-limpar-solic" onclick="limparSolicitacaoManut()">🗑 Limpar tudo</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="fecharModal(event)">
+  <div class="modal-sheet" id="modal-sheet">
+    <div class="modal-handle"></div>
+    <div id="modal-content"></div>
+    <button class="modal-close" onclick="fecharModalBtn()">Fechar</button>
+  </div>
+</div>
+
+<script>
+// ════ CONFIGURAÇÃO ════
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw4BZz60sy9BsFACdqKktKpzJOfP8mj0U6s1G7Em5pwhaC_kQHCk-GPbLNZOlwjvrOwsw/exec'; // Ex: 'https://script.google.com/macros/s/AKfyc.../exec'
+
+// ===== DADOS =====
+
+const FROTA = [
+  { vp:'VP-183', placa:'RML-0I14', carreta:'RB-175 / RB-176', marca:'M.Benz / Actros 2651 LS6x4', ano:'2020', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-184', placa:'QUN-8D89', carreta:'RB-165', marca:'Mercedes Benz Actros2546 6x2', ano:'2019', modelo:'VANDELÉIA - 6 EIXOS' },
+  { vp:'VPL-185', placa:'RVX-3D84', carreta:'RB-185', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'LS - 5/6 EIXOS' },
+  { vp:'VPL-186', placa:'RVX-3D88', carreta:'RB-171 / RB-172', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
+  { vp:'VPL-187', placa:'RVX-3D93', carreta:'RB-136 / RB-137', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
+  { vp:'VPL-188', placa:'RVX-3D99', carreta:'RB-88 / RB-89', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
+  { vp:'VPL-189', placa:'RVX-3E01', carreta:'RB-82 / RB-83', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
+  { vp:'VPL-190', placa:'RVX-3E09', carreta:'RB-167 / RB-168', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
+  { vp:'VPL-191', placa:'SHE-5C86', carreta:'RB-78 / RB-79', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
+  { vp:'VP-192', placa:'RIZ-9B67', carreta:'-', marca:'Mercedes Benz Atego 3030', ano:'2022', modelo:'BI-TRUCKS 4 EIXOS' },
+  { vp:'VP-193', placa:'SFT-7B99', carreta:'RB-109 / RB-110', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-194', placa:'SUE-9J52', carreta:'RB-203', marca:'M.BENZ/ACTROS 2548S', ano:'2024', modelo:'TRUCADOS - 6 EIXOS' },
+  { vp:'VP-195', placa:'SUO-8G56', carreta:'RB-204', marca:'M.BENZ/ACTROS 2548S', ano:'2024', modelo:'TRUCADOS - 6 EIXOS' },
+  { vp:'VP-196', placa:'SVP-7J36', carreta:'RB-205', marca:'M.BENZ/ACTROS 2548S', ano:'2024', modelo:'TRUCADOS - 6 EIXOS' },
+  { vp:'VP-197', placa:'SWG-5I92', carreta:'RB-116', marca:'M.BENZ/ACTROS 2548S', ano:'2024', modelo:'TRUCADOS - 6 EIXOS' },
+  { vp:'VP-203', placa:'QNG-6D79', carreta:'-', marca:'Ford Cargo 2429', ano:'2016', modelo:'BI-TRUCKS 4 EIXOS' },
+  { vp:'VP-306', placa:'PZQ-7E06', carreta:'-', marca:'VW / 24.280 CRM', ano:'2017', modelo:'BI-TRUCKS 4 EIXOS' },
+  { vp:'VP-307', placa:'QGO-4J86', carreta:'RB-125', marca:'VW/19.360 CTC 4x2', ano:'2018', modelo:'LS - 5/6 EIXOS' },
+  { vp:'VP-308', placa:'QGP-4E15', carreta:'RB-126', marca:'VW/19.360 CTC 4x2', ano:'2018', modelo:'LS - 5/6 EIXOS' },
+  { vp:'VP-309', placa:'QGO-4J76', carreta:'RB-128', marca:'VW/19.360 CTC 4x2', ano:'2018', modelo:'LS - 5/6 EIXOS' },
+  { vp:'VPL-311', placa:'JBX-0A92', carreta:'RB-113', marca:'VW/25.460 CTM 6X2', ano:'2022', modelo:'TRUCADOS - 6 EIXOS' },
+  { vp:'VPL-312', placa:'JBS-7C51', carreta:'RB-121', marca:'VW/25.460 CTM 6X2', ano:'2022', modelo:'LS - 5/6 EIXOS' },
+  { vp:'VPL-313', placa:'JBT-8F33', carreta:'RB-122', marca:'VW/25.460 CTM 6X2', ano:'2022', modelo:'LS - 5/6 EIXOS' },
+  { vp:'VPL-314', placa:'RJA-8E59', carreta:'RB-153 / RB-154', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VPL-315', placa:'RJP-8J22', carreta:'RB-166', marca:'VW/25.460 CTM 6X2', ano:'2022', modelo:'VANDELÉIA - 6 EIXOS' },
+  { vp:'VPL-316', placa:'RJP-8J24', carreta:'RB-186', marca:'VW/25.460 CTM 6X2', ano:'2022', modelo:'LS - 5/6 EIXOS' },
+  { vp:'VPL-317', placa:'RKS-8B68', carreta:'RB-173 / RB-174', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
+  { vp:'VPL-318', placa:'RJW-7E18', carreta:'RB-80 / RB-81', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
+  { vp:'VPL-319', placa:'RJW-7E28', carreta:'RB-90 / RB-91', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
+  { vp:'VPL-320', placa:'RJX-7D93', carreta:'RB-86 / RB-87', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
+  { vp:'VPL-321', placa:'RJX-7E01', carreta:'RB-179 / RB-180', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
+  { vp:'VPL-322', placa:'RJY-7G85', carreta:'RB-187 / RB-188', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
+  { vp:'VPL-323', placa:'RJY-7G90', carreta:'RB-169 / RB-170', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
+  { vp:'VP-324', placa:'UAI-9D57', carreta:'-', marca:'VW/30.320 CRM 8X3', ano:'2024', modelo:'BI-TRUCKS 4 EIXOS' },
+  { vp:'VP-446', placa:'RMT-3B10', carreta:'-', marca:'Volvo VM 270', ano:'2021', modelo:'BI-TRUCKS 4 EIXOS' },
+  { vp:'VP-447', placa:'QQU-2D18', carreta:'RB-161 / RB-162', marca:'Volvo FH-540 6x4', ano:'2019', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-448', placa:'QUA-2F82', carreta:'RB-163 / RB-164', marca:'Volvo FH-540 6x4', ano:'2019', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-449', placa:'QQH-9D87', carreta:'RB-181 / RB-182', marca:'Volvo FH-540 6x4', ano:'2019', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-450', placa:'QUV-2E73', carreta:'RB-183 / RB-184', marca:'Volvo FH-540 6x4', ano:'2019', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-451', placa:'QXA-7A22', carreta:'RB-151 / RB-152', marca:'Volvo FH-540 6x4', ano:'2019', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-452', placa:'RFB-3B57', carreta:'RB-96 / RB-97', marca:'Volvo FH-540 6x4', ano:'2020', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-453', placa:'RFB-3B59', carreta:'RB-105 / RB-106', marca:'Volvo FH-540 6x4', ano:'2020', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-454', placa:'SSY-2B95', carreta:'RB-189 / RB-190', marca:'Volvo FH-540 6x4', ano:'2024', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-455', placa:'STA-6E27', carreta:'RB-107 / RB-108', marca:'Volvo FH-540 6x4', ano:'2024', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-456', placa:'TME-6D76', carreta:'RB-98 / RB-99', marca:'Volvo FH-540 6x4', ano:'2024', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-457', placa:'TMJ-0E32', carreta:'RB-100 / RB-101', marca:'Volvo FH-540 6x4', ano:'2024', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-458', placa:'TMC-5E59', carreta:'RB-193 / RB-194', marca:'Volvo FH-540 6x4', ano:'2024', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-459', placa:'TMA-6E86', carreta:'RB-195 / RB-196', marca:'Volvo FH-540 6x4', ano:'2024', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-460', placa:'TDN-5H27', carreta:'-', marca:'-', ano:'2024', modelo:'BI-TRUCKS 4 EIXOS' },
+  { vp:'VP-461', placa:'TDO-6G76', carreta:'-', marca:'-', ano:'2024', modelo:'BI-TRUCKS 4 EIXOS' },
+  { vp:'VP-462', placa:'GTN-4H15', carreta:'RBL-202', marca:'-', ano:'2024', modelo:'TRUCADOS 6 EIXOS' },
+  { vp:'VP-463', placa:'SYT-9D06', carreta:'RBL-201', marca:'-', ano:'2024', modelo:'TRUCADOS 6 EIXOS' },
+  { vp:'VP-464', placa:'SYT-9D14', carreta:'RB-191', marca:'-', ano:'2024', modelo:'TRUCADOS 6 EIXOS' },
+  { vp:'VP-465', placa:'SYT-9D19', carreta:'RB-192', marca:'-', ano:'2024', modelo:'TRUCADOS 6 EIXOS' },
+  { vp:'VP-517', placa:'RFL-4A57', carreta:'RB-143 / RB-144', marca:'-', ano:'2020', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-518', placa:'RFV-3C50', carreta:'RB-140 / RB-141', marca:'-', ano:'2020', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-519', placa:'RMP-1E90', carreta:'RB-145 / RB-146', marca:'-', ano:'2021', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-520', placa:'RMP-1E92', carreta:'RB-147 / RB-148', marca:'-', ano:'2021', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-521', placa:'QPH-2787', carreta:'RB-127', marca:'Iveco Stralis 360', ano:'2018', modelo:'LS - 5/6 EIXOS' },
+  { vp:'VP-522', placa:'RMS-9H94', carreta:'RB-94', marca:'Iveco Stralis 440', ano:'2021', modelo:'LS - 5/6 EIXOS' },
+  { vp:'VP-523', placa:'RMZ-9F14', carreta:'RB-149', marca:'Iveco Stralis 440', ano:'2021', modelo:'LS - 5/6 EIXOS' },
+  { vp:'VP-611', placa:'RMO-0H36', carreta:'RB-155 / RB-156', marca:'Scania/R540 A6X4', ano:'2021', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-612', placa:'RMO-0H52', carreta:'RB-157 / RB-158', marca:'Scania/R540 A6X4', ano:'2021', modelo:'BITRENS 09 EIXOS' },
+  { vp:'VP-613', placa:'RMO-2J74', carreta:'RB-159 / RB-160', marca:'Scania/R540 A6X4', ano:'2021', modelo:'BITRENS 09 EIXOS' },
+  // CARRETAS RESERVA
+  { vp:'RB-84', placa:'HKH-0B24', carreta:'RESERVA', marca:'Noma / Tanque Bitrem', ano:'2012', modelo:'Randon / Tanque Bitrem' },
+  { vp:'RB-85', placa:'HKH-0B25', carreta:'RESERVA', marca:'Noma / Tanque Bitrem', ano:'2012', modelo:'Randon / Tanque Bitrem' },
+  { vp:'RB-138', placa:'FUJ-9B62', carreta:'RESERVA', marca:'Randon / Tanque Bitrenzão', ano:'2020', modelo:'Rodotecnica / Tanque Bitrenzão 09 EIXOS' },
+  { vp:'RB-139', placa:'FUW-5G12', carreta:'RESERVA', marca:'Randon / Tanque Bitrenzão', ano:'2022', modelo:'Rodotecnica / Tanque Bitrenzão' },
+  { vp:'RB-177', placa:'AZO-7C88', carreta:'RESERVA', marca:'Randon / Tanque Bitrenzão', ano:'2019', modelo:'SR Facchini / Tanque Bitrenzão' },
+  { vp:'RB-178', placa:'AYO-7C88', carreta:'RESERVA', marca:'Randon / Tanque Bitrenzão', ano:'2019', modelo:'SR Facchini / Tanque Bitrenzão' },
+  { vp:'RB-52', placa:'HBG-7690', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2019', modelo:'Noma / Tanque Bitrenzão' },
+  { vp:'RB-53', placa:'HBG-7691', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2019', modelo:'Rodotecnica / Tanque Bitrenzão' },
+  { vp:'RB-57', placa:'HBG-7837', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2019', modelo:'Noma / Tanque Bitrenzão' },
+  { vp:'RB-58', placa:'HBG-7838', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2020', modelo:'Rodotecnica / Tanque Bitrenzão' },
+  { vp:'RB-69', placa:'HFD-4658', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2020', modelo:'Rodotecnica / Tanque Bitrenzão' },
+  { vp:'RB-70', placa:'HFD-4688', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2020', modelo:'Randon / Tanque Bitrenzão' },
+  { vp:'RB-71', placa:'HFD-4689', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2020', modelo:'Randon / Tanque Bitrenzão' },
+  { vp:'RB-103', placa:'OLC-1557', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2021', modelo:'Randon / Tanque Bitrenzão' },
+  { vp:'RB-111', placa:'out.-1217', carreta:'RESERVA', marca:'Tanesfil / Tanque (Vanderléia)', ano:'2021', modelo:'SR Facchini / Tanque Bitrenzão' },
+  { vp:'RB-117', placa:'OUZ-7889', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2021', modelo:'Randon / Tanque Bitrenzão' },
+  { vp:'RB-118', placa:'OUZ-8169', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2021', modelo:'SR Facchini / Tanque Bitrenzão' },
+  { vp:'RB-119', placa:'OUZ-9663', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2021', modelo:'SR Facchini / Tanque Bitrenzão' },
+  { vp:'RB-131', placa:'PJK-5125', carreta:'RESERVA', marca:'Tanesfil / Tanque (Vanderléia)', ano:'2012', modelo:'Rodotecnica / Tanque Bitrenzão 9 EIXOS' },
+];
+
+const CAMPOS = [
+  { tipo:'info', label:'VEÍCULO' },
+  { tipo:'select-veiculo', id:'veiculo', label:'VEÍCULO', required:true },
+  { tipo:'carreta-reserva', id:'carreta_reserva', label:'CARRETA RESERVA', required:false },
+  { tipo:'datetime', id:'data_hora', label:'Data e Hora', required:true },
+  { tipo:'text', id:'motorista', label:'Motorista', required:true },
+  { tipo:'number', id:'km_atual', label:'KM Atual', required:true },
+  { tipo:'foto', id:'auto_avaliacao', label:'AUTO AVALIAÇÃO (Selfie)', required:true },
+  { tipo:'simnao', id:'apto', label:'Estou "Apto para o trabalho"?', required:true },
+  { tipo:'secao', label:'DOCUMENTAÇÃO' },
+  { tipo:'simnao', id:'doc_cnh_mopp', label:'Motorista (CNH e MOPP)', required:true },
+  { tipo:'simnao', id:'doc_veiculo', label:'Veículo (CRLV, CIV, CIPP, Certificado aferição, AET)', required:true },
+  { tipo:'simnao', id:'doc_carga', label:'Carga (NF, CTE, MDFe)', required:true },
+  { tipo:'simnao', id:'rotograma', label:'Rotograma', required:true },
+  { tipo:'secao', label:'ITENS DE CABINE' },
+  { tipo:'simnao', id:'comp_bordo', label:'Computador de bordo', required:true },
+  { tipo:'simnao', id:'cronotacografo', label:'Cronotacógrafo', required:true },
+  { tipo:'simnao', id:'cinto', label:'Cinto de segurança', required:true },
+  { tipo:'simnao', id:'buzina', label:'Buzina', required:true },
+  { tipo:'simnao', id:'vidros', label:'Vidros, limpador de para-brisa e espelhos', required:true },
+  { tipo:'simnao', id:'cameras', label:'Limpeza das câmeras embarcadas', required:true },
+  { tipo:'simnao', id:'cambio', label:'Câmbio / Embreagem', required:true },
+  { tipo:'simnao', id:'alarme_re', label:'Alarme de ré e seta', required:true },
+  { tipo:'simnao', id:'freio_mao', label:'Freio de Mão', required:true },
+  { tipo:'secao', label:'ITENS GERAIS' },
+  { tipo:'simnao', id:'cavalo_semi', label:'Cavalo e semirreboque sem avarias', required:true },
+  { tipo:'simnao', id:'sistema_freio', label:'Sistema de Freio (Cuíca, lona de freio, fluido de freio)', required:true },
+  { tipo:'simnao', id:'sistema_eletrico', label:'Sistema Elétrico (Luzes e faróis) em funcionamento', required:true },
+  { tipo:'simnao', id:'rodas', label:'Rodas (Condições e aperto dos parafusos)', required:true },
+  { tipo:'simnao', id:'pneus', label:'Pneus (Pressão, condições e estepe)', required:true },
+  { tipo:'simnao', id:'quinta_roda', label:'Quinta-roda e pino rei travado', required:true },
+  { tipo:'simnao', id:'vazamentos', label:'Vazamentos (Ar, óleo, água)', required:true },
+  { tipo:'simnao', id:'agua_oleo', label:'Água / Óleo (Nível e pressão)', required:true },
+  { tipo:'simnao', id:'suspensao', label:'Suspensão', required:true },
+  { tipo:'simnao', id:'guarda_corpo', label:'Guarda-corpo', required:true },
+  { tipo:'simnao', id:'baterias', label:'Baterias', required:true },
+  { tipo:'simnao', id:'faixas', label:'Faixas refletivas', required:true },
+  { tipo:'simnao', id:'bocas_descarga', label:'Bocas de descarga livres de violações', required:true },
+  { tipo:'simnao', id:'pontos_fuga', label:'Pontos de fuga lacrados', required:true },
+  { tipo:'secao', label:'ITENS ACESSÓRIO E EMERGÊNCIAS' },
+  { tipo:'simnao', id:'calcos', label:'Calços de borracha', required:true },
+  { tipo:'simnao', id:'kit_emergencia', label:'Kit de emergência (NBR 9735) e EPIs', required:true },
+  { tipo:'simnao', id:'tel_emergencia', label:'Marcação de telefones de emergência', required:true },
+  { tipo:'simnao', id:'placas_simbologia', label:'Placas de Simbologia e Suporte', required:true },
+  { tipo:'simnao', id:'chave_macaco', label:'Chave de Roda, macaco e triângulo', required:true },
+  { tipo:'simnao', id:'extintores', label:'Extintores (Pó químico, lacre e validade)', required:true },
+  { tipo:'simnao', id:'cones_sinalizacao', label:'04 Cones de sinalização', required:true },
+  { tipo:'simnao', id:'cones_isolamento', label:'06 Cones de isolamento (NA)', required:true },
+  { tipo:'textarea', id:'justificativa', label:'SE ASSINALOU (N) EM ALGUM ITEM JUSTIFIQUE', required:false },
+  { tipo:'textarea', id:'solicitacao_manutencao', label:'SOLICITAÇÃO DE MANUTENÇÃO', required:false },
+];
+
+// ════ ESTADO GLOBAL ════
+let usuarioLogado  = null;
+let caminhaoAtual  = null;
+let formDados      = {};
+let checklists     = JSON.parse(localStorage.getItem('twm_checklists') || '[]');
+let historicoBruto = [];
+let filtroAtual    = 'todos';
+var _salvandoCL    = false;
+var _solicitacoes  = [];
+
+// ════ UTILS ════
+function formatarData(d) {
+  if (!d) return '-';
+  const dt = new Date(d);
+  return dt.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function formatarDataHistorico(dataStr) {
+  if (!dataStr) return '-';
+  // Formato: "28/04/2026 15:18:45" — já está certo, retorna direto
+  if (dataStr.includes('/')) return dataStr;
+  // Formato ISO ou GMT — converte
+  try {
+    const d = new Date(dataStr);
+    const pad = n => String(n).padStart(2,'0');
+    const br = new Date(d.getTime() - 3 * 60 * 60 * 1000);
+    return `${pad(br.getUTCDate())}/${pad(br.getUTCMonth()+1)}/${br.getUTCFullYear()} ${pad(br.getUTCHours())}:${pad(br.getUTCMinutes())}`;
+  } catch(e) { return dataStr; }
+}
+
+function horaBrasil() {
+  // Horário de Brasília: UTC - 3 horas
+  const utc = new Date();
+  const br = new Date(utc.getTime() - 3 * 60 * 60 * 1000);
+  return br.toISOString().slice(0, 16);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function temNao(c) {
+  const campos_simnao = CAMPOS.filter(f => f.tipo === 'simnao').map(f => f.id);
+  return campos_simnao.some(id => c[id] === 'Não');
+}
+
+function isAdminMaster() {
+  try {
+    var p = JSON.parse(localStorage.getItem('twm_permissoes') || '{}');
+    if (p.admin_master) return true;
+    var u = JSON.parse(localStorage.getItem('twm_user_cache') || '{}');
+    return !!(u.permissoes && (u.permissoes.admin_master || u.permissoes.ADMIN_MASTER));
+  } catch(e) { return false; }
+}
+
+// ════ NAVEGAÇÃO ════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  // Empurra estado no histórico para interceptar seta voltar
+  if (id === 'app' || id === 'form') {
+    history.pushState({ screen: id, page: 'caminhoes' }, '');
+  }
+}
+
+function showPage(page) {
+  document.querySelectorAll('.page-content').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (page === 'caminhoes') {
+    document.getElementById('page-caminhoes').style.display = 'block';
+    document.getElementById('nav-caminhoes').classList.add('active');
+    document.getElementById('header-title').textContent = 'CAMINHÕES';
+    history.replaceState({ screen: 'app', page: 'caminhoes' }, '');
+  } else if (page === 'detalhe') {
+    document.getElementById('page-detalhe').style.display = 'block';
+    document.getElementById('header-title').textContent = 'DETALHES';
+    history.pushState({ screen: 'app', page: 'detalhe' }, '');
+  } else if (page === 'servico') {
+    document.getElementById('page-servico').style.display = 'block';
+    document.getElementById('header-title').textContent = 'CARROS DE APOIO';
+    history.pushState({ screen: 'app', page: 'servico', tela: 'lista-carros' }, '');
+    carregarCarrosServico();
+  } else if (page === 'historico') {
+    document.getElementById('page-historico').style.display = 'block';
+    document.getElementById('nav-historico').classList.add('active');
+    carregarHistorico(); // Carrega sempre que entra no histórico
+  } else if (page === 'config-cl') {
+    document.getElementById('page-config-cl').style.display = 'block';
+    document.getElementById('nav-config-cl').classList.add('active');
+    cfgClRender();
+    document.getElementById('header-title').textContent = 'HISTÓRICO';
+    history.pushState({ screen: 'app', page: 'historico' }, '');
+    carregarHistorico();
+  }
+}
+
+function voltarDataLink() {
+  const goto = sessionStorage.getItem('twm_goto');
+
+  // Carros de Apoio → sempre volta para index.html
+  if (goto === 'servico') {
+    sessionStorage.removeItem('twm_goto');
+    history.back();
+    return;
+  }
+
+  // Check List → respeita o fluxo interno de telas
+  const formAtivo = document.getElementById('screen-form')?.classList.contains('active');
+  if (formAtivo) {
+    showScreen('app');
+    showPage('detalhe');
+    return;
+  }
+
+  const detalheAtivo = document.getElementById('page-detalhe')?.style.display === 'block';
+  if (detalheAtivo) {
+    showPage('caminhoes');
+    return;
+  }
+
+  // Está na lista de caminhões → volta para index.html
+  sessionStorage.removeItem('twm_goto');
+  history.back();
+}
+
+function fecharForm() {
+  showScreen('app');
+  showPage('detalhe');
+}
+
+// ════ AUTH ════
+function entrarNoApp(motorista) {
+  usuarioLogado = motorista;
+  document.getElementById('user-chip').textContent = (motorista.nome || motorista.email).split(' ')[0];
+  preencherPerfil(motorista);
+  carregarFotoPerfil();
+  showScreen('app');
+  // Mostra Config só para admin_master
+  var uCache = {};
+  try { uCache = JSON.parse(localStorage.getItem('twm_user_cache')||'{}'); } catch(e){}
+  var isAdm = !!(uCache.permissoes && (uCache.permissoes.admin_master || uCache.permissoes.admin));
+  var navCfg = document.getElementById('nav-config-cl');
+  if (navCfg) navCfg.style.display = isAdm ? '' : 'none';
+  showPage('caminhoes');
+  renderCaminhoes();
+}
+
+// ════ CAMINHÕES ════
+function renderCaminhoes() {
+  const lista = document.getElementById('lista-caminhoes');
+  const count = document.getElementById('frota-count');
+  count.textContent = frotaFiltrada.length + ' veículos na frota';
+  lista.innerHTML = frotaFiltrada.map(c => `
+    <div class="truck-card" onclick="abrirDetalhe('${c.vp}')">
+      <div class="truck-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 4v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      </div>
+      <div class="truck-info">
+        <div class="truck-vp">${c.vp}</div>
+        <div class="truck-placa">${c.placa}</div>
+        <div class="truck-modelo">${c.modelo}</div>
+      </div>
+      <svg class="truck-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+  `).join('');
+}
+
+// ════ FORMULÁRIO ════
+function abrirFormChecklist() {
+  formDados = {};
+  const body = document.getElementById('form-body');
+  const isoNow = horaBrasil();
+
+  let html = '';
+  CAMPOS.forEach(campo => {
+    if (campo.tipo === 'info') return;
+    if (campo.tipo === 'secao') {
+      html += `<div class="form-section-title">${campo.label}</div>`;
+      return;
+    }
+    html += `<div class="form-item">`;
+    if (campo.tipo !== 'select-veiculo') {
+      html += `<div class="form-item-label">${campo.label}${campo.required ? '<span class="required"> *</span>' : ''}</div>`;
+    }
+
+    if (campo.tipo === 'select-veiculo') {
+      // Veículo TRAVADO — só exibe, não permite editar
+      const vp = caminhaoAtual ? caminhaoAtual.vp : '';
+      const placa = caminhaoAtual ? caminhaoAtual.placa : '';
+      html += `<div class="form-item-label">VEÍCULO<span class="required"> *</span></div>
+        <div class="field-group">
+          <input type="text" id="f_${campo.id}" value="${vp} — ${placa}" readonly
+            style="background:var(--gray-50);color:var(--purple);font-weight:700;font-size:16px;cursor:default">
+        </div>`;
+    } else if (campo.tipo === 'carreta-reserva') {
+      const carretaPadrao = caminhaoAtual ? (caminhaoAtual.carreta || '-') : '-';
+      html += `<div class="form-item">
+        <div class="carreta-reserva-wrap">
+          <div class="cr-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M1 3h15v13H1zM16 8h4l3 4v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            CARRETA RESERVA
+          </div>
+          <div class="cr-hint">Carreta oficial: <strong>${carretaPadrao}</strong><br>Preencha abaixo <strong>somente</strong> se estiver usando uma carreta reserva no lugar da oficial.</div>
+          <input type="text" id="f_carreta_reserva" placeholder="Ex: RB-84  (deixe em branco se não usar reserva)" autocomplete="off">
+        </div>
+      </div>`;
+    } else if (campo.tipo === 'datetime') {
+      html += `<div class="field-group"><input type="datetime-local" id="f_${campo.id}" value="${isoNow}" readonly style="background:var(--gray-50);color:var(--gray-400)"></div>`;
+    } else if (campo.tipo === 'text') {
+      html += `<div class="field-group"><input type="text" id="f_${campo.id}" placeholder="Nome completo do motorista"></div>`;
+    } else if (campo.tipo === 'number') {
+      html += `<div class="field-group"><input type="number" id="f_${campo.id}" placeholder="Ex: 125000"></div>`;
+    } else if (campo.tipo === 'foto') {
+      html += `<div class="photo-btn" onclick="document.getElementById('foto_input_${campo.id}').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Tirar foto / Selfie
+      </div>
+      <input type="file" id="foto_input_${campo.id}" accept="image/*" capture="user" style="display:none" onchange="previewFoto('${campo.id}', this)">
+      <div class="photo-preview" id="preview_${campo.id}"></div>`;
+    } else if (campo.tipo === 'simnao') {
+      // Pré-seleciona SIM — operador só precisa mudar os NÃO
+      const preSimSel = (formDados[campo.id] || 'Sim') === 'Sim' ? 'selected' : '';
+      const preNaoSel = formDados[campo.id] === 'Não' ? 'selected' : '';
+      html += `<div class="btn-group">
+        <button class="btn-sim ${preSimSel}" id="sim_${campo.id}" onclick="selecionarSimNao('${campo.id}','Sim')">Sim</button>
+        <button class="btn-nao ${preNaoSel}" id="nao_${campo.id}" onclick="selecionarSimNao('${campo.id}','Não')">Não</button>
+      </div>`;
+    } else if (campo.tipo === 'textarea') {
+      if (campo.id === 'solicitacao_manutencao') {
+        // Botão que abre modal de manutenção multi-frota
+        html += `<div class="field-group">
+          <button class="btn-solic-manut" id="btn-solic-manut" onclick="abrirModalManutencao()">
+            🔧 Solicitação de Manutenção
+          </button>
+          <div id="solic-manut-preview" class="solic-preview" style="display:none"></div>
+        </div>`;
+      } else {
+        html += `<div class="field-group"><textarea id="f_${campo.id}" placeholder="${campo.id === 'justificativa' ? 'Descreva o motivo...' : 'Descreva a solicitação...'}"></textarea></div>`;
+      }
+    }
+    html += '</div>';
+  });
+
+  body.innerHTML = html;
+
+  // Aplica pré-marcação REAL no DOM — visual + formDados sincronizados
+  CAMPOS.filter(f => f.tipo === 'simnao').forEach(f => {
+    const val = formDados[f.id] || 'Sim';
+    const simBtn = document.getElementById('sim_' + f.id);
+    const naoBtn = document.getElementById('nao_' + f.id);
+    if (simBtn) simBtn.classList.toggle('selected', val === 'Sim');
+    if (naoBtn) naoBtn.classList.toggle('selected', val === 'Não');
+    formDados[f.id] = val; // garante que está no formDados
+  });
+
+  showScreen('form');
+}
+
+function selecionarSimNao(id, val) {
+  formDados[id] = val;
+  document.getElementById('sim_' + id).classList.toggle('selected', val === 'Sim');
+  document.getElementById('nao_' + id).classList.toggle('selected', val === 'Não');
+}
+
+function previewFoto(id, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    formDados['foto_' + id] = e.target.result;
+    document.getElementById('preview_' + id).innerHTML = `<img src="${e.target.result}">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ════ SALVAR ════
+async function salvarChecklistOnce() {
+  if (_salvandoCL) return; // já está salvando
+  _salvandoCL = true;
+  var btn = document.getElementById('btn-salvar-cl');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
+  try {
+    await salvarChecklist();
+  } finally {
+    _salvandoCL = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar'; }
+  }
+}
+
+async function salvarChecklist() {
+  try {
+  // Validar campos obrigatórios
+  const campos_required = CAMPOS.filter(f => f.required && f.id);
+  for (const c of campos_required) {
+    if (c.tipo === 'simnao') {
+      if (!formDados[c.id]) { showToast('Responda: ' + c.label); return; }
+    } else if (c.tipo === 'foto') {
+      if (!formDados['foto_' + c.id]) { showToast('Adicione a foto de auto avaliação'); return; }
+    } else if (c.tipo === 'select-veiculo' || c.tipo === 'datetime' || c.tipo === 'carreta-reserva') {
+      // campos automáticos — não validar
+    } else {
+      const el = document.getElementById('f_' + c.id);
+      if (!el || !el.value.trim()) { showToast('Preencha: ' + c.label); return; }
+    }
+  }
+
+  const veiculo = caminhaoAtual ? caminhaoAtual.vp : '';
+  const motorista = document.getElementById('f_motorista').value.trim();
+  const km = document.getElementById('f_km_atual').value;
+  const pad = n => String(n).padStart(2,'0');
+  const utc = new Date();
+  const br = new Date(utc.getTime() - 3 * 60 * 60 * 1000);
+  const data_hora = `${pad(br.getUTCDate())}/${pad(br.getUTCMonth()+1)}/${br.getUTCFullYear()} ${pad(br.getUTCHours())}:${pad(br.getUTCMinutes())}:${pad(br.getUTCSeconds())}`;
+
+  const registro = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+    veiculo,
+    placa: caminhaoAtual ? caminhaoAtual.placa : '',
+    motorista,
+    email: usuarioLogado ? usuarioLogado.email : '',
+    km_atual: km,
+    data_hora,
+    carreta_reserva: document.getElementById('f_carreta_reserva')?.value?.trim() || '',
+    foto_auto_avaliacao: formDados['foto_auto_avaliacao'] || '',
+    ...formDados,
+    justificativa: document.getElementById('f_justificativa')?.value || '',
+    solicitacao_manutencao: (function(){
+      var sols = [];
+      try { sols = JSON.parse(sessionStorage.getItem('twm_sols_manut') || '[]'); } catch(e) {}
+      if (!sols.length && typeof _solicitacoes !== 'undefined') sols = _solicitacoes || [];
+      if (!sols.length) return '';
+      return sols.map(function(s){ return s.frota + ': ' + s.problema; }).join(' | ');
+    })(),
+    solicitacoes_manutencao: (function(){
+      var sols = [];
+      try { sols = JSON.parse(sessionStorage.getItem('twm_sols_manut') || '[]'); } catch(e) {}
+      if (!sols.length && typeof _solicitacoes !== 'undefined') sols = _solicitacoes || [];
+      return sols;
+    })(),
+  };
+
+  // Versão sem foto para salvar localmente (evita erro de quota)
+  const registroLocal = { ...registro, foto_auto_avaliacao: registro.foto_auto_avaliacao ? 'Foto enviada' : '' };
+
+  // Salvar localmente — verifica duplicata pelo ID
+  // Relê do localStorage para garantir que está atualizado
+  checklists = JSON.parse(localStorage.getItem('twm_checklists') || '[]');
+  const jaExiste = checklists.some(r => r.id === registroLocal.id);
+  if (!jaExiste) {
+    checklists.push(registroLocal);
+    try {
+      localStorage.setItem('twm_checklists', JSON.stringify(checklists));
+    } catch(e) {
+      checklists = checklists.slice(-20);
+      localStorage.setItem('twm_checklists', JSON.stringify(checklists));
+    }
+  }
+
+  // ── Cria card de manutenção se houver solicitação ──
+  var _sols = registroLocal.solicitacoes_manutencao || [];
+  if (_sols.length === 0 && registroLocal.solicitacao_manutencao && registroLocal.solicitacao_manutencao.trim()) {
+    _sols = [{frota: registroLocal.frota || '—', problema: registroLocal.solicitacao_manutencao.trim()}];
+  }
+  if (_sols.length > 0) {
+    try {
+      var ordens = JSON.parse(localStorage.getItem('twm_manutencao_os') || '[]');
+      var _d = new Date();
+      var dataHoje = ('0'+_d.getDate()).slice(-2)+'/'+('0'+(_d.getMonth()+1)).slice(-2)+'/'+_d.getFullYear();
+      var novasOS = [];
+
+      _sols.forEach(function(s, i) {
+        var novaOS = {
+          id:        'OS-' + (Date.now() + i).toString(36).toUpperCase(),
+          frota:     s.frota || registroLocal.frota || '—',
+          prioridade:'normal',
+          status:    'aberta',
+          origem:    'checklist',
+          origem_id: registroLocal.id || '',
+          motorista: registroLocal.motorista || '—',
+          data_aber: dataHoje,
+          ts:        Date.now() + i,
+          servicos: [{
+            id:        'SV-' + (Date.now() + i).toString(36).toUpperCase(),
+            tipo:      '[44] OUTROS SERVIÇOS',
+            descricao: s.problema,
+            mecanico:  '',
+            tempo:     '',
+            status:    'aberta',
+            solucao:   '',
+            pendencia: false,
+            ts:        Date.now() + i
+          }]
+        };
+        novasOS.push(novaOS);
+        ordens.unshift(novaOS);
+      });
+
+      // Salva localmente PRIMEIRO
+      localStorage.setItem('twm_manutencao_os', JSON.stringify(ordens));
+
+      // Envia para planilha E para check list — aguarda resposta
+      const scriptUrlM = (JSON.parse(localStorage.getItem('twm_config')||'{}').scriptUrl) ||
+        'https://script.google.com/macros/s/AKfycbw4BZz60sy9BsFACdqKktKpzJOfP8mj0U6s1G7Em5pwhaC_kQHCk-GPbLNZOlwjvrOwsw/exec';
+
+      if (navigator.onLine && scriptUrlM) {
+        // Envia todas as OS em paralelo e AGUARDA
+        await Promise.allSettled(novasOS.map(function(os_env) {
+          var pMan = new URLSearchParams({
+            action:    'salvarManutencao',
+            id_os:     os_env.id,
+            frota:     os_env.frota,
+            prioridade:os_env.prioridade,
+            status:    os_env.status,
+            origem:    os_env.origem,
+            motorista: os_env.motorista || '',
+            data_aber: os_env.data_aber,
+            obs:       'Aberta pelo Check List Frota — ' + (os_env.motorista||''),
+            servicos:  JSON.stringify(os_env.servicos || [])
+          });
+          return fetch(scriptUrlM + '?' + pMan.toString());
+        }));
+      }
+
+    } catch(e) {}
+  }
+
+  // Fechar form e atualizar tela
+  showScreen('app');
+  showPage('detalhe');
+  renderHistoricoVeiculo(veiculo);
+
+  // Enviar para planilha (com a foto)
+  if (!SCRIPT_URL) {
+    showToast('✅ Check List salvo!');
+    return;
+  }
+  if (!navigator.onLine) {
+    filaOffline.push(registro);
+    localStorage.setItem('twm_fila', JSON.stringify(filaOffline));
+    showToast('📵 Sem internet — salvo, enviará ao reconectar');
+    return;
+  }
+  showToast('⏳ Enviando para planilha...');
+  enviarParaPlanilha(registro).then(ok => {
+    if (ok) { showToast('✅ Check List salvo na planilha!'); }
+    else {
+      filaOffline.push(registro);
+      localStorage.setItem('twm_fila', JSON.stringify(filaOffline));
+      showToast('⚠️ Falha no envio — salvo localmente');
+    }
+  });
+
+  } catch(err) {
+    showToast('❌ Erro: ' + err.message);
+    console.error('Erro ao salvar:', err);
+  }
+}
+
+async function enviarParaPlanilha(registro) {
+  if (!SCRIPT_URL) return true;
+  try {
+    // Envia com LABEL como chave (para bater com cabeçalho da planilha)
+    // E também com ID como chave (fallback)
+    const respostas = {};
+    CAMPOS.filter(f => f.tipo === 'simnao').forEach(f => {
+      const val = registro[f.id] || '';
+      respostas[f.id]    = val;  // chave por id
+      respostas[f.label] = val;  // chave por label (bate com coluna da planilha)
+    });
+    // Pega email do usuário logado
+    let emailUser = '';
+    try { emailUser = JSON.parse(localStorage.getItem('twm_user_cache')||'{}').email || ''; } catch(e) {}
+
+    const params = new URLSearchParams({
+      action:               'registrarChecklist',
+      email:                emailUser,
+      veiculo:              registro.veiculo   || '',
+      motorista:            registro.motorista || '',
+      km_atual:             registro.km_atual  || '',
+      data_hora:            registro.data_hora || '',
+      placa:                registro.placa     || '',
+      carreta_reserva:      registro.carreta_reserva || '',
+      justificativa:        registro.justificativa   || '',
+      solicitacao_manutencao: registro.solicitacao_manutencao || '',
+      respostas:            JSON.stringify(respostas),
+    });
+    const res = await fetch(SCRIPT_URL + '?' + params.toString());
+    const data = await res.json();
+    return data.ok === true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// ════ HISTÓRICO VEÍCULO ════
+function renderHistoricoVeiculo(vp) {
+  // Remove duplicatas do localStorage antes de carregar
+  const vistos = new Set();
+  checklists = checklists.filter(r => {
+    if (vistos.has(r.id)) return false;
+    vistos.add(r.id);
+    return true;
+  });
+  localStorage.setItem('twm_checklists', JSON.stringify(checklists));
+  carregarHistoricoVeiculo(vp);
+}
+
+async function carregarHistoricoVeiculo(vp) {
+  const div = document.getElementById('hist-caminhao');
+  div.innerHTML = '<div class="no-items">⏳ Carregando histórico...</div>';
+
+  // Função para renderizar do localStorage (fallback)
+  function renderLocal() {
+    const local = checklists.filter(r => (r.veiculo||r.frota||'').toUpperCase() === (vp||'').toUpperCase());
+    if (!local.length) {
+      div.innerHTML = '<div class="no-items">Nenhum check list registrado</div>';
+      return;
+    }
+    div.innerHTML = local.slice().reverse().map(r => checklistCard(r)).join('');
+  }
+
+  if (!SCRIPT_URL || !navigator.onLine) {
+    renderLocal();
+    return;
+  }
+
+  for (let tentativa = 1; tentativa <= 3; tentativa++) {
+    try {
+      const url = `${SCRIPT_URL}?action=historico_veiculo&veiculo=${encodeURIComponent(vp)}`;
+      const res  = await fetch(url, { method: 'GET', redirect: 'follow' });
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch(e) { throw new Error('Resposta inválida'); }
+
+      if (!data.ok || !data.registros || !data.registros.length) {
+        renderLocal(); // Nenhum dado na planilha — mostra locais
+        return;
+      }
+
+      // Mescla com registros locais do mesmo veículo que não estão na planilha
+      const idsRemoto = new Set(data.registros.map(r => r.id));
+      const locaisExtra = checklists
+        .filter(r => (r.veiculo||r.frota||'').toUpperCase() === (vp||'').toUpperCase() && !idsRemoto.has(r.id))
+        .map(r => ({
+          id: r.id, motorista: r.motorista, data: r.data_hora,
+          km: r.km_atual, temNao: temNao(r), manutencao: r.solicitacao_manutencao||''
+        }));
+      const todos = [...locaisExtra, ...data.registros];
+      div.innerHTML = todos.map(r => {
+        const dataFmt = formatarDataHistorico(r.data);
+        return `<div class="checklist-hist-item ${r.temNao ? 'has-issues' : ''}"
+             onclick="abrirModalHistoricoVeiculo('${r.id}', ${JSON.stringify(r).replace(/'/g,"&#39;")})">
+          <div class="hist-meta">
+            <span class="hist-motorista">${r.motorista}</span>
+            <span class="hist-badge ${r.temNao ? 'issue' : 'ok'}">${r.temNao ? '⚠️ Atenção' : '✅ OK'}</span>
+          </div>
+          <div class="hist-date">📅 ${dataFmt}</div>
+          <div class="hist-km">KM: ${r.km}</div>
+          ${r.manutencao ? `<div style="margin-top:6px;font-size:12px;color:var(--orange);font-weight:500;">🔧 ${r.manutencao}</div>` : ''}
+        </div>`;
+      }).join('');
+      return;
+    } catch(err) {
+      if (tentativa === 3) {
+        renderLocal(); // Fallback: mostra dados locais
+      } else {
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+  }
+}
+
+function checklistCard(c) {
+  const temIssue = temNao(c) || c.solicitacao_manutencao;
+  return `<div class="checklist-hist-item ${temIssue ? 'has-issues' : ''}" onclick="abrirModalChecklist('${c.id}')">
+    <div class="hist-meta">
+      <span class="hist-motorista">${c.motorista}</span>
+      <span class="hist-badge ${temIssue ? 'issue' : 'ok'}">${temIssue ? '⚠️ Atenção' : '✅ OK'}</span>
+    </div>
+    <div class="hist-date">${formatarData(c.data_hora)}</div>
+    <div class="hist-km">KM: ${Number(c.km_atual).toLocaleString('pt-BR')}</div>
+    ${c.solicitacao_manutencao ? `<div style="margin-top:6px;font-size:12px;color:var(--orange);font-weight:500;">🔧 ${c.solicitacao_manutencao}</div>` : ''}
+  </div>`;
+}
+
+function abrirModalHistorico(id, registroDirecto) {
+  const r = registroDirecto || historicoBruto.find(x => x.id === id);
+  if (!r) return;
+
+  let html = `<div class="modal-title">${r.veiculo} — Check List</div>`;
+  html += `<div class="modal-row"><span class="modal-row-label">Motorista</span><span class="modal-row-val">${r.motorista}</span></div>`;
+  html += `<div class="modal-row"><span class="modal-row-label">Data/Hora</span><span class="modal-row-val">${r.data}</span></div>`;
+  html += `<div class="modal-row"><span class="modal-row-label">KM Atual</span><span class="modal-row-val">${r.km}</span></div>`;
+  if (r.carreta) html += `<div class="modal-row"><span class="modal-row-label">Carreta Reserva</span><span class="modal-row-val" style="color:var(--orange);font-weight:700">${r.carreta}</span></div>`;
+
+  // Títulos de seção que não devem aparecer como itens
+  const TITULOS_SECAO = [
+    'DOCUMENTAÇÃO', 'ITENS DE CABINE', 'ITENS GERAIS',
+    'ITENS ACESSÓRIO E EMERGÊNCIAS', 'AUTO AVALIAÇÃO'
+  ];
+
+  if (r.itens && r.itens.length) {
+    // Agrupar por seção
+    let secaoAtual = '';
+    const secoes = {
+      'Estou "Apto para o trabalho"?': 'AUTO AVALIAÇÃO',
+      'Motorista (CNH e MOPP)': 'DOCUMENTAÇÃO',
+      'Computador de bordo': 'ITENS DE CABINE',
+      'Cavalo e semirreboque sem avarias': 'ITENS GERAIS',
+      'Calços de borracha': 'ITENS ACESSÓRIO E EMERGÊNCIAS',
+    };
+
+    r.itens.forEach(item => {
+      // Pular títulos de seção
+      if (TITULOS_SECAO.includes(item.label)) {
+        html += `<div class="modal-section">${item.label}</div>`;
+        return;
+      }
+      // Verificar se mudou de seção
+      if (secoes[item.label] && secoes[item.label] !== secaoAtual) {
+        secaoAtual = secoes[item.label];
+        html += `<div class="modal-section">${secaoAtual}</div>`;
+      }
+      const cls = item.valor === 'Sim' ? 'sim' : item.valor === 'Não' ? 'nao' : '';
+      html += `<div class="modal-row"><span class="modal-row-label" style="font-size:11px">${item.label}</span><span class="modal-row-val ${cls}">${item.valor || '-'}</span></div>`;
+    });
+  }
+
+  if (r.justificativa) html += `<div class="modal-section">JUSTIFICATIVA</div><div style="padding:10px;background:var(--gray-50);border-radius:8px;font-size:14px;margin-bottom:8px">${r.justificativa}</div>`;
+  if (r.manutencao) html += `<div class="modal-section">SOLICITAÇÃO DE MANUTENÇÃO</div><div style="padding:10px;background:#fff7ed;border-radius:8px;font-size:14px;color:var(--orange);font-weight:500">${r.manutencao}</div>`;
+
+  document.getElementById('modal-content').innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function fecharModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay')) {
+    fecharModalBtn();
+  }
+}
+
+// ════ HISTÓRICO GERAL ════
+async function carregarHistorico() {
+  const div = document.getElementById('lista-historico');
+  div.innerHTML = '<div class="no-items">⏳ Carregando histórico...</div>';
+
+  // Sempre lê do localStorage na hora (não usa variável em memória)
+  function mostrarLocal() {
+    let local = [];
+    try { local = JSON.parse(localStorage.getItem('twm_checklists') || '[]'); } catch(e) {}
+    if (!local.length) {
+      document.getElementById('lista-historico').innerHTML =
+        '<div class="no-items" style="text-align:center;padding:30px;color:#888">Nenhum checklist registrado ainda.</div>';
+      return;
+    }
+    historicoBruto = local.slice().reverse().map(r => ({
+      id: r.id,
+      veiculo:   r.veiculo   || r.frota            || '—',
+      carreta:   r.carreta_reserva                 || '',
+      placa:     r.placa                           || '',
+      km:        r.km_atual                        || '—',
+      data:      r.data_hora || r.data             || '—',
+      motorista: r.motorista                       || '—',
+      temNao:    temNao(r),
+      manutencao:r.solicitacao_manutencao          || ''
+    }));
+    renderHistoricoFiltrado(filtroAtual || 'todos');
+  }
+  mostrarLocal();
+
+  if (!usuarioLogado || !SCRIPT_URL || !navigator.onLine) { return; }
+
+  // Tenta até 3 vezes automaticamente
+  for (let tentativa = 1; tentativa <= 3; tentativa++) {
+    try {
+      // Admin_master vê todos; outros veem só os seus
+      const emailFiltro = isAdminMaster() ? '' : (usuarioLogado.email || '');
+      const url = `${SCRIPT_URL}?action=historico&email=${encodeURIComponent(emailFiltro)}`;
+      const res  = await fetch(url, { method: 'GET', redirect: 'follow' });
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch(e) { throw new Error('Resposta inválida'); }
+
+      if (!data.ok) {
+        div.innerHTML = `<div class="no-items">Erro: ${data.msg || 'Desconhecido'}</div>`;
+        return;
+      }
+
+      historicoBruto = (data.registros || []).map(r => ({
+        ...r,
+        data: formatarDataHistorico(r.data)
+      }));
+      const ht = document.getElementById('hist-total'); if(ht) ht.textContent = historicoBruto.length + ' registro(s)';
+      renderHistoricoFiltrado(filtroAtual);
+      return; // sucesso — sai do loop
+
+    } catch(err) {
+      if (tentativa === 3) {
+        div.innerHTML = `<div class="no-items">❌ Erro de conexão. Verifique o sinal e tente novamente.</div>`;
+      } else {
+        // Aguarda 1s e tenta de novo
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+  }
+}
+
+function renderHistoricoFiltrado(filtro) {
+  filtroAtual = filtro;
+  const div = document.getElementById('lista-historico');
+  let lista = [...historicoBruto];
+
+  if (filtro === 'ok')        lista = lista.filter(r => !r.temNao && !r.manutencao);
+  if (filtro === 'issues')    lista = lista.filter(r => r.temNao);
+  if (filtro === 'manutencao')lista = lista.filter(r => r.manutencao);
+
+  if (!lista.length) {
+    div.innerHTML = '<div class="no-items">Nenhum registro encontrado.</div>';
+    return;
+  }
+
+  const total = document.getElementById('hist-total');
+  if (total) total.textContent = lista.length + ' registro(s)';
+  div.innerHTML = lista.map(r => {
+    const badgeCls = r.temNao ? 'warn' : (r.manutencao ? 'manut' : 'ok');
+    const badgeTxt = r.temNao ? '⚠️ Com NÃO' : (r.manutencao ? '🔧 Manutenção' : '✅ OK');
+    const cardCls  = r.temNao ? 'has-issues' : (r.manutencao ? 'has-manut' : '');
+    return `<div class="hist-card ${cardCls}" onclick="abrirModalHistorico('${r.id}')">
+      <div class="hist-card-top">
+        <div class="hist-veiculo">🚛 ${r.veiculo||'—'}${r.carreta ? ' <span style="font-size:13px;color:#888;font-weight:600">· '+r.carreta+'</span>' : ''}</div>
+        <span class="hist-badge ${badgeCls}">${badgeTxt}</span>
+      </div>
+      <div class="hist-row">
+        <span>📅 <b>${r.data||'—'}</b></span>
+        <span>👤 <b>${r.motorista||'—'}</b></span>
+      </div>
+      <div class="hist-row">
+        <span>🔑 <b>${r.km||'—'} km</b></span>
+        ${r.placa ? '<span>🪪 <b>'+r.placa+'</b></span>' : ''}
+      </div>
+      ${r.manutencao ? '<div class="hist-manut-line">🔧 '+r.manutencao+'</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function filtrarHistBusca(q) {
+  const norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const nq = norm(q);
+  if (!nq) { renderHistoricoFiltrado(filtroAtual||'todos'); return; }
+  const lista = historicoBruto.filter(r =>
+    norm(r.veiculo+' '+r.motorista+' '+r.data+' '+r.placa+' '+r.manutencao).includes(nq)
+  );
+  const div = document.getElementById('lista-historico');
+  const total = document.getElementById('hist-total');
+  if (total) total.textContent = lista.length + ' registro(s)';
+  if (!lista.length) { div.innerHTML = '<div class="no-items">Nenhum registro encontrado.</div>'; return; }
+  // usa o mesmo render mas com lista filtrada diretamente
+  historicoBrutoFiltro = lista;
+  div.innerHTML = lista.map(r => {
+    const badgeCls = r.temNao ? 'warn' : (r.manutencao ? 'manut' : 'ok');
+    const badgeTxt = r.temNao ? '⚠️ Com NÃO' : (r.manutencao ? '🔧 Manutenção' : '✅ OK');
+    const cardCls  = r.temNao ? 'has-issues' : (r.manutencao ? 'has-manut' : '');
+    return `<div class="hist-card ${cardCls}" onclick="abrirModalHistorico('${r.id}')">
+      <div class="hist-card-top">
+        <div class="hist-veiculo">🚛 ${r.veiculo||'—'}</div>
+        <span class="hist-badge ${badgeCls}">${badgeTxt}</span>
+      </div>
+      <div class="hist-row"><span>📅 <b>${r.data||'—'}</b></span><span>👤 <b>${r.motorista||'—'}</b></span></div>
+      <div class="hist-row"><span>🔑 <b>${r.km||'—'} km</b></span>${r.placa?'<span>🪪 <b>'+r.placa+'</b></span>':''}</div>
+      ${r.manutencao ? '<div class="hist-manut-line">🔧 '+r.manutencao+'</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function filtrarHist(filtro, btn) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  renderHistoricoFiltrado(filtro);
+}
+
+
+// ════ CONFIG FROTA — funções completas ════
+var CL_CFG_KEY = 'twm_cl_frota_cfg';
+
+function cfgClGetFrota() {
+  var extra = [], removidos = [], editados = {};
+  try {
+    var cfg = JSON.parse(localStorage.getItem(CL_CFG_KEY) || '{}');
+    extra     = cfg.extra     || [];
+    removidos = cfg.removidos || [];
+    editados  = cfg.editados  || {};
+  } catch(e) {}
+  var base = FROTA
+    .filter(function(f) { return removidos.indexOf(f.vp) < 0; })
+    .map(function(f) { return editados[f.vp] ? Object.assign({}, f, editados[f.vp]) : f; });
+  return base.concat(extra);
+}
+
+function cfgClSalvar(cfg) {
+  localStorage.setItem(CL_CFG_KEY, JSON.stringify(cfg));
+  renderCaminhoes();
+}
+
+function cfgClSalvarVeiculo() {
+  var vp      = (document.getElementById('cfg-cl-vp')?.value    || '').trim().toUpperCase();
+  var placa   = (document.getElementById('cfg-cl-placa')?.value  || '').trim().toUpperCase();
+  var carreta = (document.getElementById('cfg-cl-carreta')?.value || '').trim();
+  var marca   = (document.getElementById('cfg-cl-marca')?.value   || '').trim();
+  var ano     = (document.getElementById('cfg-cl-ano')?.value     || '').trim();
+  var modelo  = (document.getElementById('cfg-cl-modelo')?.value  || '').trim();
+
+  if (!vp) { alert('Informe o prefixo VP'); return; }
+
+  var cfg = {};
+  try { cfg = JSON.parse(localStorage.getItem(CL_CFG_KEY) || '{}'); } catch(e) {}
+  cfg.extra    = cfg.extra    || [];
+  cfg.removidos= cfg.removidos|| [];
+  cfg.editados = cfg.editados || {};
+
+  var novoVei = { vp, placa, carreta: carreta||'-', marca, ano, modelo };
+  var naBase  = FROTA.find(f => f.vp === vp);
+  if (naBase) {
+    cfg.editados[vp] = novoVei;
+    cfg.removidos = cfg.removidos.filter(r => r !== vp);
+  } else {
+    var iExtra = cfg.extra.findIndex(f => f.vp === vp);
+    if (iExtra >= 0) cfg.extra[iExtra] = novoVei;
+    else cfg.extra.push(novoVei);
+  }
+
+  cfgClSalvar(cfg);
+  cfgClRender();
+
+  // Limpa campos
+  ['cfg-cl-vp','cfg-cl-placa','cfg-cl-carreta','cfg-cl-marca','cfg-cl-ano','cfg-cl-modelo']
+    .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+}
+
+function cfgClRender() {
+  const frotas = cfgClGetFrota();
+  const countEl = document.getElementById('cfg-cl-count');
+  if (countEl) countEl.textContent = frotas.length;
+
+  const lista = document.getElementById('cfg-cl-lista');
+  if (!lista) return;
+
+  lista.innerHTML = frotas.map(f => {
+    const extra = !FROTA.find(b => b.vp === f.vp);
+    return `<div style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:11px 13px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
+      <div style="flex:1">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#7B3FE4">${f.vp}${extra?' <span style="font-size:9px;background:rgba(123,63,228,.1);padding:1px 5px;border-radius:5px">NOVO</span>':''}</div>
+        <div style="font-size:11px;color:#555;margin-top:1px">${f.placa||'—'} · ${f.carreta||'—'}</div>
+        <div style="font-size:10px;color:#888">${f.modelo||'—'} · ${f.ano||'—'}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="cfgClEditar('${f.vp}')" style="background:rgba(123,63,228,.1);border:none;border-radius:7px;padding:6px 10px;font-size:11px;color:#7B3FE4;cursor:pointer;font-weight:700">✎</button>
+        <button onclick="cfgClRemover('${f.vp}')" style="background:rgba(239,68,68,.1);border:none;border-radius:7px;padding:6px 10px;font-size:11px;color:#EF4444;cursor:pointer;font-weight:700">✕</button>
+      </div>
+    </div>`;
+  }).join('') || '<div style="text-align:center;padding:20px;color:#888;font-size:12px">Nenhum veículo cadastrado</div>';
+}
+
+// ════ CONFIG FROTA (admin_master) ════
+function cfgClEditar(vp) {
+  var frotas = cfgClGetFrota();
+  var f = frotas.find(function(x){ return x.vp===vp; });
+  if (!f) return;
+  document.getElementById('cfg-cl-vp').value     = f.vp;
+  document.getElementById('cfg-cl-placa').value   = f.placa||'';
+  document.getElementById('cfg-cl-carreta').value = f.carreta||'';
+  document.getElementById('cfg-cl-marca').value   = f.marca||'';
+  document.getElementById('cfg-cl-ano').value     = f.ano||'';
+  document.getElementById('cfg-cl-modelo').value  = f.modelo||'';
+  var pg = document.getElementById('page-config-cl');
+  if (pg) pg.scrollTop = 0;
+}
+
+function cfgClRemover(vp) {
+  if (!confirm('Remover ' + vp + ' da lista?')) return;
+  var cfg = {};
+  try { cfg = JSON.parse(localStorage.getItem('twm_cl_frota_cfg')||'{}'); } catch(e){}
+  cfg.removidos = cfg.removidos || [];
+  cfg.extra = (cfg.extra||[]).filter(function(f){ return f.vp !== vp; });
+  if (FROTA.find(function(f){ return f.vp===vp; })) {
+    if (cfg.removidos.indexOf(vp) < 0) cfg.removidos.push(vp);
+  }
+  if (cfg.editados) delete cfg.editados[vp];
+  localStorage.setItem('twm_cl_frota_cfg', JSON.stringify(cfg));
+  frotaFiltrada = cfgClGetFrota();
+  renderCaminhoes();
+  cfgClRender();
+}
+
+
+
+// ════ PERFIL ════
+function abrirPerfil() {
+  document.getElementById('perfil-overlay').style.display = 'block';
+  document.getElementById('perfil-panel').style.transform = 'translateX(0)';
+}
+function fecharPerfil() {
+  document.getElementById('perfil-overlay').style.display = 'none';
+  document.getElementById('perfil-panel').style.transform = 'translateX(-100%)';
+}
+function logout() {
+  localStorage.removeItem('twm_session');
+  localStorage.removeItem('twm_user_cache');
+  localStorage.removeItem('twm_permissoes');
+  fecharPerfil();
+  window.location.replace('index.html');
+}
+
+// ════ INIT ════
+// Entra no app direto via sessão do index.html
+(function iniciarApp() {
+  // 1. Sessão compartilhada do index.html (twm_session) — caminho principal
+  try {
+    const s = JSON.parse(localStorage.getItem('twm_session') || 'null');
+    if (s && s.motorista) {
+      entrarNoApp(s.motorista);
+      const gt = sessionStorage.getItem('twm_goto');
+      if (gt === 'checklist') { sessionStorage.removeItem('twm_goto'); showPage('caminhoes'); }
+      return;
+    }
+  } catch(e) {}
+
+  // 2. Cache local como fallback
+  try {
+    const u = JSON.parse(localStorage.getItem('twm_user_cache') || 'null');
+    if (u) { entrarNoApp(u); return; }
+  } catch(e) {}
+
+  // 3. Sem sessão — volta para o index
+  window.location.replace('index.html');
+})();
+
+</script>
+
+<script>
+// Modal Solicitação Manutenção
+// ── MODAL SOLICITAÇÃO DE MANUTENÇÃO MULTI-FROTA ──
+var _solicitacoes = (typeof _solicitacoes !== 'undefined') ? _solicitacoes : [];
+
+function abrirModalManutencao() {
+  var container = document.getElementById('manut-linhas-container');
+  if (!container) return;
+  var html = '<div style="display:flex;gap:8px;margin-bottom:6px;padding:0 20px">' +
+    '<div style="width:100px;font-size:9px;font-weight:700;text-transform:uppercase;color:#F97316;letter-spacing:.5px">VP / RB</div>' +
+    '<div style="flex:1;font-size:9px;font-weight:700;text-transform:uppercase;color:#F97316;letter-spacing:.5px">Problemas apresentados</div>' +
+  '</div>';
+  for (var i = 0; i < 20; i++) {
+    var s = _solicitacoes[i] || {frota:'', problema:''};
+    html += '<div class="manut-linha">' +
+      '<span class="manut-num">'+(i+1)+'</span>' +
+      '<input class="manut-frota-inp" id="ms-frota-'+i+'" type="text" placeholder="VP-183" ' +
+        'autocapitalize="characters" oninput="this.value=this.value.toUpperCase()" ' +
+        'value="'+escHtml(s.frota)+'">' +
+      '<textarea class="manut-prob-inp" id="ms-prob-'+i+'" ' +
+        'placeholder="lâmpada, pneu furado..." ' +
+        'rows="2">'+escHtml(s.problema)+'</textarea>' +
+    '</div>';
+  }
+  container.innerHTML = html;
+  document.getElementById('modal-manut-overlay').classList.add('on');
+}
+
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fecharModalManutencao() {
+  document.getElementById('modal-manut-overlay').classList.remove('on');
+}
+
+function salvarSolicitacaoManut() {
+  _solicitacoes = [];
+  for (var i = 0; i < 20; i++) {
+    var fi = document.getElementById('ms-frota-'+i);
+    var pi = document.getElementById('ms-prob-'+i);
+    var frota    = fi ? fi.value.trim() : '';
+    var problema = pi ? pi.value.trim() : '';
+    if (frota && problema) _solicitacoes.push({frota: frota, problema: problema});
+  }
+  fecharModalManutencao();
+  var preview = document.getElementById('solic-manut-preview');
+  if (preview) {
+    if (_solicitacoes.length === 0) {
+      preview.style.display = 'none';
+    } else {
+      var html = '';
+      _solicitacoes.forEach(function(s) {
+        html += '<div class="sp-item"><span class="sp-frota">🔧 '+s.frota+'</span> &nbsp;<span class="sp-prob">'+s.problema+'</span></div>';
+      });
+      preview.innerHTML = html;
+      preview.style.display = 'block';
+    }
+  }
+  var btn = document.getElementById('btn-solic-manut');
+  if (btn) {
+    if (_solicitacoes.length > 0) {
+      btn.textContent = '🔧 Manutenção — '+_solicitacoes.length+' item(ns) ✓';
+      btn.style.background = 'linear-gradient(135deg,#16a34a,#22c55e)';
+    } else {
+      btn.textContent = '🔧 Solicitação de Manutenção';
+      btn.style.background = '';
+    }
+  }
+  try { sessionStorage.setItem('twm_sols_manut', JSON.stringify(_solicitacoes)); } catch(e) {}
+}
+
+function limparSolicitacaoManut() {
+  _solicitacoes = [];
+  for (var i = 0; i < 20; i++) {
+    var fi = document.getElementById('ms-frota-'+i);
+    var pi = document.getElementById('ms-prob-'+i);
+    if (fi) fi.value = '';
+    if (pi) pi.value = '';
+  }
+  salvarSolicitacaoManut();
+}
+</script>
+
+
+
+</body>
+</html>
