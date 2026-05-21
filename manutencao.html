@@ -252,6 +252,45 @@ html,body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);mi
 .pend-row-nota{font-size:10px;color:#f97316;margin-top:3px;font-style:italic}
 .pend-empty-col{text-align:center;padding:20px 10px;font-size:11px;color:#f97316;opacity:.6;line-height:1.6}
 
+
+/* Abas */
+.tabs-bar{display:flex;background:var(--bg2);border-bottom:1px solid var(--brd);position:sticky;top:56px;z-index:98}
+.tab-btn{flex:1;padding:12px 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;border:none;background:none;color:var(--tx3);cursor:pointer;border-bottom:2.5px solid transparent;transition:.15s;font-family:'Inter',sans-serif}
+.tab-btn.on{color:var(--ac);border-bottom-color:var(--ac)}
+.tab-btn.on.warn{color:#f97316;border-bottom-color:#f97316}
+.tab-pane{display:none}
+.tab-pane.on{display:block}
+
+/* Aba Pendências */
+.pend-list-wrap{padding:12px 12px 80px}
+.pend-list-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.pend-list-title{font-size:13px;font-weight:700;color:var(--tx)}
+.pend-filtros{display:flex;gap:6px}
+.pend-f-btn{padding:5px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid var(--brd2);background:var(--bg);color:var(--tx3);cursor:pointer;transition:.12s}
+.pend-f-btn.on{background:rgba(249,115,22,.1);border-color:#f97316;color:#f97316}
+.pend-card{background:var(--bg2);border-radius:12px;border:1px solid var(--brd);border-left:4px solid #f97316;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:.15s}
+.pend-card:hover{box-shadow:var(--shadow-md)}
+.pend-card.resolvida{border-left-color:var(--green);opacity:.75}
+.pend-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.pend-card-frota{font-size:18px;font-weight:800;color:#f97316}
+.pend-card.resolvida .pend-card-frota{color:var(--green)}
+.pend-card-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px}
+.pend-card-badge.pendente{background:rgba(249,115,22,.12);color:#f97316}
+.pend-card-badge.resolvida{background:var(--green-bg);color:var(--green)}
+.pend-card-tipo{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--tx3);margin-bottom:4px}
+.pend-card-desc{font-size:13px;font-weight:600;color:var(--tx);margin-bottom:5px;line-height:1.4}
+.pend-card-motivo{font-size:11px;color:#f97316;font-style:italic;margin-bottom:6px}
+.pend-card-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;color:var(--tx3)}
+.pend-card-acoes{margin-top:10px;display:flex;gap:7px}
+.btn-pend-ac{padding:7px 12px;border-radius:7px;font-size:11px;font-weight:700;border:1.5px solid;cursor:pointer;font-family:inherit;transition:.12s}
+.btn-pend-ver{border-color:var(--brd2);color:var(--tx2);background:var(--bg)}.btn-pend-ver:hover{border-color:var(--ac);color:var(--ac)}
+.btn-pend-ok{border-color:var(--green);color:var(--green);background:var(--green-bg)}.btn-pend-ok:hover{background:var(--green);color:#fff}
+.pend-empty{text-align:center;padding:40px 20px;color:var(--tx3);font-size:13px;line-height:1.8}
+.pend-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.pend-stat{background:var(--bg2);border:1px solid var(--brd);border-radius:10px;padding:12px;text-align:center}
+.pend-stat-n{font-size:22px;font-weight:800;line-height:1}
+.pend-stat-l{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-top:2px}
+
 </style>
 </head>
 <body>
@@ -280,6 +319,15 @@ html,body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);mi
   </select>
   <button class="filter-btn" id="btn-alerta" onclick="filtrarAtrasados()" title="OS paradas há mais de 3 dias">⚠️ Atrasadas</button>
 </div>
+
+<!-- ABAS -->
+<div class="tabs-bar">
+  <button class="tab-btn on" id="tab-board-btn" onclick="showTab('board')">🗂 Board</button>
+  <button class="tab-btn warn" id="tab-pend-btn" onclick="showTab('pendencias')">⚠️ Pendências <span id="pend-tab-cnt" style="background:#f97316;color:#fff;border-radius:10px;padding:1px 6px;font-size:9px;margin-left:2px">0</span></button>
+</div>
+
+<!-- PANE BOARD -->
+<div class="tab-pane on" id="tab-board">
 
 <!-- RESUMO -->
 <div class="resumo">
@@ -978,6 +1026,7 @@ function confirmarConcluir(){
   if(!sv) return;
   sv.status='concl';sv.solucao=sol;if(mec)sv.mecanico=mec;if(tempo)sv.tempo=tempo;
   addHistorico(os,'Serviço concluído: '+sv.descricao.slice(0,40));
+  resolverPendencia(sv.id);
   atualizarStatusOS(os); sync(os); salvarOS(); fM('m-concl'); render();
   toast('✅ Concluído!','ok');
   if(_fcOsId===_ctxOS) abrirFC(_ctxOS);
@@ -1001,6 +1050,7 @@ function confirmarPend(){
   if(!sv) return;
   sv.status='pend';sv.pend_nota=motivo;if(mec)sv.mecanico=mec;
   addHistorico(os,'Pendência: '+motivo.slice(0,50));
+  registrarPendencia(os, sv);
   sync(os); salvarOS(); fM('m-pend'); render();
   toast('⏸ Pendência registrada','');
   if(_fcOsId===_ctxOS) abrirFC(_ctxOS);
@@ -1156,6 +1206,173 @@ function limparCache(){
 }
 
 // INIT
+
+// ── ABAS ─────────────────────────────────────────
+function showTab(tab) {
+  document.querySelectorAll('.tab-pane').forEach(function(p){ p.classList.remove('on'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('on'); });
+  document.getElementById('tab-'+tab).classList.add('on');
+  document.getElementById('tab-'+tab+'-btn').classList.add('on');
+  if (tab === 'pendencias') renderPendList();
+}
+
+// ── HISTÓRICO DE PENDÊNCIAS ───────────────────────
+var _pendFiltro = 'todas';
+var PEND_KEY    = 'twm_manut_pendencias';
+
+function lerPendencias() {
+  try { return JSON.parse(localStorage.getItem(PEND_KEY) || '[]'); } catch(e) { return []; }
+}
+function salvarPendencias(lista) {
+  localStorage.setItem(PEND_KEY, JSON.stringify(lista));
+}
+
+// Chamado ao confirmar pendência — registra no histórico
+function registrarPendencia(os, sv) {
+  var lista = lerPendencias();
+  // Evita duplicata
+  var existe = lista.find(function(p){ return p.sv_id === sv.id && p.status === 'pendente'; });
+  if (!existe) {
+    var novaP = {
+      id:       'P-'+ uid(),
+      os_id:    os.id,
+      sv_id:    sv.id,
+      frota:    os.frota || '—',
+      tipo:     sv.tipo  || '',
+      descricao:sv.descricao || '',
+      pend_nota:sv.pend_nota || '',
+      mecanico: sv.mecanico  || '',
+      motorista:os.motorista || '',
+      data_pend:hoje(),
+      ts_pend:  Date.now(),
+      status:   'pendente',
+      data_resol: '',
+    };
+    lista.unshift(novaP);
+    salvarPendencias(lista);
+    // Envia para planilha
+    if (SCRIPT_URL && navigator.onLine) {
+      var p = new URLSearchParams({
+        action:    'salvarPendencia',
+        id:        novaP.id,
+        data:      novaP.data_pend,
+        frota:     novaP.frota,
+        servico:   novaP.tipo,
+        descricao: novaP.descricao,
+        motivo:    novaP.pend_nota,
+        mecanico:  novaP.mecanico,
+        motorista: novaP.motorista,
+        status:    'Pendente',
+        data_resol:''
+      });
+      fetch(SCRIPT_URL + '?' + p.toString()).catch(function(){});
+    }
+  }
+  atualizarTabPend();
+}
+
+// Chamado ao concluir um serviço — marca pendência como resolvida
+function resolverPendencia(svId) {
+  var lista = lerPendencias();
+  var p = lista.find(function(x){ return x.sv_id === svId && x.status === 'pendente'; });
+  if (p) {
+    p.status = 'resolvida';
+    p.data_resol = hoje();
+    salvarPendencias(lista);
+    atualizarTabPend();
+    // Atualiza na planilha
+    if (SCRIPT_URL && navigator.onLine) {
+      var pR = new URLSearchParams({
+        action:    'resolverPendencia',
+        id:        p.id,
+        data_resol:p.data_resol
+      });
+      fetch(SCRIPT_URL + '?' + pR.toString()).catch(function(){});
+    }
+  }
+}
+
+function atualizarTabPend() {
+  var lista  = lerPendencias();
+  var qtPend = lista.filter(function(p){ return p.status === 'pendente'; }).length;
+  var cnt    = document.getElementById('pend-tab-cnt');
+  if (cnt) cnt.textContent = qtPend;
+  document.getElementById('ps-total').textContent = lista.length;
+  document.getElementById('ps-pend').textContent  = qtPend;
+  document.getElementById('ps-resol').textContent  = lista.filter(function(p){ return p.status==='resolvida'; }).length;
+}
+
+function filtrarPend(filtro) {
+  _pendFiltro = filtro;
+  document.querySelectorAll('.pend-f-btn').forEach(function(b){ b.classList.remove('on'); });
+  var btn = document.getElementById('pf-' + (filtro==='pendente'?'pend':filtro==='resolvida'?'resol':'todas'));
+  if (btn) btn.classList.add('on');
+  renderPendList();
+}
+
+function renderPendList() {
+  var lista = lerPendencias();
+  atualizarTabPend();
+
+  if (_pendFiltro !== 'todas') lista = lista.filter(function(p){ return p.status === _pendFiltro; });
+
+  var div = document.getElementById('lista-pend');
+  if (!div) return;
+
+  if (!lista.length) {
+    div.innerHTML = '<div class="pend-empty">'+
+      (_pendFiltro==='resolvida' ? '🎉 Nenhuma pendência resolvida ainda' :
+       _pendFiltro==='pendente'  ? '✅ Sem pendências em aberto!' :
+       '⚠️ Nenhuma pendência registrada') +
+    '</div>';
+    return;
+  }
+
+  div.innerHTML = lista.map(function(p){
+    var resolvida = p.status === 'resolvida';
+    return '<div class="pend-card'+(resolvida?' resolvida':'')+'">' +
+      '<div class="pend-card-top">' +
+        '<div class="pend-card-frota">🚛 '+p.frota+'</div>' +
+        '<span class="pend-card-badge '+(resolvida?'resolvida':'pendente')+'">'+(resolvida?'✅ Resolvida':'⏸ Pendente')+'</span>' +
+      '</div>' +
+      '<div class="pend-card-tipo">'+p.tipo+'</div>' +
+      '<div class="pend-card-desc">'+p.descricao+'</div>' +
+      (p.pend_nota?'<div class="pend-card-motivo">⏸ '+p.pend_nota+'</div>':'') +
+      '<div class="pend-card-meta">' +
+        '<span>📅 Aberta: '+p.data_pend+'</span>' +
+        (p.mecanico?'<span>🔧 '+p.mecanico+'</span>':'') +
+        (p.motorista?'<span>👤 '+p.motorista+'</span>':'') +
+        (resolvida&&p.data_resol?'<span style="color:var(--green)">✅ Resolvida: '+p.data_resol+'</span>':'') +
+      '</div>' +
+      (!resolvida?'<div class="pend-card-acoes">' +
+        '<button class="btn-pend-ac btn-pend-ver" data-osid="'+p.os_id+'" onclick="showTab('board');setTimeout(function(){abrirFC(''+p.os_id+'');},200)">Ver O.S.</button>' +
+        '<button class="btn-pend-ac btn-pend-ok" data-svid="'+p.sv_id+'" onclick="marcarResolvida(''+p.sv_id+'')">✅ Resolvida</button>' +
+      '</div>':'') +
+    '</div>';
+  }).join('');
+}
+
+function marcarResolvida(svId) {
+  // Marca no histórico e atualiza o serviço na OS
+  resolverPendencia(svId);
+  ordens = lerOS();
+  ordens.forEach(function(os){
+    (os.servicos||[]).forEach(function(sv){
+      if(sv.id === svId && sv.status === 'pend'){
+        sv.status = 'concl';
+        sv.solucao = sv.solucao || 'Resolvida via aba Pendências';
+        addHistorico(os, 'Pendência resolvida via aba Pendências');
+        atualizarStatusOS(os);
+        sync(os);
+      }
+    });
+  });
+  salvarOS();
+  render();
+  renderPendList();
+  toast('✅ Marcada como resolvida','ok');
+}
+
 // ZOOM — muda tamanho das colunas (sem transform, sem travar scroll)
 (function(){
   var zoomed = localStorage.getItem('twm_manut_zoom')==='1';
@@ -1194,6 +1411,7 @@ function limparCache(){
 
 window.onload=function(){
   render();
+  atualizarTabPend();
   carregarDoServidor();
   // Verifica se veio do check list com uma OS específica para destacar
   try {
@@ -1221,5 +1439,30 @@ window.onload=function(){
   if(eu&&cfg.scriptUrl)eu.value=cfg.scriptUrl;
 };
 </script>
+</div><!-- /tab-board -->
+
+<!-- PANE PENDÊNCIAS -->
+<div class="tab-pane" id="tab-pendencias">
+  <div class="pend-list-wrap">
+    <!-- Stats -->
+    <div class="pend-stats">
+      <div class="pend-stat"><div class="pend-stat-n" id="ps-total" style="color:#f97316">0</div><div class="pend-stat-l">Total</div></div>
+      <div class="pend-stat"><div class="pend-stat-n" id="ps-pend" style="color:#f97316">0</div><div class="pend-stat-l">Pendentes</div></div>
+      <div class="pend-stat"><div class="pend-stat-n" id="ps-resol" style="color:var(--green)">0</div><div class="pend-stat-l">Resolvidas</div></div>
+    </div>
+    <!-- Filtros -->
+    <div class="pend-list-header">
+      <div class="pend-list-title">Histórico de Pendências</div>
+      <div class="pend-filtros">
+        <button class="pend-f-btn on" id="pf-todas" onclick="filtrarPend('todas')">Todas</button>
+        <button class="pend-f-btn" id="pf-pend" onclick="filtrarPend('pendente')">Pendentes</button>
+        <button class="pend-f-btn" id="pf-resol" onclick="filtrarPend('resolvida')">Resolvidas</button>
+      </div>
+    </div>
+    <!-- Lista -->
+    <div id="lista-pend"></div>
+  </div>
+</div><!-- /tab-pendencias -->
+
 </body>
 </html>
