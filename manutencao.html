@@ -552,9 +552,12 @@ function sync(os){
 
 function atualizarStatusOS(os){
   var svs=os.servicos||[];
-  if(svs.every(function(s){return s.status==='concl'||s.status==='pend';})) os.status='concl';
+  var temPend   = svs.some(function(s){return s.status==='pend';});
+  var todosFeitos = svs.every(function(s){return s.status==='concl'||s.status==='pend';});
+  if(todosFeitos && temPend) os.status='pendente'; // sai do board, vai para aba Pendências
+  else if(todosFeitos)       os.status='concl';
   else if(svs.some(function(s){return s.status==='externa';})) os.status='externa';
-  else if(svs.some(function(s){return s.status==='agpeca';})) os.status='agpeca';
+  else if(svs.some(function(s){return s.status==='agpeca';}))  os.status='agpeca';
   else if(svs.some(function(s){return s.status==='andando';})) os.status='andando';
   else os.status='aberta';
 }
@@ -1082,10 +1085,11 @@ function confirmarPend(){
   if(!sv) return;
   sv.status='pend';sv.pend_nota=motivo;if(mec)sv.mecanico=mec;
   addHistorico(os,'Pendência: '+motivo.slice(0,50));
+  atualizarStatusOS(os); // define os.status='pendente' → remove do board
   registrarPendencia(os, sv);
-  sync(os); salvarOS(); fM('m-pend'); render();
-  toast('⏸ Pendência registrada','');
-  if(_fcOsId===_ctxOS) abrirFC(_ctxOS);
+  sync(os); salvarOS(); fM('m-pend'); fecharFC(); render();
+  showTab('pendencias'); // abre a aba Pendências automaticamente
+  toast('⏸ Pendência registrada — card removido do board','');
 }
 
 function abrirMec(osId,svId){
@@ -1392,15 +1396,13 @@ function pendVerOS(btn) {
 }
 
 function marcarResolvida(svId) {
-  // Marca no histórico e atualiza o serviço na OS
   resolverPendencia(svId);
   ordens = lerOS();
   ordens.forEach(function(os){
     (os.servicos||[]).forEach(function(sv){
       if(sv.id === svId && sv.status === 'pend'){
-        sv.status = 'concl';
-        sv.solucao = sv.solucao || 'Resolvida via aba Pendências';
-        addHistorico(os, 'Pendência resolvida via aba Pendências');
+        sv.status = 'andando'; // Volta para andamento (reabre no board)
+        addHistorico(os, 'Pendência reaberta via aba Pendências');
         atualizarStatusOS(os);
         sync(os);
       }
@@ -1409,7 +1411,7 @@ function marcarResolvida(svId) {
   salvarOS();
   render();
   renderPendList();
-  toast('✅ Marcada como resolvida','ok');
+  toast('🔧 Serviço reaberto no board','ok');
 }
 
 // ZOOM — muda tamanho das colunas (sem transform, sem travar scroll)
