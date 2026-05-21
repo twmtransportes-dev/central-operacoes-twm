@@ -1383,9 +1383,22 @@ function renderPendList() {
       (!resolvida?'<div class="pend-card-acoes">' +
         '<button class="btn-pend-ac btn-pend-ver" data-tab="board" data-osid="'+p.os_id+'" onclick="pendVerOS(this)">Ver O.S.</button>' +
         '<button class="btn-pend-ac btn-pend-ok" data-svid="'+p.sv_id+'" onclick="marcarResolvida(this.dataset.svid)">Resolvida</button>' +
-      '</div>':'') +
+        (isAdminMaster()?'<button class="btn-pend-ac" style="border-color:var(--red);color:var(--red);background:var(--red-bg)" data-pid="'+p.id+'" onclick="apagarPendencia(this.dataset.pid)">🗑</button>':'') +
+      '</div>':'<div class="pend-card-acoes">'+
+        (isAdminMaster()?'<button class="btn-pend-ac" style="border-color:var(--red);color:var(--red);background:var(--red-bg)" data-pid="'+p.id+'" onclick="apagarPendencia(this.dataset.pid)">🗑 Apagar</button>':'') +
+      '</div>') +
     '</div>';
   }).join('');
+}
+
+function apagarPendencia(pid) {
+  if (!isAdminMaster()) { toast('Sem permissão', 'err'); return; }
+  if (!confirm('Apagar este registro de pendência?')) return;
+  var lista = lerPendencias().filter(function(p){ return p.id !== pid; });
+  salvarPendencias(lista);
+  atualizarTabPend();
+  renderPendList();
+  toast('Registro apagado', 'ok');
 }
 
 function pendVerOS(btn) {
