@@ -1345,11 +1345,18 @@ function renderPendList() {
         (resolvida&&p.data_resol?'<span style="color:var(--green)">✅ Resolvida: '+p.data_resol+'</span>':'') +
       '</div>' +
       (!resolvida?'<div class="pend-card-acoes">' +
-        '<button class="btn-pend-ac btn-pend-ver" data-osid="'+p.os_id+'" onclick="showTab('board');setTimeout(function(){abrirFC(''+p.os_id+'');},200)">Ver O.S.</button>' +
-        '<button class="btn-pend-ac btn-pend-ok" data-svid="'+p.sv_id+'" onclick="marcarResolvida(''+p.sv_id+'')">✅ Resolvida</button>' +
+        '<button class="btn-pend-ac btn-pend-ver" data-tab="board" data-osid="'+p.os_id+'" onclick="pendVerOS(this)">Ver O.S.</button>' +
+        '<button class="btn-pend-ac btn-pend-ok" data-svid="'+p.sv_id+'" onclick="marcarResolvida(this.dataset.svid)">Resolvida</button>' +
       '</div>':'') +
     '</div>';
   }).join('');
+}
+
+function pendVerOS(btn) {
+  var tab   = btn.dataset.tab;
+  var osid  = btn.dataset.osid;
+  showTab(tab);
+  setTimeout(function(){ abrirFC(osid); }, 200);
 }
 
 function marcarResolvida(svId) {
