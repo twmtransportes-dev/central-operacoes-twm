@@ -614,6 +614,14 @@ function carregarDoServidor(){
 // ════════════════════════════════════════
 function render(){
   ordens = lerOS();
+  // Remove OS sem frota que tenham mais de 10 minutos (são resíduos)
+  var antes = ordens.length;
+  ordens = ordens.filter(function(o){
+    var temFrota = o.frota && o.frota.trim() && o.frota !== '—';
+    var velha = !o.ts || (Date.now() - o.ts) > 600000; // mais de 10min
+    return temFrota || !velha;
+  });
+  if(ordens.length < antes){ salvarOS(); }
   // Atualiza filtro mecânicos
   var mecs = new Set();
   ordens.forEach(function(o){
@@ -1462,7 +1470,7 @@ window.onload=function(){
       }, 600);
     }
   } catch(e) {}
-  setInterval(carregarDoServidor,30000);
+  setInterval(carregarDoServidor,10000);
   var btn=document.getElementById('btn-cfg');
   if(btn)btn.style.display=isAdminMaster()?'':'none';
   var eu=document.getElementById('cfg-url');
