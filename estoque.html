@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0A0A0F">
+<title>TWM — Estoque de Pneus</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icone-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0A0A0F;--bg2:#0F0F18;--bg3:#13131E;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.14);
+  --text:#F0EEF8;--muted:#7A7890;
+  --accent:#7B3FE4;--accent2:#A855F7;--accent3:#C084FC;
+  --green:#10B981;--red:#EF4444;--gold:#F59E0B;--blue:#3B82F6;--orange:#F97316;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;overscroll-behavior:none}
+
+/* HEADER */
+.app-header{background:var(--bg2);border-bottom:1px solid var(--border2);padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:10px}
+.btn-back{width:36px;height:36px;background:rgba(255,255,255,.07);border:1px solid var(--border2);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text);flex-shrink:0}
+.btn-back:active{background:rgba(255,255,255,.14)}
+.header-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+.header-badge{background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:8px;padding:3px 10px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:white;letter-spacing:1px}
+
+/* TABS */
+.tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;position:sticky;top:56px;z-index:99;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:11px 14px;font-size:11px;font-weight:600;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:.2s;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
+.tab.on{color:var(--accent3);border-bottom-color:var(--accent)}
+
+/* CONTEÚDO */
+.pad{padding:14px}
+.scr{display:none}.scr.on{display:block}
+
+/* CONTADORES */
+.counters{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.counter-card{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:12px 8px;text-align:center;cursor:pointer;transition:.15s}
+.counter-card:active{transform:scale(.96)}
+.counter-num{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;line-height:1}
+.counter-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px;font-weight:600}
+
+/* BUSCA */
+.srch-wrap{position:relative;margin-bottom:12px}
+.srch-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.srch{width:100%;padding:12px 14px 12px 40px;font-size:14px;border:1.5px solid var(--border2);border-radius:12px;background:var(--bg3);color:var(--text);outline:none;font-family:'Barlow',sans-serif;transition:.2s}
+.srch:focus{border-color:var(--accent)}
+.srch::placeholder{color:var(--muted)}
+
+/* LISTA */
+.tire-list{display:flex;flex-direction:column;gap:8px;padding-bottom:90px}
+.tire-card{background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;transition:.15s;cursor:pointer}
+.tire-card:active{background:rgba(123,63,228,.08);border-color:var(--accent)}
+.tire-fogo{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:var(--text)}
+.tire-info{font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.status-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap}
+.st-disponivel{background:rgba(16,185,129,.15);color:var(--green)}
+.st-em_uso{background:rgba(168,85,247,.15);color:var(--accent3)}
+.st-reforma{background:rgba(59,130,246,.15);color:var(--blue)}
+.st-conserto{background:rgba(249,115,22,.15);color:var(--orange)}
+.st-descarte{background:rgba(239,68,68,.15);color:var(--red)}
+.st-venda{background:rgba(245,158,11,.15);color:var(--gold)}
+.st-vendido{background:rgba(245,158,11,.15);color:var(--gold)}
+.frota-badge{font-size:10px;background:rgba(123,63,228,.15);color:var(--accent3);padding:2px 7px;border-radius:5px;font-weight:600}
+.empty{padding:40px 16px;text-align:center;color:var(--muted);font-size:13px}
+
+/* FAB */
+.fab{position:fixed;bottom:20px;right:20px;width:56px;height:56px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(123,63,228,.4);z-index:90;transition:.2s}
+.fab:active{transform:scale(.92)}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.8);align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--bg3);border:1px solid var(--border2);border-radius:24px 24px 0 0;padding:20px 20px 44px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto}
+.modal-handle{width:44px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 18px}
+.modal-title{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--text);margin-bottom:16px;text-transform:uppercase}
+.mfg{margin-bottom:13px}
+.mfg label{display:block;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+.modal-input{width:100%;padding:13px 16px;border:1.5px solid var(--border2);border-radius:12px;font-size:15px;font-family:'Barlow',sans-serif;color:var(--text);background:var(--bg2);outline:none;transition:.2s}
+.modal-input:focus{border-color:var(--accent)}
+.modal-input::placeholder{color:var(--muted)}
+.modal-select{width:100%;padding:13px 16px;border:1.5px solid var(--border2);border-radius:12px;font-size:15px;font-family:'Barlow',sans-serif;color:var(--text);background:var(--bg2);outline:none;appearance:none;cursor:pointer}
+.modal-select:focus{border-color:var(--accent)}
+.modal-btns{display:flex;gap:10px;margin-top:20px}
+.btn-cancel{padding:14px 18px;border:1.5px solid var(--border2);border-radius:12px;background:transparent;font-size:14px;color:var(--muted);cursor:pointer;font-family:'Barlow',sans-serif}
+.btn-confirm{flex:1;padding:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:12px;color:white;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;letter-spacing:1px;cursor:pointer}
+.btn-confirm:active{opacity:.8}
+
+/* DETALHE */
+.det-header{background:var(--bg3);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px}
+.det-fogo{font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;color:var(--text);line-height:1}
+.det-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.det-cell{background:var(--bg2);border-radius:10px;padding:10px 12px}
+.det-cell-label{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px}
+.det-cell-val{font-size:14px;font-weight:600;color:var(--text)}
+.det-hist{background:var(--bg3);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:80px}
+.det-hist-title{padding:12px 16px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)}
+.hist-row{padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted)}
+.hist-row:last-child{border-bottom:none}
+.hist-row strong{color:var(--text);font-size:13px}
+
+/* STATUS EDIT */
+.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.status-opt{padding:12px;border:2px solid var(--border2);border-radius:12px;cursor:pointer;text-align:center;font-size:12px;font-weight:700;color:var(--muted);transition:.15s}
+.status-opt.sel{border-color:var(--accent);background:rgba(123,63,228,.1);color:var(--accent3)}
+
+/* SYNC BAR */
+.sync-bar{text-align:center;padding:5px;font-size:11px;color:var(--muted);background:var(--bg2);border-bottom:1px solid var(--border);display:none}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:12px 22px;border-radius:24px;font-size:13px;font-weight:600;z-index:300;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.toast.show{opacity:1}
+
+/* TEMA CLARO */
+body.light{--bg:#F4F3FF;--bg2:#FFFFFF;--bg3:#FAFAFA;--border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);--text:#1A1A2E;--muted:#6B6880}
+body.light .app-header{box-shadow:0 1px 8px rgba(0,0,0,.08)}
+</style>
+<script>
+(function() {
+  var pref = localStorage.getItem('twm_tema') || 'auto';
+  var claro;
+  if (pref === 'claro') claro = true;
+  else if (pref === 'escuro') claro = false;
+  else { var h = new Date().getHours(); claro = h >= 6 && h < 18; }
+  function aplicar() { if (claro) document.body.classList.add('light'); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', aplicar);
+  else aplicar();
+})();
+</script>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-left">
+    <div class="btn-back" onclick="voltarEstoque()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="17" height="17"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    </div>
+    <div class="header-title">Estoque de Pneus</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button onclick="sincronizar()" style="width:34px;height:34px;background:rgba(255,255,255,.07);border:1px solid var(--border2);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+    </button>
+    <div class="header-badge">PNEUS</div>
+  </div>
+</div>
+
+<div class="sync-bar" id="syncBar"></div>
+
+<!-- TELA LISTA -->
+<div id="s-lista" class="scr on">
+  <div class="tabs">
+    <div class="tab on"  onclick="showTab('todos')">Todos</div>
+    <div class="tab"     onclick="showTab('disponivel')">Disponível</div>
+    <div class="tab"     onclick="showTab('em_uso')">Em Uso</div>
+    <div class="tab"     onclick="showTab('reforma')">Reforma</div>
+    <div class="tab"     onclick="showTab('venda')">Venda</div>
+    <div class="tab"     onclick="showTab('conserto')">Conserto</div>
+    <div class="tab"     onclick="showTab('descarte')">Descarte</div>
+  </div>
+  <div class="pad">
+    <div class="counters" id="counters"></div>
+    <div class="srch-wrap">
+      <svg class="srch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="srch" id="srchInput" placeholder="Buscar nº fogo, medida, frota..." oninput="filtrar(this.value)">
+    </div>
+    <div class="tire-list" id="tireList"></div>
+  </div>
+</div>
+
+<!-- TELA DETALHE -->
+<div id="s-detalhe" class="scr">
+  <div class="pad" id="detalheContent" style="padding-bottom:90px"></div>
+</div>
+
+<!-- FAB Adicionar -->
+<button class="fab" onclick="abrirModalAdicionar()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="24" height="24"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<!-- MODAL ADICIONAR/EDITAR -->
+<div class="modal-overlay" id="modalPneu">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitulo">➕ Adicionar Pneu</div>
+    <div class="mfg">
+      <label>Nº Fogo</label>
+      <input class="modal-input" id="m-fogo" placeholder="Ex: 14500" inputmode="numeric">
+    </div>
+    <div class="mfg">
+      <label>Medida</label>
+      <input class="modal-input" id="m-medida" placeholder="Ex: 295/80R22.5">
+    </div>
+    <div class="mfg">
+      <label>Vida</label>
+      <select class="modal-select" id="m-vida">
+        <option value="">Selecione...</option>
+        <option value="Novo">Novo</option>
+        <option value="1ª Recapagem">1ª Recapagem</option>
+        <option value="2ª Recapagem">2ª Recapagem</option>
+        <option value="3ª Recapagem">3ª Recapagem</option>
+      </select>
+    </div>
+    <div class="mfg">
+      <label>Status</label>
+      <div class="status-grid" id="statusGrid"></div>
+    </div>
+    <div class="mfg" id="frotaWrap">
+      <label>Frota (se em uso)</label>
+      <input class="modal-input" id="m-frota" placeholder="Ex: VP-183">
+    </div>
+    <div class="mfg" id="sulcoWrap">
+      <label>Sulco (mm)</label>
+      <input class="modal-input" id="m-sulco" type="number" placeholder="Ex: 8.5" step="0.5" min="0" max="25">
+    </div>
+    <div class="mfg">
+      <label>Observação</label>
+      <input class="modal-input" id="m-obs" placeholder="Opcional">
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-confirm" onclick="salvarPneu()">✓ Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw4BZz60sy9BsFACdqKktKpzJOfP8mj0U6s1G7Em5pwhaC_kQHCk-GPbLNZOlwjvrOwsw/exec';
+
+// ── ESTADO ─────────────────────────────────────────────────────
+let estoque = [];
+let curTab = 'todos';
+let curFiltro = '';
+let pneuEditando = null;
+let statusSelecionado = '';
+
+const STATUS_LABELS = {
+  disponivel: {label:'🟢 Disponível', cls:'st-disponivel'},
+  em_uso:     {label:'🔵 Em Uso',     cls:'st-em_uso'},
+  reforma:    {label:'🔄 Reforma',    cls:'st-reforma'},
+  conserto:   {label:'🔧 Conserto',   cls:'st-conserto'},
+  descarte:   {label:'🗑 Descarte',   cls:'st-descarte'},
+  venda:      {label:'💰 Venda',      cls:'st-venda'},
+  vendido:    {label:'✅ Vendido',    cls:'st-vendido'},
+};
+
+// ── LOCAL STORAGE ───────────────────────────────────────────────
+function salvarLocal(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function lerLocal(k){try{return JSON.parse(localStorage.getItem(k));}catch(e){return null;}}
+
+// ── SYNC BAR ────────────────────────────────────────────────────
+function setSyncBar(msg, hideMs) {
+  const el = document.getElementById('syncBar');
+  el.textContent = msg; el.style.display = 'block';
+  if (hideMs) setTimeout(() => el.style.display = 'none', hideMs);
+}
+
+// ── NORMALIZA STATUS ────────────────────────────────────────────
+function normStatus(s) {
+  if (!s) return 'disponivel';
+  s = s.toLowerCase().trim();
+  const map = {
+    'em uso':'em_uso','emuso':'em_uso',
+    'reforma':'reforma','aguardando':'reforma','reformadora':'reforma',
+    'conserto':'conserto','recuperacao':'conserto','recuperação':'conserto',
+    'descarte':'descarte','venda':'venda','vendido':'vendido',
+    'disponivel':'disponivel','disponível':'disponivel',
+  };
+  return map[s] || s;
+}
+
+// ── INIT ────────────────────────────────────────────────────────
+function init() {
+  // Verifica sessão de forma segura
+  try {
+    const cache = lerLocal('twm_user_cache');
+    if (!cache) {
+      sessionStorage.setItem('twm_after_login', 'estoque.html');
+      window.location.href = 'index.html';
+      return;
+    }
+    const u = typeof cache === 'object' ? cache : JSON.parse(cache);
+    if (!u || !u.email) {
+      sessionStorage.setItem('twm_after_login', 'estoque.html');
+      window.location.href = 'index.html';
+      return;
+    }
+  } catch(e) {
+    sessionStorage.setItem('twm_after_login', 'estoque.html');
+    window.location.href = 'index.html';
+    return;
+  }
+
+  // Mostra loading imediatamente
+  setSyncBar('⏳ Carregando estoque...');
+  document.getElementById('tireList').innerHTML = '<div class="empty">⏳ Buscando dados da planilha...</div>';
+  renderCounters();
+
+  // Cache local — exibe enquanto busca
+  const cached = lerLocal('twm_estoque') || [];
+  if (cached.length) {
+    estoque = cached.map(p => ({...p, status: normStatus(p.status)}));
+    render();
+  }
+
+  // Busca servidor imediatamente
+  sincronizar();
+}
+
+function sincronizar() {
+  setSyncBar('⏳ Sincronizando...');
+  var url = SCRIPT_URL + '?action=getEstoque&t=' + Date.now();
+  fetch(url)
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(function(txt) {
+      var d;
+      try { d = JSON.parse(txt); }
+      catch(e) { throw new Error('Resposta inválida do servidor. Verifique se o deploy do Apps Script está publicado como "Qualquer pessoa".'); }
+      if (d.ok && Array.isArray(d.estoque)) {
+        if (d.estoque.length === 0) {
+          setSyncBar('⚠ Aba ESTOQUE vazia ou não encontrada', 5000);
+          document.getElementById('tireList').innerHTML =
+            '<div class="empty">⚠ Nenhum pneu na planilha.<br>Acesse a planilha e verifique se existe a aba <strong>ESTOQUE</strong> com dados.</div>';
+          return;
+        }
+        estoque = d.estoque.map(function(p) {
+          return Object.assign({}, p, {status: normStatus(p.status)});
+        });
+        salvarLocal('twm_estoque', estoque);
+        render();
+        setSyncBar('✅ ' + estoque.length + ' pneus carregados', 3000);
+      } else {
+        var msg = d.msg || 'Resposta inesperada do servidor';
+        setSyncBar('❌ ' + msg, 6000);
+        console.error('[TWM Estoque] getEstoque retornou:', d);
+      }
+    })
+    .catch(function(err) {
+      var msg = err.message || 'Erro de conexão';
+      if (!navigator.onLine) {
+        setSyncBar('📵 Sem internet — exibindo cache local', 3000);
+      } else {
+        setSyncBar('❌ ' + msg, 6000);
+        console.error('[TWM Estoque] Erro sincronizar:', err);
+      }
+      if (!estoque.length) {
+        document.getElementById('tireList').innerHTML =
+          '<div class="empty">📵 Sem dados.<br><small style="font-size:10px;opacity:.6">' + msg + '</small></div>';
+      }
+    });
+}
+
+// ── TABS ────────────────────────────────────────────────────────
+function showTab(t) {
+  curTab = t;
+  curFiltro = '';
+  document.getElementById('srchInput').value = '';
+  document.querySelectorAll('.tab').forEach((x,i) => {
+    x.classList.toggle('on', ['todos','disponivel','em_uso','reforma','venda','conserto','descarte'][i] === t);
+  });
+  render();
+}
+
+// ── FILTRO ──────────────────────────────────────────────────────
+function filtrar(val) {
+  curFiltro = val.toLowerCase();
+  renderLista();
+}
+
+// ── RENDER ──────────────────────────────────────────────────────
+function render() {
+  renderCounters();
+  renderLista();
+}
+
+function getLista() {
+  let lista = estoque;
+  if (curTab === 'disponivel') lista = estoque.filter(p => p.status === 'disponivel');
+  else if (curTab === 'em_uso') lista = estoque.filter(p => p.status === 'em_uso');
+  else if (curTab === 'reforma') lista = estoque.filter(p => ['reforma','aguardando','reformadora'].includes(p.status));
+  else if (curTab === 'venda')   lista = estoque.filter(p => ['venda','vendido'].includes(p.status));
+  else if (curTab === 'conserto') lista = estoque.filter(p => ['conserto','recuperacao'].includes(p.status));
+  else if (curTab === 'descarte') lista = estoque.filter(p => p.status === 'descarte');
+
+  // Na aba TODOS ordena por status (disponivel, reforma, conserto, descarte, venda, em_uso)
+  if (curTab === 'todos' && !curFiltro) {
+    const ordem = {disponivel:0, reforma:1, conserto:2, descarte:3, venda:4, vendido:5, em_uso:6};
+    lista = [...lista].sort((a,b) => (ordem[a.status]??7) - (ordem[b.status]??7));
+  }
+
+  if (curFiltro) {
+    lista = lista.filter(p =>
+      (p.fogo||'').toLowerCase().includes(curFiltro) ||
+      (p.medida||'').toLowerCase().includes(curFiltro) ||
+      (p.frota||'').toLowerCase().includes(curFiltro) ||
+      (p.status||'').toLowerCase().includes(curFiltro)
+    );
+  }
+  return lista;
+}
+
+function renderCounters() {
+  const tots = {
+    disponivel: estoque.filter(p => p.status === 'disponivel').length,
+    em_uso:     estoque.filter(p => p.status === 'em_uso').length,
+    reforma:    estoque.filter(p => ['reforma','aguardando','reformadora'].includes(p.status)).length,
+    venda:      estoque.filter(p => ['venda','vendido'].includes(p.status)).length,
+    conserto:   estoque.filter(p => ['conserto','recuperacao'].includes(p.status)).length,
+    descarte:   estoque.filter(p => p.status === 'descarte').length,
+  };
+  document.getElementById('counters').innerHTML = `
+    <div class="counter-card" onclick="showTab('disponivel')">
+      <div class="counter-num" style="color:var(--green)">${tots.disponivel}</div>
+      <div class="counter-label">Disponível</div>
+    </div>
+    <div class="counter-card" onclick="showTab('em_uso')">
+      <div class="counter-num" style="color:var(--accent3)">${tots.em_uso}</div>
+      <div class="counter-label">Em Uso</div>
+    </div>
+    <div class="counter-card" onclick="showTab('reforma')">
+      <div class="counter-num" style="color:var(--blue)">${tots.reforma}</div>
+      <div class="counter-label">Reforma</div>
+    </div>
+    <div class="counter-card" onclick="showTab('venda')">
+      <div class="counter-num" style="color:var(--gold)">${tots.venda}</div>
+      <div class="counter-label">Venda</div>
+    </div>
+    <div class="counter-card" onclick="showTab('conserto')">
+      <div class="counter-num" style="color:var(--orange)">${tots.conserto}</div>
+      <div class="counter-label">Conserto</div>
+    </div>
+    <div class="counter-card" onclick="showTab('descarte')">
+      <div class="counter-num" style="color:var(--red)">${tots.descarte}</div>
+      <div class="counter-label">Descarte</div>
+    </div>`;
+}
+
+function renderLista() {
+  const lista = getLista();
+  const el = document.getElementById('tireList');
+  if (!lista.length) {
+    el.innerHTML = '<div class="empty">Nenhum pneu encontrado.</div>';
+    return;
+  }
+  const LIMITE = 500;
+  const st = STATUS_LABELS;
+  const mostrar = lista.slice(0, LIMITE);
+  el.innerHTML = mostrar.map(p => {
+    const s = p.status || 'disponivel';
+    const info = st[s] || {label: s, cls: ''};
+    return `<div class="tire-card" onclick="abrirDetalhe('${p.fogo}')">
+      <div>
+        <div class="tire-fogo">${p.fogo||'—'}</div>
+        <div class="tire-info">
+          <span class="status-badge ${info.cls}">${info.label}</span>
+          ${p.medida ? `<span>${p.medida}</span>` : ''}
+          ${p.vida ? `<span>📋 ${p.vida}</span>` : ''}
+          ${p.frota ? `<span class="frota-badge">🚛 ${p.frota}</span>` : ''}
+          ${p.sulco_mm ? `<span>🔵 ${p.sulco_mm}mm</span>` : ''}
+        </div>
+      </div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" width="18" height="18"><path d="M9 18l6-6-6-6"/></svg>
+    </div>`;
+  }).join('') + (lista.length > LIMITE ? `
+    <div class="empty" style="padding:16px;font-size:12px">
+      Mostrando ${LIMITE} de ${lista.length} pneus. Use a busca para filtrar.
+    </div>` : '');
+}
+
+// ── DETALHE ─────────────────────────────────────────────────────
+function abrirDetalhe(fogo) {
+  const p = estoque.find(x => x.fogo === fogo);
+  if (!p) return;
+  history.pushState({tela:'detalhe', fogo}, '');
+  document.getElementById('s-lista').classList.remove('on');
+  document.getElementById('s-detalhe').classList.add('on');
+  const s = p.status || 'disponivel';
+  const info = STATUS_LABELS[s] || {label:s, cls:''};
+  document.getElementById('detalheContent').innerHTML = `
+    <div class="det-header">
+      <div class="det-fogo">${p.fogo}</div>
+      <div style="margin-top:8px"><span class="status-badge ${info.cls}" style="font-size:12px">${info.label}</span></div>
+      <div class="det-row">
+        <div class="det-cell"><div class="det-cell-label">Medida</div><div class="det-cell-val">${p.medida||'—'}</div></div>
+        <div class="det-cell"><div class="det-cell-label">Vida</div><div class="det-cell-val">${p.vida||'—'}</div></div>
+        <div class="det-cell"><div class="det-cell-label">Frota</div><div class="det-cell-val">${p.frota||'—'}</div></div>
+        <div class="det-cell"><div class="det-cell-label">Sulco</div><div class="det-cell-val">${p.sulco_mm ? p.sulco_mm+'mm' : '—'}</div></div>
+        <div class="det-cell"><div class="det-cell-label">Entrada</div><div class="det-cell-val">${p.data_entrada||'—'}</div></div>
+        <div class="det-cell"><div class="det-cell-label">Obs</div><div class="det-cell-val">${p.observacao||'—'}</div></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button onclick="abrirModalEditar('${p.fogo}')" style="flex:1;padding:12px;background:rgba(123,63,228,.15);border:1.5px solid var(--accent);border-radius:12px;color:var(--accent3);font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;cursor:pointer">✏️ Editar</button>
+        <button onclick="excluirPneu('${p.fogo}')" style="padding:12px 16px;background:rgba(239,68,68,.1);border:1.5px solid var(--red);border-radius:12px;color:var(--red);font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;cursor:pointer">🗑</button>
+      </div>
+    </div>
+    <div class="det-hist">
+      <div class="det-hist-title">📋 Histórico de Trocas</div>
+      <div class="hist-row">Buscando histórico...</div>
+    </div>`;
+  buscarHistorico(fogo);
+}
+
+function buscarHistorico(fogo) {
+  fetch(SCRIPT_URL + '?action=getHistoricoPneus')
+    .then(r => r.json())
+    .then(d => {
+      const hist = (d.historico || []).filter(h => h.fogo_antigo === fogo || h.fogo_novo === fogo);
+      const el = document.querySelector('.det-hist');
+      if (!el) return;
+      if (!hist.length) {
+        el.innerHTML = '<div class="det-hist-title">📋 Histórico de Trocas</div><div class="hist-row">Nenhum histórico encontrado.</div>';
+        return;
+      }
+      el.innerHTML = '<div class="det-hist-title">📋 Histórico de Trocas</div>' +
+        hist.slice(0,10).map(h => `<div class="hist-row">
+          <strong>${h.data||'—'}</strong> · ${h.veiculo||''} ${h.posicao_nome||''}<br>
+          ${h.fogo_antigo||'—'} → ${h.fogo_novo||'—'} · ${h.borracheiro||''}
+        </div>`).join('');
+    }).catch(() => {
+      const el = document.querySelector('.det-hist');
+      if (el) el.innerHTML = '<div class="det-hist-title">📋 Histórico</div><div class="hist-row">📵 Offline</div>';
+    });
+}
+
+// ── MODAL ADICIONAR ─────────────────────────────────────────────
+function abrirModalAdicionar() {
+  pneuEditando = null;
+  statusSelecionado = 'disponivel';
+  document.getElementById('modalTitulo').textContent = '➕ Adicionar Pneu';
+  document.getElementById('m-fogo').value = '';
+  document.getElementById('m-medida').value = '';
+  document.getElementById('m-vida').value = '';
+  document.getElementById('m-frota').value = '';
+  document.getElementById('m-sulco').value = '';
+  document.getElementById('m-obs').value = '';
+  renderStatusGrid();
+  document.getElementById('modalPneu').classList.add('open');
+  history.pushState({tela:'modal'}, '');
+  setTimeout(() => document.getElementById('m-fogo').focus(), 300);
+}
+
+function abrirModalEditar(fogo) {
+  const p = estoque.find(x => x.fogo === fogo);
+  if (!p) return;
+  pneuEditando = fogo;
+  statusSelecionado = p.status || 'disponivel';
+  document.getElementById('modalTitulo').textContent = '✏️ Editar Pneu ' + fogo;
+  document.getElementById('m-fogo').value = p.fogo || '';
+  document.getElementById('m-medida').value = p.medida || '';
+  document.getElementById('m-vida').value = p.vida || '';
+  document.getElementById('m-frota').value = p.frota || '';
+  document.getElementById('m-sulco').value = p.sulco_mm || '';
+  document.getElementById('m-obs').value = p.observacao || '';
+  renderStatusGrid();
+  document.getElementById('modalPneu').classList.add('open');
+  history.pushState({tela:'modal'}, '');
+}
+
+function renderStatusGrid() {
+  const opts = ['disponivel','em_uso','reforma','conserto','descarte','venda'];
+  document.getElementById('statusGrid').innerHTML = opts.map(s => {
+    const info = STATUS_LABELS[s] || {label:s};
+    return `<div class="status-opt${statusSelecionado===s?' sel':''}" onclick="selStatus('${s}')">${info.label}</div>`;
+  }).join('');
+}
+
+function selStatus(s) {
+  statusSelecionado = s;
+  renderStatusGrid();
+}
+
+function fecharModal() {
+  document.getElementById('modalPneu').classList.remove('open');
+}
+
+document.getElementById('modalPneu').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalPneu')) { fecharModal(); history.back(); }
+});
+
+// ── SALVAR PNEU ─────────────────────────────────────────────────
+function salvarPneu() {
+  const fogo = document.getElementById('m-fogo').value.trim();
+  if (!fogo) { showToast('⚠ Informe o nº fogo'); return; }
+  if (!statusSelecionado) { showToast('⚠ Selecione o status'); return; }
+
+  const agora = new Date();
+  const data  = agora.toLocaleDateString('pt-BR');
+  const pneu  = {
+    fogo,
+    medida:      document.getElementById('m-medida').value.trim(),
+    vida:        document.getElementById('m-vida').value,
+    status:      statusSelecionado,
+    frota:       document.getElementById('m-frota').value.trim().toUpperCase(),
+    sulco_mm:    document.getElementById('m-sulco').value,
+    observacao:  document.getElementById('m-obs').value.trim(),
+    data_entrada: pneuEditando ? (estoque.find(p=>p.fogo===pneuEditando)||{}).data_entrada||data : data,
+  };
+
+  // Atualiza local
+  if (pneuEditando) {
+    const idx = estoque.findIndex(p => p.fogo === pneuEditando);
+    if (idx >= 0) estoque[idx] = pneu;
+  } else {
+    if (estoque.find(p => p.fogo === fogo)) { showToast('⚠ Nº fogo já existe'); return; }
+    estoque.unshift(pneu);
+  }
+  salvarLocal('twm_estoque', estoque);
+
+  // Envia ao servidor
+  if (navigator.onLine) {
+    const params = new URLSearchParams({
+      action: pneuEditando ? 'editarPneu' : 'adicionarPneu',
+      fogo: pneu.fogo, medida: pneu.medida, vida: pneu.vida,
+      status: pneu.status, frota: pneu.frota, sulco_mm: pneu.sulco_mm,
+      observacao: pneu.observacao, data_entrada: pneu.data_entrada,
+    });
+    fetch(SCRIPT_URL + '?' + params.toString()).catch(() => {});
+  }
+
+  fecharModal();
+  render();
+  showToast(pneuEditando ? '✅ Pneu atualizado!' : '✅ Pneu adicionado!');
+  pneuEditando = null;
+}
+
+// ── EXCLUIR PNEU ────────────────────────────────────────────────
+function excluirPneu(fogo) {
+  if (!confirm(`Excluir pneu ${fogo}?`)) return;
+  estoque = estoque.filter(p => p.fogo !== fogo);
+  salvarLocal('twm_estoque', estoque);
+  voltarLista();
+  render();
+  showToast('🗑 Pneu removido');
+  if (navigator.onLine) {
+    fetch(SCRIPT_URL + '?action=excluirPneu&fogo=' + fogo).catch(() => {});
+  }
+}
+
+// ── NAVEGAÇÃO ────────────────────────────────────────────────────
+function voltarLista() {
+  document.getElementById('s-detalhe').classList.remove('on');
+  document.getElementById('s-lista').classList.add('on');
+}
+
+function voltarEstoque() {
+  const modal = document.getElementById('modalPneu').classList.contains('open');
+  const detalhe = document.getElementById('s-detalhe').classList.contains('on');
+  if (modal) { fecharModal(); return; }
+  if (detalhe) { voltarLista(); return; }
+  window.location.href = 'index.html';
+}
+
+window.addEventListener('popstate', function(e) {
+  const state = e.state || {};
+  const modal = document.getElementById('modalPneu').classList.contains('open');
+  const detalhe = document.getElementById('s-detalhe').classList.contains('on');
+  if (modal) { fecharModal(); return; }
+  if (detalhe) { voltarLista(); return; }
+  window.location.href = 'index.html';
+});
+
+// ── TOAST ────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── INIT ─────────────────────────────────────────────────────────
+history.replaceState({tela:'lista'}, '');
+init();
+</script>
+</body>
+</html>
