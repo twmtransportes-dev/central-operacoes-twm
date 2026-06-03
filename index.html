@@ -234,6 +234,9 @@ html.pre-light body { --bg:#F0F0F5;--bg2:#FFFFFF;--bg3:#F8F7FF;--border:rgba(0,0
 .mod-badge.verde{background:rgba(16,185,129,.18);color:#10B981}
 .mod-badge.vermelho{background:rgba(239,68,68,.18);color:#EF4444;font-size:13px;padding:2px 7px}
 .mod-badge.cinza{background:rgba(255,255,255,.07);color:var(--muted)}
+.mod-badge.ciano{background:rgba(6,182,212,.18);color:#22D3EE}
+.mod-badge.laranja{background:rgba(249,115,22,.18);color:#F97316}
+.mod-badge.roxo{background:rgba(168,85,247,.18);color:#C084FC}
 .mod-footer{text-align:center;padding:8px 0 0;font-size:10px;color:rgba(255,255,255,.15);letter-spacing:2px;text-transform:uppercase}
 </style>
 <style>
@@ -1174,6 +1177,7 @@ function normalizarPermissoes(motorista) {
     abastecimento:    isAdmin || ativo(m.abastecimento    || m.ABASTECIMENTO),
     relatorios:       isAdmin || ativo(m.relatorios       || m.RELATÓRIOS        || m.RELATORIOS),
     manutencao:       isAdmin || ativo(m.manutencao       || m.MANUTENÇÃO        || m.MANUTENCAO),
+    compras:          isAdmin || ativo(m.compras          || m.COMPRAS),
   };
 
   // ── Permissões dinâmicas — qualquer chave retornada pelo Apps Script ──
@@ -1254,6 +1258,7 @@ function verificarPermissao(modulo) {
       'lavagem.html':                    'controle_lavagem',
       'abastecimento.html':              'abastecimento',
       'manutencao.html':                 'manutencao',
+      'solicitacao_compras.html':        'compras',
       'relatorios.html':                 'relatorios',
     };
     var chave = mapa[modulo];
@@ -1692,6 +1697,7 @@ var MODS = [
   {id:'lavagem',   nome:'CONTROLE DE LAVAGEM',     desc:'Registro e monitoramento de lavagem da frota', href:'lavagem.html',                    badge:'verde',    bl:'Ativo',    bg:'rgba(6,182,212,.18)',   ico:'<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M6 20 Q8 12 16 10 Q24 12 26 20 L26 28 Q26 29 25 29 L7 29 Q6 29 6 28 Z" fill="#06B6D4" opacity=".15" stroke="#06B6D4" stroke-width="2" stroke-linejoin="round"/><path d="M10 20 Q12 15 16 14 Q20 15 22 20" stroke="#06B6D4" stroke-width="1.5" stroke-linecap="round" fill="none" opacity=".6"/><path d="M13 6 Q16 3 19 6" stroke="#06B6D4" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M10 9 Q16 5 22 9" stroke="#06B6D4" stroke-width="1.5" stroke-linecap="round" fill="none" opacity=".5"/><circle cx="16" cy="21" r="3" fill="#06B6D4"/><line x1="8" y1="29" x2="24" y2="29" stroke="#06B6D4" stroke-width="2" stroke-linecap="round"/></svg>'},
   {id:'abastecimento', nome:'ABASTECIMENTO',         desc:'Diesel, Arla 32 e consumo da frota',          href:'abastecimento.html',               badge:'verde',    bl:'Ativo',    bg:'rgba(245,158,11,.18)',  ico:'<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M8 6 L8 26 L20 26 L20 12 L14 6 Z" fill="#F59E0B" opacity=".15" stroke="#F59E0B" stroke-width="2" stroke-linejoin="round"/><path d="M14 6 L14 12 L20 12" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M22 14 L26 14 L26 22 Q26 24 24 24 Q22 24 22 22 Z" fill="#F59E0B" opacity=".6" stroke="#F59E0B" stroke-width="1.5"/><line x1="22" y1="14" x2="22" y2="10" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/><line x1="11" y1="17" x2="17" y2="17" stroke="#F59E0B" stroke-width="1.8" stroke-linecap="round"/><line x1="11" y1="21" x2="17" y2="21" stroke="#F59E0B" stroke-width="1.8" stroke-linecap="round"/></svg>'},
   {id:'manutencao',nome:'MANUTENÇÃO',             desc:'Solicitações e ordens de serviço',            href:'manutencao.html',                  badge:'laranja',  bl:'Ativo',    bg:'rgba(249,115,22,.18)',  ico:'<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="4" y="8" width="24" height="18" rx="3" fill="#F97316" opacity=".12" stroke="#F97316" stroke-width="2"/><path d="M10 8 L10 5 Q10 4 11 4 L21 4 Q22 4 22 5 L22 8" stroke="#F97316" stroke-width="2" stroke-linecap="round" fill="none"/><line x1="10" y1="14" x2="22" y2="14" stroke="#F97316" stroke-width="1.8" stroke-linecap="round"/><line x1="10" y1="18" x2="18" y2="18" stroke="#F97316" stroke-width="1.8" stroke-linecap="round"/><circle cx="23" cy="23" r="5" fill="#F97316" opacity=".9"/><line x1="23" y1="20.5" x2="23" y2="23" stroke="white" stroke-width="1.5" stroke-linecap="round"/><line x1="23" y1="23" x2="25" y2="23" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>'},
+  {id:'compras',   nome:'SOL. COMPRAS',           desc:'Pedidos e solicitações de compra',            href:'solicitacao_compras.html',          badge:'roxo',     bl:'Ativo',    bg:'rgba(168,85,247,.18)',  ico:'<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="9" cy="28" r="2.5" fill="#A855F7"/><circle cx="22" cy="28" r="2.5" fill="#A855F7"/><path d="M1 2 L5 2 L8.5 18.5 A2 2 0 0 0 10.5 20 L24 20 A2 2 0 0 0 25.9 18.6 L29 8 L6 8" stroke="#A855F7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><line x1="13" y1="13" x2="13" y2="17" stroke="#A855F7" stroke-width="1.8" stroke-linecap="round"/><line x1="11" y1="15" x2="15" y2="15" stroke="#A855F7" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="13" x2="18" y2="17" stroke="#A855F7" stroke-width="1.8" stroke-linecap="round"/><line x1="16" y1="15" x2="20" y2="15" stroke="#A855F7" stroke-width="1.8" stroke-linecap="round"/></svg>'},
   {id:'docs',      nome:'DOCUMENTAÇÃO',            desc:'CRLV, CIV, CNH e mais',                      href:'#',                                badge:'cinza',    bl:'Em breve', bg:'rgba(245,158,11,.18)',  ico:'<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M6 2 L22 2 L28 9 L28 30 L6 30 Z" fill="#F59E0B" opacity=".12" stroke="#F59E0B" stroke-width="2" stroke-linejoin="round"/><path d="M22 2 L22 9 L28 9" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" fill="none"/><line x1="11" y1="14" x2="21" y2="14" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/><line x1="11" y1="19" x2="21" y2="19" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/><line x1="11" y1="24" x2="17" y2="24" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/></svg>'},
   {id:'gps',       nome:'GPS LOCALIZAÇÃO',         desc:'Rastreamento em tempo real',                  href:'#',                                badge:'cinza',    bl:'Em breve', bg:'rgba(16,185,129,.18)',  ico:'<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 3 C10 3 6 8 6 13 C6 21 16 30 16 30 C16 30 26 21 26 13 C26 8 22 3 16 3 Z" fill="#10B981" opacity=".15" stroke="#10B981" stroke-width="2"/><circle cx="16" cy="13" r="4" fill="#10B981"/><circle cx="16" cy="13" r="2" fill="white"/><path d="M10 7 C8 9 8 13 8 13" stroke="#10B981" stroke-width="1.5" stroke-linecap="round" opacity=".5"/><path d="M22 7 C24 9 24 13 24 13" stroke="#10B981" stroke-width="1.5" stroke-linecap="round" opacity=".5"/></svg>'},
   {id:'rel',       nome:'RELATÓRIOS',              desc:'Dashboards e histórico da frota',             href:'relatorios.html',                  badge:'ciano',    bl:'Ativo', bg:'rgba(6,182,212,.18)',   ico:'<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><line x1="5" y1="27" x2="27" y2="27" stroke="#22D3EE" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="5" x2="5" y2="27" stroke="#22D3EE" stroke-width="2" stroke-linecap="round"/><rect x="8" y="18" width="4" height="9" rx="1.5" fill="#22D3EE" opacity=".5"/><rect x="14" y="12" width="4" height="15" rx="1.5" fill="#22D3EE" opacity=".75"/><rect x="20" y="7" width="4" height="20" rx="1.5" fill="#22D3EE"/></svg>'},
@@ -1739,6 +1745,7 @@ function renderMods() {
     'lavagem.html':                     'controle_lavagem',
     'abastecimento.html':               'abastecimento',
     'manutencao.html':                  'manutencao',
+    'solicitacao_compras.html':         'compras',
     // ── Módulos futuros — adicione só a linha abaixo ─────────────
     // 'novo_modulo.html':         'nome_da_permissao',
     // 'manutencao_os.html':       'manutencao_os',
