@@ -591,28 +591,46 @@ function aplicarTema() {
 var SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(SHEET_NAME);
 
 function buscarPedidos() {
+  if (!SCRIPT_URL) {
+    if (pedidos.length === 0) {
+      document.getElementById('lista-wrap').innerHTML =
+        '<div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">Script não configurado</div><div class="empty-sub">SCRIPT_URL não definida</div></div>';
+    }
+    return;
+  }
   var xhr = new XMLHttpRequest();
-  xhr.timeout = 12000;
-  xhr.open('GET', SHEET_CSV_URL + '&_=' + Date.now(), true);
+  xhr.timeout = 15000;
+  xhr.open('GET', SCRIPT_URL + '?action=getPedidos&_=' + Date.now(), true);
   xhr.onload = function() {
-    if (xhr.status === 200 && xhr.responseText && xhr.responseText.length > 10) {
-      var novos = parsePlanilha(xhr.responseText);
-      if (novos.length > 0 || pedidos.length === 0) {
-        pedidos = novos;
-        try { localStorage.setItem(CACHE_KEY, JSON.stringify(pedidos)); } catch(e) {}
-        renderLista();
-        renderStats();
-        if (novos.length > 0) showSyncDot();
+    try {
+      var res = JSON.parse(xhr.responseText);
+      if (res.ok && Array.isArray(res.pedidos)) {
+        var novos = res.pedidos;
+        if (novos.length > 0 || pedidos.length === 0) {
+          pedidos = novos;
+          try { localStorage.setItem(CACHE_KEY, JSON.stringify(pedidos)); } catch(e) {}
+          renderLista();
+          renderStats();
+          if (novos.length > 0) showSyncDot();
+        }
+      } else {
+        console.warn('[TWM Compras] getPedidos retornou erro:', res.msg);
+        if (pedidos.length === 0) renderListaVazia();
       }
+    } catch(e) {
+      console.error('[TWM Compras] Erro ao parsear resposta:', e);
+      if (pedidos.length === 0) renderListaVazia();
     }
   };
   xhr.onerror = xhr.ontimeout = function() {
-    if (pedidos.length === 0) {
-      document.getElementById('lista-wrap').innerHTML =
-        '<div class="empty"><div class="empty-ico">📡</div><div class="empty-txt">Sem conexão</div><div class="empty-sub">Verifique sua internet e sincronize</div></div>';
-    }
+    if (pedidos.length === 0) renderListaVazia();
   };
   xhr.send();
+}
+
+function renderListaVazia() {
+  document.getElementById('lista-wrap').innerHTML =
+    '<div class="empty"><div class="empty-ico">📡</div><div class="empty-txt">Sem conexão</div><div class="empty-sub">Verifique sua internet e sincronize</div></div>';
 }
 
 // Parser CSV da planilha
