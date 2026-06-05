@@ -30,6 +30,7 @@
   --sol-bg:rgba(245,158,11,0.10);--sol-border:rgba(245,158,11,0.25);--sol-txt:#FCD34D;
   --fin-bg:rgba(16,185,129,0.10);--fin-border:rgba(16,185,129,0.25);--fin-txt:#34D399;
   --can-bg:rgba(239,68,68,0.10);--can-border:rgba(239,68,68,0.25);--can-txt:#F87171;
+  --orc-bg:rgba(6,182,212,0.10);--orc-border:rgba(6,182,212,0.25);--orc-txt:#22D3EE;
   --urg-bg:rgba(239,68,68,0.12);--urg-border:rgba(239,68,68,0.30);--urg-txt:#F87171;
   --r:10px;--rl:16px;
 }
@@ -253,8 +254,56 @@ body.light .footer-bar{background:rgba(240,240,245,0.9)}
 .det-item-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
   background:rgba(123,63,228,.15);color:var(--accent3);flex-shrink:0}
 
-/* ══════════ FORNECEDOR SECTION ══════════ */
+/* ══════════ FORNECEDOR / ORC ══════════ */
 .forn-row{display:grid;grid-template-columns:1fr 100px;gap:8px}
+.badge-orc{background:var(--orc-bg);border:1px solid var(--orc-border);color:var(--orc-txt)}
+.pedido-card.st-orc::before{background:#06B6D4}
+.chip.orc.on{background:#06B6D4;border-color:#06B6D4;box-shadow:0 2px 10px rgba(6,182,212,.35);color:#000}
+
+/* ══════════ FOTO INPUT ══════════ */
+.foto-area{border:2px dashed var(--border2);border-radius:var(--r);padding:16px;text-align:center;
+  cursor:pointer;transition:.15s;background:var(--bg3);position:relative;overflow:hidden}
+.foto-area:hover{border-color:#06B6D4;background:rgba(6,182,212,.05)}
+.foto-area.tem-foto{border-color:rgba(6,182,212,.4);background:rgba(6,182,212,.06)}
+.foto-area input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.foto-ico{font-size:28px;margin-bottom:6px;line-height:1}
+.foto-lbl{font-size:12px;font-weight:600;color:var(--muted)}
+.foto-lbl.ativa{color:#22D3EE}
+.foto-preview-wrap{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.foto-preview{width:68px;height:68px;border-radius:8px;object-fit:cover;border:1px solid var(--border2);cursor:pointer;transition:.15s}
+.foto-preview:hover{transform:scale(1.06)}
+.foto-del{width:20px;height:20px;border-radius:50%;background:var(--red);border:none;color:#fff;
+  font-size:11px;cursor:pointer;margin-top:-36px;margin-left:-10px;position:relative;z-index:2;
+  display:inline-flex;align-items:center;justify-content:center}
+
+/* GALERIA NO DETALHE */
+.det-fotos{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.det-foto-thumb{width:76px;height:76px;border-radius:8px;object-fit:cover;border:1px solid var(--border2);cursor:pointer;transition:.15s}
+.det-foto-thumb:hover{transform:scale(1.06);box-shadow:0 4px 14px rgba(0,0,0,.4)}
+
+/* FOTO VIEWER MODAL */
+.foto-viewer{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.93);display:none;
+  flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.foto-viewer.show{display:flex}
+.foto-viewer img{max-width:92vw;max-height:78vh;border-radius:12px;object-fit:contain}
+.foto-viewer-close{position:absolute;top:20px;right:20px;width:40px;height:40px;border-radius:50%;
+  background:rgba(255,255,255,.13);border:none;color:#fff;font-size:20px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center}
+.foto-viewer-nav{display:flex;gap:14px;align-items:center}
+.foto-viewer-btn{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.13);border:none;
+  color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
+.foto-viewer-btn:hover{background:rgba(255,255,255,.24)}
+.foto-viewer-count{font-family:'Barlow Condensed',sans-serif;font-size:14px;color:rgba(255,255,255,.6);min-width:54px;text-align:center}
+
+/* BOTÃO ORÇANDO */
+.btn-orc{background:linear-gradient(135deg,#0891B2,#06B6D4);color:#fff;border-color:#06B6D4;
+  box-shadow:0 2px 12px rgba(6,182,212,.3);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:.5px;text-transform:uppercase}
+
+/* ÍCONE FOTO NA LISTA */
+.pc-foto{width:18px;height:18px;border-radius:4px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;
+  background:rgba(6,182,212,.12);border:1px solid rgba(6,182,212,.25)}
+
+body.light .foto-area{background:#f0f0f8}
 
 /* ══════════ TOAST ══════════ */
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
@@ -296,6 +345,17 @@ body.light .fab{box-shadow:0 4px 20px rgba(123,63,228,.4)}
 <div class="bg-mesh"></div>
 <div class="grid-lines"></div>
 
+<!-- FOTO VIEWER GLOBAL -->
+<div class="foto-viewer" id="foto-viewer">
+  <button class="foto-viewer-close" onclick="fecharViewer()">✕</button>
+  <img id="fv-img" src="" alt="Foto">
+  <div class="foto-viewer-nav">
+    <button class="foto-viewer-btn" onclick="navViewer(-1)">‹</button>
+    <span class="foto-viewer-count" id="fv-count"></span>
+    <button class="foto-viewer-btn" onclick="navViewer(1)">›</button>
+  </div>
+</div>
+
 <!-- ══ TELA LISTA ══ -->
 <div class="tela on app" id="tela-lista">
 
@@ -324,22 +384,22 @@ body.light .fab{box-shadow:0 4px 20px rgba(123,63,228,.4)}
   </div>
 
   <!-- Stats -->
-  <div class="stats">
+  <div class="stats" style="grid-template-columns:repeat(4,1fr)">
     <div class="stat-item" onclick="setFiltro('sol')">
       <div class="stat-n gold" id="s-sol">—</div>
       <div class="stat-l">Pendentes</div>
+    </div>
+    <div class="stat-item" onclick="setFiltro('orc')">
+      <div class="stat-n" style="color:#22D3EE" id="s-orc">—</div>
+      <div class="stat-l">Orçando</div>
     </div>
     <div class="stat-item" onclick="setFiltro('fin')">
       <div class="stat-n green" id="s-fin">—</div>
       <div class="stat-l">Finalizados</div>
     </div>
-    <div class="stat-item" onclick="setFiltro('can')">
-      <div class="stat-n red" id="s-can">—</div>
-      <div class="stat-l">Cancelados</div>
-    </div>
     <div class="stat-item" onclick="setFiltro('todos')">
       <div class="stat-n blue" id="s-tot">—</div>
-      <div class="stat-l">Total mês</div>
+      <div class="stat-l">Total</div>
     </div>
   </div>
 
@@ -355,6 +415,7 @@ body.light .fab{box-shadow:0 4px 20px rgba(123,63,228,.4)}
       <div class="chip on" data-f="todos" onclick="setFiltro('todos')">Todos</div>
       <div class="chip sol" data-f="sol" onclick="setFiltro('sol')">Pendentes</div>
       <div class="chip fin" data-f="fin" onclick="setFiltro('fin')">Finalizados</div>
+      <div class="chip orc" data-f="orc" onclick="setFiltro('orc')">Orçando</div>
       <div class="chip can" data-f="can" onclick="setFiltro('can')">Cancelados</div>
       <div class="chip urg" data-f="urg" onclick="setFiltro('urg')">Urgentes</div>
     </div>
@@ -398,21 +459,12 @@ body.light .fab{box-shadow:0 4px 20px rgba(123,63,228,.4)}
       <div class="frow">
         <div class="fgroup">
           <label class="flbl">Frota / Setor *</label>
-          <div class="fsel-wrap">
-            <select class="fsel" id="f-frota">
-              <option value="">Selecionar...</option>
-              <option>ESTOQUE</option>
-              <option>lavador</option>
-              <option>oficina</option>
-              <option>VP-186</option>
-              <option>vp-521</option>
-              <option>RJY-7685</option>
-              <option>RJX-7D93</option>
-              <option>TWM-001</option>
-              <option>TWM-003</option>
-              <option>Escritório</option>
-            </select>
-          </div>
+          <input class="finp" id="f-frota" placeholder="Ex: VP-186, Oficina, Escritório..." autocomplete="off" list="frotas-sugestoes">
+          <datalist id="frotas-sugestoes">
+            <option value="ESTOQUE"><option value="Lavador"><option value="Oficina">
+            <option value="VP-186"><option value="vp-521"><option value="Escritório">
+            <option value="Almoxarifado"><option value="Administrativo">
+          </datalist>
         </div>
         <div class="fgroup">
           <label class="flbl">Nível *</label>
@@ -463,6 +515,20 @@ body.light .fab{box-shadow:0 4px 20px rgba(123,63,228,.4)}
           </button>
         </div>
         <div style="font-size:11px;color:var(--muted);opacity:.7">Enter ou clique + para adicionar</div>
+      </div>
+    </div>
+
+    <!-- Fotos -->
+    <div class="fsec">
+      <div class="fsec-title">Fotos do pedido</div>
+      <div class="fgroup">
+        <label class="flbl">Adicionar fotos (opcional)</label>
+        <div class="foto-area" id="foto-area-novo" onclick="document.getElementById('f-fotos').click()">
+          <input type="file" id="f-fotos" accept="image/*" multiple onchange="adicionarFotos(this)">
+          <div class="foto-ico">📷</div>
+          <div class="foto-lbl" id="foto-lbl-novo">Toque para tirar foto ou escolher da galeria</div>
+        </div>
+        <div class="foto-preview-wrap" id="fotos-preview-novo"></div>
       </div>
     </div>
 
@@ -520,14 +586,14 @@ body.light .fab{box-shadow:0 4px 20px rgba(123,63,228,.4)}
 //  CONFIG
 // ══════════════════════════════════════════════
 // ID da planilha Google Sheets
-var SHEET_ID = '1hcehzVRqsmYTzWQ8bg023MlfRB0DmB8xMIZNYU5XVdk';
+var SHEET_ID = '1-UgLHtzFam5u8QVBWkvkLokiC3VxGfnO';
 
 // URL do Apps Script — substitua pela URL do seu script publicado
 // O script precisa aceitar: action=getPedidos | action=savePedido | action=updateStatus
 var SCRIPT_URL = localStorage.getItem('twm_compras_script') || 'https://script.google.com/macros/s/AKfycbw4BZz60sy9BsFACdqKktKpzJOfP8mj0U6s1G7Em5pwhaC_kQHCk-GPbLNZOlwjvrOwsw/exec';
 
 // Aba da planilha com pedidos
-var SHEET_NAME = 'PEDIDO';
+var SHEET_NAME = 'Planilha1';
 
 // Cache local
 var CACHE_KEY = 'twm_compras_pedidos';
@@ -536,11 +602,14 @@ var FILTRO_KEY = 'twm_compras_filtro';
 // ══════════════════════════════════════════════
 //  ESTADO
 // ══════════════════════════════════════════════
-var pedidos = [];
-var filtroAtual = localStorage.getItem(FILTRO_KEY) || 'todos';
-var nivelAtual = 'NORMAL';
-var itensPedido = [];
+var pedidos       = [];
+var filtroAtual   = localStorage.getItem(FILTRO_KEY) || 'todos';
+var nivelAtual    = 'NORMAL';
+var itensPedido   = [];
 var pedidoDetalhe = null;
+var fotosNovas    = [];   // fotos do formulário novo
+var viewerFotos   = [];   // URLs no viewer
+var viewerIdx     = 0;
 
 // ══════════════════════════════════════════════
 //  INIT
@@ -730,6 +799,7 @@ function parseCSVLine(line) {
 
 function normStatus(s) {
   var v = (s || '').toUpperCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (v.includes('ORC') || v.includes('COTAC')) return 'orc';
   if (v.includes('FINAL') || v.includes('COMPRAD') || v.includes('OK')) return 'fin';
   if (v.includes('CANCEL')) return 'can';
   return 'sol';
@@ -760,6 +830,7 @@ function renderLista() {
   var busca = (document.getElementById('search-inp').value || '').toLowerCase().trim();
   var lista = pedidos.filter(function(p) {
     if (filtroAtual === 'sol' && p.status !== 'sol') return false;
+    if (filtroAtual === 'orc' && p.status !== 'orc') return false;
     if (filtroAtual === 'fin' && p.status !== 'fin') return false;
     if (filtroAtual === 'can' && p.status !== 'can') return false;
     if (filtroAtual === 'urg' && p.nivel !== 'URGENTE') return false;
@@ -795,6 +866,7 @@ function renderLista() {
       '<div class="pc-bot">' +
         badgeHtml(p.status) +
         (p.fornecedor ? '<span class="pc-user">' + esc(p.fornecedor) + '</span>' : '') +
+        (p.fotos && p.fotos.length ? '<span class="pc-foto"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22D3EE" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>' : '') +
         '<span class="pc-qty">' +
           '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>' +
           ' ' + p.itens.length + ' item' + (p.itens.length > 1 ? 'ns' : '') +
@@ -809,6 +881,7 @@ function renderLista() {
 function badgeHtml(s) {
   if (s === 'fin') return '<span class="badge badge-fin">✓ Finalizado</span>';
   if (s === 'can') return '<span class="badge badge-can">✕ Cancelado</span>';
+  if (s === 'orc') return '<span class="badge badge-orc">🔍 Orçando</span>';
   return '<span class="badge badge-sol">⏳ Pendente</span>';
 }
 
@@ -816,21 +889,15 @@ function badgeHtml(s) {
 //  STATS
 // ══════════════════════════════════════════════
 function renderStats() {
-  var mes = new Date().getMonth();
-  var ano = new Date().getFullYear();
-  var sol = 0, fin = 0, can = 0, tot = 0;
+  var sol = 0, orc = 0, fin = 0;
   pedidos.forEach(function(p) {
-    // Conta mês atual
-    var d = parseDateBR(p.data);
-    var noMes = d && d.getMonth() === mes && d.getFullYear() === ano;
-    if (noMes || !d) { tot++; }
     if (p.status === 'sol') sol++;
+    else if (p.status === 'orc') orc++;
     else if (p.status === 'fin') fin++;
-    else if (p.status === 'can') can++;
   });
   setStat('s-sol', sol);
+  setStat('s-orc', orc);
   setStat('s-fin', fin);
-  setStat('s-can', can);
   setStat('s-tot', pedidos.length);
 }
 
@@ -877,7 +944,9 @@ function irNovo() {
   document.querySelectorAll('.nivel-opt').forEach(function(b) {
     b.classList.toggle('on', b.classList.contains('normal'));
   });
+  fotosNovas = [];
   renderItens();
+  renderFotosPreview();
   irTela('tela-novo');
   setTimeout(function() { document.getElementById('f-frota').focus(); }, 200);
 }
@@ -952,18 +1021,10 @@ function salvarPedido() {
   var idTemp = 'L' + Date.now().toString().slice(-6);
 
   var novo = {
-    id: idTemp,
-    data: dataStr,
-    nivel: nivelAtual,
-    frota: frota,
-    status: 'sol',
-    obs: obs,
-    solicitante: solicitante,
-    dataNec: dataNec,
-    fornecedor: '',
-    valor: '',
-    comprador: '',
-    notaFiscal: '',
+    id: idTemp, data: dataStr, nivel: nivelAtual, frota: frota, status: 'sol',
+    obs: obs, solicitante: solicitante, dataNec: dataNec,
+    fornecedor: '', valor: '', comprador: '', notaFiscal: '',
+    fotos: fotosNovas.map(function(f){ return { dataUrl: f.dataUrl, nome: f.file ? f.file.name : '' }; }),
     itens: itensPedido.slice()
   };
 
@@ -979,46 +1040,44 @@ function salvarPedido() {
   if (SCRIPT_URL) {
     showLoading('Enviando para planilha...');
     var payload = {
-      action: 'savePedido',
-      nivel: nivelAtual,
-      frota: frota,
-      obs: obs,
-      solicitante: solicitante,
-      dataNec: dataNec,
-      itens: JSON.stringify(itensPedido)
+      action: 'savePedido', nivel: nivelAtual, frota: frota, obs: obs,
+      solicitante: solicitante, dataNec: dataNec,
+      itens: JSON.stringify(itensPedido),
+      fotos: JSON.stringify(fotosNovas.map(function(f){ return f.dataUrl; }))
     };
+    var params = objToQuery(payload);
     var xhr = new XMLHttpRequest();
-    xhr.timeout = 15000;
-    xhr.open('POST', SCRIPT_URL, true);
-    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.timeout = 30000;
+    xhr.open('GET', SCRIPT_URL + '?' + params, true);
     xhr.onload = function() {
       hideLoading();
       try {
         var resp = JSON.parse(xhr.responseText);
-        if (resp.ok && resp.id) {
-          // Atualiza ID do pedido local
+        if (resp.ok) {
+          var novoId = resp.id || idTemp;
           var idx = pedidos.findIndex(function(p) { return p.id === idTemp; });
-          if (idx >= 0) { pedidos[idx].id = resp.id; }
+          if (idx >= 0) pedidos[idx].id = String(novoId);
           try { localStorage.setItem(CACHE_KEY, JSON.stringify(pedidos)); } catch(e) {}
           renderLista();
-          showToast('✓ Salvo na planilha #' + resp.id, 'success');
+          showToast('✓ Salvo na planilha #' + novoId, 'success');
+          setTimeout(buscarPedidos, 3000);
+        } else {
+          showToast('⚠️ Erro: ' + (resp.msg || 'Script'), 'error');
         }
-      } catch(e) {}
-      // Rebusca após salvar
-      setTimeout(buscarPedidos, 2000);
+      } catch(ex) { showToast('⚠️ Resposta inválida', 'error'); }
     };
     xhr.onerror = xhr.ontimeout = function() {
       hideLoading();
-      showToast('⚠️ Salvo localmente. Sync pendente.', '');
+      showToast('⚠️ Salvo local. Sem conexão.', '');
     };
-    xhr.send(objToQuery(payload));
+    xhr.send();
   } else {
     // Sem Apps Script — mostra instrução
     console.info('[TWM Compras] Configure SCRIPT_URL para sincronizar com a planilha. Pedido salvo localmente.');
     setTimeout(buscarPedidos, 1000);
   }
 
-  itensPedido = [];
+  itensPedido = []; fotosNovas = [];
 }
 
 // ══════════════════════════════════════════════
@@ -1076,11 +1135,22 @@ function abrirDetalhe(id) {
     html += '</div></div>';
   }
 
-  // Se admin — ações de atualização via script
-  if (p.status === 'sol') {
-    html += '<div class="det-section">';
-    html += '<div class="det-sec-lbl">Atualizar Compra</div>';
-    html += '<div class="fgroup"><label class="flbl">Fornecedor</label>' +
+  // Fotos do pedido
+  var fotos = p.fotos || [];
+  if (fotos.length > 0) {
+    html += '<div class="det-section"><div class="det-sec-lbl">Fotos (' + fotos.length + ')</div>';
+    html += '<div class="det-fotos">';
+    fotos.forEach(function(f, i) {
+      var src = f.dataUrl || f.url || '';
+      if (src) html += '<img class="det-foto-thumb" loading="lazy" src="' + esc(src) + '" onclick="abrirViewerPedido(\'' + esc(p.id) + '\',' + i + ')">';
+    });
+    html += '</div></div>';
+  }
+
+  // Form de atualização (sol ou orc)
+  if (p.status === 'sol' || p.status === 'orc') {
+    html += '<div class="det-section"><div class="det-sec-lbl">Atualizar Compra</div>';
+    html += '<div class="fgroup"><label class="flbl">Fornecedor / Cotação</label>' +
       '<input class="finp" id="ed-fornecedor" value="' + esc(p.fornecedor || '') + '" placeholder="Nome do fornecedor..."></div>';
     html += '<div class="frow">';
     html += '<div class="fgroup"><label class="flbl">Valor (R$)</label>' +
@@ -1088,6 +1158,12 @@ function abrirDetalhe(id) {
     html += '<div class="fgroup"><label class="flbl">Nota Fiscal</label>' +
       '<input class="finp" id="ed-nf" value="' + esc(p.notaFiscal || '') + '" placeholder="Nº NF..."></div>';
     html += '</div>';
+    html += '<div class="fgroup"><label class="flbl">Adicionar foto</label>' +
+      '<div class="foto-area" onclick="document.getElementById('f-fotos-det').click()" style="padding:10px">' +
+      '<input type="file" id="f-fotos-det" accept="image/*" multiple style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="adicionarFotoDetalhe(this)">' +
+      '<div style="font-size:22px">📷</div>' +
+      '<div class="foto-lbl" id="foto-lbl-det">Toque para adicionar foto</div></div>' +
+      '<div class="foto-preview-wrap" id="fotos-preview-det"></div></div>';
     html += '</div>';
   }
 
@@ -1099,12 +1175,122 @@ function abrirDetalhe(id) {
     '</button>';
 
   if (p.status === 'sol') {
+    acoes += '<button class="btn btn-orc" onclick="orcandoPedido(\'' + esc(p.id) + '\')">🔍 Orçar</button>';
     acoes += '<button class="btn btn-ok btn-w" onclick="finalizarPedido(\'' + esc(p.id) + '\')">✓ Finalizar</button>';
+    acoes += '<button class="btn btn-danger" onclick="cancelarPedido(\'' + esc(p.id) + '\')" title="Cancelar">✕</button>';
+  } else if (p.status === 'orc') {
+    acoes += '<button class="btn btn-ok btn-w" onclick="finalizarPedido(\'' + esc(p.id) + '\')">✓ Finalizar Compra</button>';
     acoes += '<button class="btn btn-danger" onclick="cancelarPedido(\'' + esc(p.id) + '\')" title="Cancelar">✕</button>';
   }
 
   document.getElementById('det-acoes').innerHTML = acoes;
   irTela('tela-detalhe');
+}
+
+// ══════════════════════════════════════════════
+//  FOTO VIEWER
+// ══════════════════════════════════════════════
+function abrirViewer(urls, idx) { viewerFotos=urls; viewerIdx=idx||0; atualizarViewer(); document.getElementById('foto-viewer').classList.add('show'); }
+function fecharViewer() { document.getElementById('foto-viewer').classList.remove('show'); }
+function navViewer(d) { viewerIdx=(viewerIdx+d+viewerFotos.length)%viewerFotos.length; atualizarViewer(); }
+function atualizarViewer() { document.getElementById('fv-img').src=viewerFotos[viewerIdx]||''; document.getElementById('fv-count').textContent=(viewerIdx+1)+' / '+viewerFotos.length; }
+document.getElementById('foto-viewer').addEventListener('click', function(e){ if(e.target===this) fecharViewer(); });
+
+function abrirViewerPedido(id, idx) {
+  var p=pedidos.find(function(x){ return x.id===id; });
+  if (!p||!p.fotos||!p.fotos.length) return;
+  var urls=p.fotos.map(function(f){ return f.dataUrl||f.url||''; }).filter(Boolean);
+  abrirViewer(urls, idx);
+}
+
+// ── FOTOS — FORMULÁRIO NOVO ──────────────────────────────────────
+function adicionarFotos(input) {
+  var files=Array.from(input.files||[]); if(!files.length) return;
+  files.forEach(function(file) {
+    var reader=new FileReader();
+    reader.onload=function(ev) {
+      var img=new Image();
+      img.onload=function() {
+        var MAX=1200, w=img.width, h=img.height;
+        if(w>MAX||h>MAX){ var r=Math.min(MAX/w,MAX/h); w=Math.round(w*r); h=Math.round(h*r); }
+        var c=document.createElement('canvas'); c.width=w; c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        fotosNovas.push({ file:file, dataUrl:c.toDataURL('image/jpeg',0.75) });
+        renderFotosPreview();
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value='';
+}
+function renderFotosPreview() {
+  var wrap=document.getElementById('fotos-preview-novo'); if(!wrap) return;
+  var html='';
+  fotosNovas.forEach(function(f,i) {
+    html+='<div style="display:inline-flex;flex-direction:column;align-items:center;gap:2px">' +
+      '<img class="foto-preview" src="'+f.dataUrl+'" onclick="abrirViewerLocal('+i+')">' +
+      '<button class="foto-del" onclick="remFoto('+i+')">✕</button></div>';
+  });
+  wrap.innerHTML=html;
+  var lbl=document.getElementById('foto-lbl-novo'), area=document.getElementById('foto-area-novo');
+  if(fotosNovas.length){ lbl.classList.add('ativa'); lbl.textContent=fotosNovas.length+' foto(s) selecionada(s)'; area.classList.add('tem-foto'); }
+  else { lbl.classList.remove('ativa'); lbl.textContent='Toque para tirar foto ou escolher da galeria'; area.classList.remove('tem-foto'); }
+}
+function remFoto(i) { fotosNovas.splice(i,1); renderFotosPreview(); }
+function abrirViewerLocal(i) { abrirViewer(fotosNovas.map(function(f){ return f.dataUrl; }), i); }
+
+// ── FOTOS — DETALHE ──────────────────────────────────────────────
+window._fotosDetTemp = [];
+function adicionarFotoDetalhe(input) {
+  var files=Array.from(input.files||[]); if(!files.length) return;
+  files.forEach(function(file) {
+    var reader=new FileReader();
+    reader.onload=function(ev) {
+      var img=new Image();
+      img.onload=function() {
+        var MAX=1200, w=img.width, h=img.height;
+        if(w>MAX||h>MAX){ var r=Math.min(MAX/w,MAX/h); w=Math.round(w*r); h=Math.round(h*r); }
+        var c=document.createElement('canvas'); c.width=w; c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        window._fotosDetTemp.push({ dataUrl:c.toDataURL('image/jpeg',0.75), nome:file.name });
+        renderFotosDetPreview();
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value='';
+}
+function renderFotosDetPreview() {
+  var wrap=document.getElementById('fotos-preview-det'); if(!wrap) return;
+  var html='';
+  window._fotosDetTemp.forEach(function(f,i) {
+    html+='<div style="display:inline-flex;flex-direction:column;align-items:center;gap:2px">' +
+      '<img class="foto-preview" src="'+f.dataUrl+'">' +
+      '<button class="foto-del" onclick="remFotoDet('+i+')">✕</button></div>';
+  });
+  wrap.innerHTML=html;
+  var lbl=document.getElementById('foto-lbl-det');
+  if(lbl) lbl.textContent=window._fotosDetTemp.length?window._fotosDetTemp.length+' foto(s) nova(s)':'Toque para adicionar foto';
+}
+function remFotoDet(i) { window._fotosDetTemp.splice(i,1); renderFotosDetPreview(); }
+
+// ═══════════════════════════════════════════════
+//  ORÇANDO
+// ══════════════════════════════════════════════
+function orcandoPedido(id) {
+  var p=pedidos.find(function(x){ return x.id===id; }); if(!p) return;
+  var forn=(document.getElementById('ed-fornecedor')||{}).value||'';
+  var valor=(document.getElementById('ed-valor')||{}).value||'';
+  var nf=(document.getElementById('ed-nf')||{}).value||'';
+  var novasFotos=(window._fotosDetTemp||[]).map(function(f){ return { dataUrl:f.dataUrl, nome:f.nome }; });
+  p.fotos=(p.fotos||[]).concat(novasFotos);
+  p.status='orc'; p.fornecedor=forn; p.valor=valor; p.notaFiscal=nf;
+  try{ localStorage.setItem(CACHE_KEY, JSON.stringify(pedidos)); }catch(e){}
+  renderStats(); abrirDetalhe(id);
+  showToast('🔍 Status: Orçando', '');
+  if(SCRIPT_URL) enviarStatusUpdate(id,'ORCANDO',{ fornecedor:forn, valor:valor, notaFiscal:nf, fotos:JSON.stringify(novasFotos.map(function(f){return f.dataUrl;})) });
 }
 
 // ══════════════════════════════════════════════
@@ -1119,20 +1305,13 @@ function finalizarPedido(id) {
   var valor = (document.getElementById('ed-valor') || {}).value || '';
   var nf = (document.getElementById('ed-nf') || {}).value || '';
 
-  p.status = 'fin';
-  p.fornecedor = fornecedor;
-  p.valor = valor;
-  p.notaFiscal = nf;
-
+  var novasFotos=(window._fotosDetTemp||[]).map(function(f){ return { dataUrl:f.dataUrl, nome:f.nome }; });
+  p.fotos=(p.fotos||[]).concat(novasFotos);
+  p.status = 'fin'; p.fornecedor = fornecedor; p.valor = valor; p.notaFiscal = nf;
   try { localStorage.setItem(CACHE_KEY, JSON.stringify(pedidos)); } catch(e) {}
-  renderStats();
-  abrirDetalhe(id);
+  renderStats(); abrirDetalhe(id);
   showToast('✓ Pedido finalizado!', 'success');
-
-  // Envia ao script
-  if (SCRIPT_URL) {
-    enviarStatusUpdate(id, 'FINALIZADO', { fornecedor: fornecedor, valor: valor, notaFiscal: nf });
-  }
+  if (SCRIPT_URL) enviarStatusUpdate(id, 'FINALIZADO', { fornecedor:fornecedor, valor:valor, notaFiscal:nf, fotos:JSON.stringify(novasFotos.map(function(f){return f.dataUrl;})) });
 }
 
 function cancelarPedido(id) {
@@ -1150,10 +1329,12 @@ function cancelarPedido(id) {
 
 function enviarStatusUpdate(id, status, extra) {
   var payload = Object.assign({ action: 'updateStatus', id: id, status: status }, extra);
+  var params = objToQuery(payload);
   var xhr = new XMLHttpRequest();
-  xhr.open('POST', SCRIPT_URL, true);
-  xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-  xhr.send(objToQuery(payload));
+  xhr.timeout = 20000;
+  xhr.open('GET', SCRIPT_URL + '?' + params, true);
+  xhr.onload = function() { setTimeout(buscarPedidos, 2500); };
+  xhr.send();
 }
 
 // ══════════════════════════════════════════════
