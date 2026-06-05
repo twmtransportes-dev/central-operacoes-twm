@@ -586,11 +586,13 @@ body.light .fab{box-shadow:0 4px 20px rgba(123,63,228,.4)}
 //  CONFIG
 // ══════════════════════════════════════════════
 // ID da planilha Google Sheets
-var SHEET_ID = '1-UgLHtzFam5u8QVBWkvkLokiC3VxGfnO';
+var SHEET_ID = '1hcehzVRqsmYTzWQ8bg023MlfRB0DmB8xMIZNYU5XVdk';
 
 // URL do Apps Script — substitua pela URL do seu script publicado
 // O script precisa aceitar: action=getPedidos | action=savePedido | action=updateStatus
-var SCRIPT_URL = localStorage.getItem('twm_compras_script') || 'https://script.google.com/macros/s/AKfycbw4BZz60sy9BsFACdqKktKpzJOfP8mj0U6s1G7Em5pwhaC_kQHCk-GPbLNZOlwjvrOwsw/exec';
+// IMPORTANTE: após republicar o Apps Script, rode no console:
+//   localStorage.setItem('twm_compras_script', 'https://script.google.com/macros/s/SUA_NOVA_URL/exec')
+var SCRIPT_URL = localStorage.getItem('twm_compras_script') || '';
 
 // Aba da planilha com pedidos
 var SHEET_NAME = 'Planilha1';
@@ -1159,7 +1161,7 @@ function abrirDetalhe(id) {
       '<input class="finp" id="ed-nf" value="' + esc(p.notaFiscal || '') + '" placeholder="Nº NF..."></div>';
     html += '</div>';
     html += '<div class="fgroup"><label class="flbl">Adicionar foto</label>' +
-      '<div class="foto-area" onclick="document.getElementById('f-fotos-det').click()" style="padding:10px">' +
+      '<div class="foto-area" onclick="document.getElementById(\'f-fotos-det\').click()" style="padding:10px">' +
       '<input type="file" id="f-fotos-det" accept="image/*" multiple style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="adicionarFotoDetalhe(this)">' +
       '<div style="font-size:22px">📷</div>' +
       '<div class="foto-lbl" id="foto-lbl-det">Toque para adicionar foto</div></div>' +
