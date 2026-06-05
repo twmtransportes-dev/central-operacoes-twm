@@ -459,11 +459,11 @@ body.light .fab{box-shadow:0 4px 20px rgba(123,63,228,.4)}
       <div class="frow">
         <div class="fgroup">
           <label class="flbl">Frota / Setor *</label>
-          <input class="finp" id="f-frota" placeholder="Ex: VP-186, Oficina, Escritório..." autocomplete="off" list="frotas-sugestoes">
+          <input class="finp" id="f-frota" placeholder="Selecione ou digite a frota/setor..." autocomplete="off" list="frotas-sugestoes">
           <datalist id="frotas-sugestoes">
             <option value="ESTOQUE"><option value="Lavador"><option value="Oficina">
-            <option value="VP-186"><option value="vp-521"><option value="Escritório">
-            <option value="Almoxarifado"><option value="Administrativo">
+            <option value="Escritório"><option value="Almoxarifado"><option value="Administrativo">
+
           </datalist>
         </div>
         <div class="fgroup">
@@ -524,9 +524,9 @@ body.light .fab{box-shadow:0 4px 20px rgba(123,63,228,.4)}
       <div class="fgroup">
         <label class="flbl">Adicionar fotos (opcional)</label>
         <div class="foto-area" id="foto-area-novo" onclick="document.getElementById('f-fotos').click()">
-          <input type="file" id="f-fotos" accept="image/*" multiple onchange="adicionarFotos(this)">
+          <input type="file" id="f-fotos" accept="image/*" capture="environment" multiple onchange="adicionarFotos(this)">
           <div class="foto-ico">📷</div>
-          <div class="foto-lbl" id="foto-lbl-novo">Toque para tirar foto ou escolher da galeria</div>
+          <div class="foto-lbl" id="foto-lbl-novo">Toque para tirar foto</div>
         </div>
         <div class="foto-preview-wrap" id="fotos-preview-novo"></div>
       </div>
@@ -1162,7 +1162,7 @@ function abrirDetalhe(id) {
     html += '</div>';
     html += '<div class="fgroup"><label class="flbl">Adicionar foto</label>' +
       '<div class="foto-area" onclick="document.getElementById(\'f-fotos-det\').click()" style="padding:10px">' +
-      '<input type="file" id="f-fotos-det" accept="image/*" multiple style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="adicionarFotoDetalhe(this)">' +
+      '<input type="file" id="f-fotos-det" accept="image/*" capture="environment" multiple style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="adicionarFotoDetalhe(this)">' +
       '<div style="font-size:22px">📷</div>' +
       '<div class="foto-lbl" id="foto-lbl-det">Toque para adicionar foto</div></div>' +
       '<div class="foto-preview-wrap" id="fotos-preview-det"></div></div>';
