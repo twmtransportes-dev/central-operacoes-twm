@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0A0A0F">
+<title>TWM — Check-List Segurança Mensal</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icone-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── VARIÁVEIS ─────────────────────────────────────────────── */
+:root{--bg:#0A0A0F;--bg2:#0F0F18;--bg3:#13131E;--border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.14);--text:#F0EEF8;--muted:#7A7890;--accent:#7B3FE4;--accent2:#A855F7;--accent3:#C084FC;--green:#10B981;--red:#EF4444;--gold:#F59E0B}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;overscroll-behavior:none}
+
+/* ── HEADER ─────────────────────────────────────────────────── */
+.app-header{background:var(--bg2);border-bottom:1px solid var(--border2);padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:10px}
+.btn-back{width:36px;height:36px;background:rgba(255,255,255,.07);border:1px solid var(--border2);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text)}
+.btn-back:active{background:rgba(255,255,255,.14)}
+.header-title{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+.header-badge{background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:8px;padding:3px 10px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:white;letter-spacing:1px}
+
+/* ── TELAS ─────────────────────────────────────────────────── */
+.screen{display:none}.screen.active{display:block}
+
+/* ── TELA INICIAL — FROTAS ─────────────────────────────────── */
+.pad{padding:14px}
+.srch-wrap{position:relative;margin-bottom:12px}
+.srch{width:100%;padding:12px 14px 12px 40px;font-size:14px;border:1.5px solid var(--border2);border-radius:12px;background:var(--bg3);color:var(--text);outline:none;font-family:'Barlow',sans-serif}
+.srch:focus{border-color:var(--accent)}
+.srch::placeholder{color:var(--muted)}
+.srch-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.list-card{background:var(--bg3);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.vrow{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:.15s}
+.vrow:last-child{border-bottom:none}
+.vrow:active{background:rgba(123,63,228,.08)}
+.vf{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:var(--text)}
+.vi{font-size:11px;color:var(--muted);margin-top:2px}
+.varr{color:var(--accent3);font-size:22px}
+.empty{padding:40px 16px;text-align:center;color:var(--muted);font-size:13px}
+
+/* ── TELA HISTÓRICO ─────────────────────────────────────────── */
+.hist-item{padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:.15s}
+.hist-item:last-child{border-bottom:none}
+.hist-item:active{background:rgba(123,63,228,.08)}
+.hist-data{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--text)}
+.hist-info{font-size:11px;color:var(--muted);margin-top:3px}
+.hist-status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
+.hist-aprovado{background:rgba(16,185,129,.15);color:var(--green)}
+.hist-reprovado{background:rgba(239,68,68,.15);color:var(--red)}
+
+/* ── FORMULÁRIO ─────────────────────────────────────────────── */
+.form-scroll{padding:14px;padding-bottom:100px}
+.form-header{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:16px;margin-bottom:14px}
+.form-header h2{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:var(--accent3);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+.form-row{margin-bottom:10px}
+.form-row label{display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px}
+.form-input{width:100%;padding:11px 14px;border:1.5px solid var(--border2);border-radius:10px;background:var(--bg3);color:var(--text);font-size:14px;font-family:'Barlow',sans-serif;outline:none}
+.form-input:focus{border-color:var(--accent)}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+/* ── SEÇÃO DO CHECKLIST ─────────────────────────────────────── */
+.section{background:var(--bg3);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:12px}
+.section-header{background:linear-gradient(135deg,var(--accent),var(--accent2));padding:10px 16px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:white;letter-spacing:1px;text-transform:uppercase}
+.item-row{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);gap:10px}
+.item-row:last-child{border-bottom:none}
+.item-num{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:var(--accent3);min-width:28px}
+.item-desc{flex:1;font-size:12px;color:var(--text);line-height:1.4}
+.item-btns{display:flex;gap:5px;flex-shrink:0}
+.btn-opt{width:36px;height:36px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;cursor:pointer;font-size:11px;font-weight:700;color:var(--muted);transition:.15s;display:flex;align-items:center;justify-content:center}
+.btn-opt:active{transform:scale(.92)}
+.btn-opt.sim-sel{background:rgba(16,185,129,.2);border-color:var(--green);color:var(--green)}
+.btn-opt.nao-sel{background:rgba(239,68,68,.2);border-color:var(--red);color:var(--red)}
+.btn-opt.na-sel{background:rgba(122,120,144,.2);border-color:var(--muted);color:var(--muted)}
+
+/* ── OBSERVAÇÃO ─────────────────────────────────────────────── */
+.obs-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
+.obs-wrap label{display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
+.obs-textarea{width:100%;padding:12px;border:1.5px solid var(--border2);border-radius:10px;background:var(--bg);color:var(--text);font-size:13px;font-family:'Barlow',sans-serif;outline:none;resize:none;min-height:80px}
+.obs-textarea:focus{border-color:var(--accent)}
+
+/* ── APROVAÇÃO ─────────────────────────────────────────────── */
+.aprov-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
+.aprov-wrap label{display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px}
+.aprov-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn-aprov{padding:14px;border-radius:12px;border:2px solid var(--border2);background:transparent;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;cursor:pointer;transition:.15s;color:var(--muted)}
+.btn-aprov.aprov-sim{border-color:var(--green);background:rgba(16,185,129,.15);color:var(--green)}
+.btn-aprov.aprov-nao{border-color:var(--red);background:rgba(239,68,68,.15);color:var(--red)}
+
+/* ── BOTÃO SALVAR ─────────────────────────────────────────────── */
+.fab-salvar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:50px;padding:14px 32px;color:white;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;letter-spacing:1px;cursor:pointer;box-shadow:0 4px 20px rgba(123,63,228,.4);z-index:90;white-space:nowrap}
+.fab-salvar:active{opacity:.85}
+
+/* ── TEMA CLARO ─────────────────────────────────────────────── */
+body.light{--bg:#F4F3FF;--bg2:#FFFFFF;--bg3:#FAFAFA;--border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);--text:#1A1A2E;--muted:#6B6880}
+
+/* ── TOAST ─────────────────────────────────────────────────── */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:12px 22px;border-radius:24px;font-size:13px;font-weight:600;z-index:300;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.toast.show{opacity:1}
+
+/* ── IMPRESSÃO ─────────────────────────────────────────────── */
+.btn-print{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:'Barlow',sans-serif}
+
+@media print {
+  body{background:white!important;color:#000!important}
+  .app-header,.fab-salvar,.btn-back,.toast{display:none!important}
+  .screen{display:block!important}
+  #screen-form{display:block!important}
+  #screen-lista,#screen-hist,#screen-view{display:none!important}
+  .section-header{background:#4C1D95!important;color:white!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .item-row{page-break-inside:avoid}
+  .print-only{display:block!important}
+
+  /* Cabeçalho de impressão fiel ao documento */
+  .print-header{display:block!important;border:2px solid #000;padding:10px;margin-bottom:10px;font-size:11px}
+  .print-header h1{font-size:13px;text-align:center;font-weight:bold;border-bottom:1px solid #000;padding-bottom:6px;margin-bottom:6px}
+  .print-header .ph-row{display:flex;justify-content:space-between;margin-bottom:4px}
+  .print-checklist table{width:100%;border-collapse:collapse;font-size:10px}
+  .print-checklist th{background:#4C1D95;color:white;padding:4px 6px;text-align:center}
+  .print-checklist td{border:1px solid #999;padding:4px 6px;vertical-align:middle}
+  .print-checklist .col-item{width:40px;text-align:center;font-weight:bold}
+  .print-checklist .col-check{width:35px;text-align:center}
+  .print-checklist .sec-row td{background:#EDE9FE;font-weight:bold;font-size:10px}
+  .chk-box{width:16px;height:16px;border:1.5px solid #666;display:inline-block;text-align:center;line-height:14px;font-size:10px;font-weight:bold}
+}
+.print-only{display:none}
+body.light{--bg:#F4F3FF;--bg2:#FFFFFF;--bg3:#FAFAFA;--border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);--text:#1A1A2E;--muted:#6B6880}
+body.light .app-header{box-shadow:0 1px 8px rgba(0,0,0,.08)}
+</style>
+<script>
+(function() {
+  var pref = localStorage.getItem('twm_tema') || 'auto';
+  var claro;
+  if (pref === 'claro') claro = true;
+  else if (pref === 'escuro') claro = false;
+  else { var h = new Date().getHours(); claro = h >= 6 && h < 18; }
+  function aplicar() { if (claro) document.body.classList.add('light'); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', aplicar);
+  else aplicar();
+})();
+</script>
+<script>
+(function(){var p=localStorage.getItem('twm_tema')||'auto';var claro;if(p==='claro')claro=true;else if(p==='escuro')claro=false;else{var h=new Date().getHours();claro=h>=6&&h<18;}function ap(){if(claro)document.body.classList.add('light');}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ap);else ap();})();
+</script>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────── -->
+<div class="app-header">
+  <div class="header-left">
+    <div class="btn-back" id="btnVoltar" onclick="voltar()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="17" height="17"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    </div>
+    <div class="header-title" id="headerTitle">Check-List Seg. Mensal</div>
+  </div>
+  <div class="header-badge">TWM</div>
+</div>
+
+<!-- ── TELA LISTA DE FROTAS ────────────────────────────────── -->
+<div id="screen-lista" class="screen active pad">
+  <div class="srch-wrap">
+    <svg class="srch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input class="srch" id="srchFrota" placeholder="Buscar frota..." oninput="filtrarFrotas(this.value)">
+  </div>
+  <div class="list-card" id="listaFrotas"></div>
+</div>
+
+<!-- ── TELA HISTÓRICO DA FROTA ─────────────────────────────── -->
+<div id="screen-hist" class="screen pad">
+  <div style="display:flex;gap:10px;margin-bottom:14px">
+    <button onclick="novoChecklist()" style="flex:1;padding:13px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:12px;color:white;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;cursor:pointer">
+      + Novo Check-List
+    </button>
+  </div>
+  <div class="list-card" id="listaHist"></div>
+</div>
+
+<!-- ── TELA FORMULÁRIO ─────────────────────────────────────── -->
+<div id="screen-form" class="screen">
+  <div class="form-scroll">
+
+    <!-- Cabeçalho de impressão (só aparece no print) -->
+    <div class="print-only print-header">
+      <h1>CHECK-LIST MENSAL DOS VEÍCULOS — FQ-TWM-CO-19-01 Rev.:06 — 30/06/2025</h1>
+      <div class="ph-row"><span id="pr-data"></span><span id="pr-hora"></span></div>
+      <div>Motorista: <span id="pr-motorista"></span></div>
+      <div class="ph-row"><span>Placa Cavalo: <span id="pr-placa-cav"></span></span><span>VP: <span id="pr-vp"></span></span><span>KM: <span id="pr-km"></span></span><span>Ano Fab.: <span id="pr-ano-cav"></span></span></div>
+      <div>Placa Carreta: <span id="pr-placa-car"></span> / RB: <span id="pr-rb"></span> — Ano Fab.: <span id="pr-ano-car"></span></div>
+    </div>
+
+    <!-- Dados do veículo -->
+    <div class="form-header">
+      <h2>📋 Identificação</h2>
+      <div class="form-row">
+        <label>Data</label>
+        <input class="form-input" id="f-data" type="date">
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Hora</label>
+          <input class="form-input" id="f-hora" type="time">
+        </div>
+        <div class="form-row">
+          <label>KM Atual</label>
+          <input class="form-input" id="f-km" type="number" placeholder="Ex: 145230">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Motorista</label>
+        <input class="form-input" id="f-motorista" type="text" placeholder="Nome completo">
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Placa Cavalo</label>
+          <input class="form-input" id="f-placa-cav" type="text" placeholder="AAA-0000">
+        </div>
+        <div class="form-row">
+          <label>VP (Frota)</label>
+          <input class="form-input" id="f-vp" type="text" placeholder="VP-183" readonly style="opacity:.7">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Ano Fabricação Cavalo</label>
+        <input class="form-input" id="f-ano-cav" type="number" placeholder="Ex: 2020">
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Placa Carreta</label>
+          <input class="form-input" id="f-placa-car" type="text" placeholder="AAA-0000">
+        </div>
+        <div class="form-row">
+          <label>RB (Frota)</label>
+          <input class="form-input" id="f-rb" type="text" placeholder="RB-52">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Ano Fabricação Carreta</label>
+        <input class="form-input" id="f-ano-car" type="number" placeholder="Ex: 2018">
+      </div>
+      <div class="form-row">
+        <label>Local da Inspeção</label>
+        <input class="form-input" id="f-local" type="text" placeholder="Ex: Pátio TWM Betim">
+      </div>
+      <div class="form-row">
+        <label>Responsável pela Inspeção</label>
+        <input class="form-input" id="f-responsavel" type="text" placeholder="Nome do responsável">
+      </div>
+    </div>
+
+    <!-- SEÇÃO 1: MOTORISTA / VEÍCULO -->
+    <div class="section" id="sec-1">
+      <div class="section-header">👤 Motorista / Veículo</div>
+      <!-- itens preenchidos pelo JS -->
+    </div>
+
+    <!-- SEÇÃO 2: EPI -->
+    <div class="section" id="sec-2">
+      <div class="section-header">🦺 Equipamentos de Proteção Individual</div>
+    </div>
+
+    <!-- SEÇÃO 3: SEGURANÇA / EMERGÊNCIA -->
+    <div class="section" id="sec-3">
+      <div class="section-header">🚨 Equipamentos de Segurança / Emergência</div>
+    </div>
+
+    <!-- SEÇÃO 4: CONDIÇÕES DO VEÍCULO -->
+    <div class="section" id="sec-4">
+      <div class="section-header">🚛 Condições do Veículo</div>
+    </div>
+
+    <!-- SEÇÃO 5: CARACTERIZAÇÃO -->
+    <div class="section" id="sec-5">
+      <div class="section-header">🏷 Caracterização do Veículo</div>
+    </div>
+
+    <!-- Observações -->
+    <div class="obs-wrap">
+      <label>Observações</label>
+      <textarea class="obs-textarea" id="f-obs" placeholder="Registre aqui qualquer observação relevante..."></textarea>
+    </div>
+
+    <!-- Aprovação -->
+    <div class="aprov-wrap">
+      <label>Veículo Aprovado?</label>
+      <div class="aprov-btns">
+        <button class="btn-aprov" id="btn-sim" onclick="setAprov('sim')">✅ SIM</button>
+        <button class="btn-aprov" id="btn-nao" onclick="setAprov('nao')">❌ NÃO</button>
+      </div>
+    </div>
+
+    <!-- Botão impressão -->
+    <div style="margin-bottom:12px">
+      <button class="btn-print" onclick="imprimirChecklist()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimir Check-List
+      </button>
+    </div>
+
+  </div>
+  <button class="fab-salvar" onclick="salvarChecklist()">💾 Salvar Check-List</button>
+</div>
+
+<!-- ── TELA VISUALIZAÇÃO ───────────────────────────────────── -->
+<div id="screen-view" class="screen pad" style="padding-bottom:80px">
+  <div id="viewContent"></div>
+  <div style="margin-top:14px;display:flex;gap:10px">
+    <button class="btn-print" onclick="window.print()" style="flex:1;justify-content:center">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Imprimir
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DADOS DOS ITENS ───────────────────────────────────────────
+const SECOES = [
+  {
+    id: 1,
+    titulo: 'Motorista / Veículo',
+    itens: [
+      {n:1,  desc:'CNH e curso MOPP dentro da validade'},
+      {n:2,  desc:'CRLV (do ano corrente, placa confere com a identificada no veículo)'},
+      {n:3,  desc:'CIV (cavalo e carreta dentro da validade)'},
+      {n:4,  desc:'CIPP (carreta dentro da validade)'},
+      {n:5,  desc:'Laudo de verificação do INMETRO (dentro da data de validade)'},
+      {n:6,  desc:'Cronotacógrafo (dentro da data de validade)'},
+      {n:7,  desc:'01 pasta contendo as Licenças Ambientais das empresas (Licenças dentro da validade)'},
+      {n:8,  desc:'Sem sinais de embriaguez, sonolência ou problemas físicos'},
+    ]
+  },
+  {
+    id: 2,
+    titulo: 'Equipamentos de Proteção Individual',
+    itens: [
+      {n:9,  desc:'Calçado de Segurança'},
+      {n:10, desc:'Luvas de PVC'},
+      {n:11, desc:'Capacete com protetor facial (Produto escuro) sem protetor facial para produto claro'},
+      {n:12, desc:'Óculos de segurança'},
+      {n:13, desc:'Cinto de segurança tipo pára-quedista'},
+      {n:14, desc:'Respirador com purificador de ar (Produto escuro)'},
+      {n:15, desc:'Avental de Raspa (Produto escuro)'},
+      {n:16, desc:'Protetor Auditivo'},
+    ]
+  },
+  {
+    id: 3,
+    titulo: 'Equipamentos de Segurança / Emergência',
+    itens: [
+      {n:17, desc:'Extintores PQS 08 Kg (ABC) produto claro, PQS 12 kg (BC) produto escuro, com selo, recarga na validade, manômetro na posição verde'},
+      {n:18, desc:'01 Extintor ABC 02 Kg (na cabine do veículo), com selo, recarga na validade, manômetro na posição verde'},
+      {n:19, desc:'Cabo terra sem emenda com capa transparente'},
+      {n:20, desc:'Balde em alumínio com cabo terra'},
+      {n:21, desc:'Calço de rodas: 2 para caminhão trator e semi-reboque e 04 para caminhão reboque bitrem ou bitrenzão'},
+      {n:22, desc:'Cones — Cor laranja com faixa refletiva e emborrachado conforme legislação vigente (4 peças)'},
+      {n:23, desc:'Painéis de segurança, rótulo de risco e número ONU conforme produto a ser carregado e em boas condições de uso'},
+      {n:24, desc:'Triângulo de sinalização, Macaco, chave de roda, pino para reboque'},
+      {n:25, desc:'Jogo de Ferramentas contendo no mínimo: Alicate universal, Chave de fenda ou philips e chave de boca (fixa) para desconexão do cabo da bateria'},
+      {n:26, desc:'Kit para pequenos derrames (4 Batoques, 2 cordões, 6 mantas absorventes, 1 lona plástica, 1 martelo de borracha, 1 sabão em pedra, 2 cx de durepóxi, 1 pct de pó absorvente, 1 colete refletivo, 10 sacos plásticos 50L, 1 pá de plástico)'},
+      {n:27, desc:'Chave de bascular cabine'},
+      {n:28, desc:'Porta mangotes / mangotes de borracha com mínimo 4 metros de comprimento e em perfeita condição de uso e sem vazamentos'},
+      {n:29, desc:'Mangueira de Dreno do Tanque (Cocho) Desobstruída'},
+      {n:30, desc:'Ausência de arames, barbantes, cordas, pedaço de pano na estrutura do caminhão'},
+    ]
+  },
+  {
+    id: 4,
+    titulo: 'Condições do Veículo',
+    itens: [
+      {n:31, desc:'Rodas com parafusos e sem amassados'},
+      {n:32, desc:'Pneus em bom estado de conservação, com sulcos mínimos de 1,6 mm'},
+      {n:33, desc:'Protetor de rodas traseiras em bom estado de conservação'},
+      {n:34, desc:'Chave geral blindada com indicação L/D, ligada no pólo positivo da bateria'},
+      {n:35, desc:'Ligação do tanque no chassis (continuidade elétrica). Pontos de aterramento nas laterais do tanque isentos de pintura e corrosão'},
+      {n:36, desc:'Faróis, Lanternas e setas, luz de placa em bom estado, sem trincas e funcionando'},
+      {n:37, desc:'Fiação contida em dutos (emendas só nas caixas de passagem), isolamento perfeito, bateria isolada'},
+      {n:38, desc:'Todas as saídas do produto com pontos de lacração e isentos de vazamentos'},
+      {n:39, desc:'Escada e passadiço com piso antiderrapante'},
+      {n:40, desc:'Espelhos retrovisores regulamentários e adicionais isentos de trincas'},
+      {n:41, desc:'(Para-sol) proteção interna contra o sol para o motorista em boas condições'},
+      {n:42, desc:'Buzina e sirene de Marcha ré funcionando'},
+      {n:43, desc:'Ponto baixo dotado de dreno e estanqueidade em relação à penetração de água e outros contaminantes'},
+      {n:44, desc:'Proteção do suspensor (cavalo e carreta)'},
+    ]
+  },
+  {
+    id: 5,
+    titulo: 'Caracterização do Veículo',
+    itens: [
+      {n:45, desc:'Adesivo de Informação de TARA dos dois lados do veículo, legíveis'},
+      {n:46, desc:'Adesivo com identificação do número de frota em boas condições de visibilidade'},
+      {n:47, desc:'Adesivo com a identificação da caixa de ferramentas em boas condições de visibilidade'},
+      {n:48, desc:'Números dos telefones de emergência em ambos os lados do semi-reboque'},
+      {n:49, desc:'Capacidade dos compartimentos demarcada no bocal de descarga e nas bocas de visita'},
+      {n:50, desc:'Placa traseira com a informação de "COMO ESTOU DIRIGINDO", legível'},
+      {n:51, desc:'Adesivo contendo a placa do reboque fixado na traseira do mesmo, legível'},
+      {n:52, desc:'Faixa refletiva ao redor do reboque e parachoque em boas condições de visibilidade'},
+      {n:53, desc:'Placa traseira com a informação de "VEÍCULO LONGO" em boas condições de visibilidade'},
+    ]
+  }
+];
+
+// ── ESTADO ────────────────────────────────────────────────────
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwa77m5mmae-zmUiparebjOFNLsqJyRTXpGBbNf12Mvx2cPMVsVqHRTjKDvyW2mteSh/exec';
+let frotaAtual = null;
+let respostas = {}; // {itemN: 'sim'|'nao'|'na'}
+// Pré-marca todos os 53 itens como SIM
+for (let _i = 1; _i <= 53; _i++) { respostas[_i] = 'sim'; }
+let aprovacao = null;
+let telaAtual = 'lista';
+let checklistView = null;
+
+// ── LOCAL STORAGE ─────────────────────────────────────────────
+function salvarLocal(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function lerLocal(k){try{return JSON.parse(localStorage.getItem(k));}catch(e){return null;}}
+
+// ── FROTAS ────────────────────────────────────────────────────
+// ── FROTAS ────────────────────────────────────────────────────
+let todasFrotas = [];
+
+// Frotas fixas como fallback
+const FROTAS_FIXAS = [
+  'VP-183','VP-184','VPL-185','VPL-186','VPL-187','VPL-188','VPL-189','VPL-190',
+  'VPL-191','VP-192','VP-193','VP-194','VP-195','VP-196','VP-197','VP-203',
+  'VP-306','VP-307','VP-308','VP-309','VPL-311','VPL-312','VPL-313','VPL-314',
+  'VPL-315','VPL-316','VPL-317','VPL-318','VPL-319','VPL-320','VPL-321','VPL-322',
+  'VPL-323','VP-324','VP-446','VP-447','VP-448','VP-449','VP-450','VP-451',
+  'VP-452','VP-453','VP-454','VP-455','VP-456','VP-457','VP-458','VP-459',
+  'VP-460','VP-461','VP-462','VP-463','VP-464','VP-465','VP-517','VP-518',
+  'VP-519','VP-520','VP-521','VP-522','VP-523','VP-611','VP-612','VP-613'
+];
+
+function carregarFrotasSeguranca() {
+  // 1. Cache local — exibe imediatamente
+  const cache = lerLocal('twm_frotas_checklist') || [];
+  if (cache.length) {
+    todasFrotas = cache.map(f => ({f, tipo: f.startsWith('RB') ? 'Carreta' : 'Cavalo'}));
+    renderFrotas('');
+  } else {
+    // 2. Fallback com lista fixa — sempre funciona offline
+    todasFrotas = FROTAS_FIXAS.map(f => ({f, tipo: f.startsWith('RB') ? 'Carreta' : 'Cavalo'}));
+    renderFrotas('');
+  }
+
+  // 3. Busca pastas do Drive em background — atualiza se tiver novas
+  fetch(SCRIPT_URL + '?action=getFrotasChecklist')
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok && d.frotas && d.frotas.length) {
+        // Mescla frotas do Drive com as fixas (sem duplicar)
+        const todas = [...new Set([...FROTAS_FIXAS, ...d.frotas])].sort();
+        salvarLocal('twm_frotas_checklist', todas);
+        todasFrotas = todas.map(f => ({f, tipo: f.startsWith('RB') ? 'Carreta' : 'Cavalo'}));
+        renderFrotas(document.getElementById('srchFrota').value);
+      }
+    })
+    .catch(() => {}); // já tem fallback — não precisa tratar
+}
+
+function filtrarFrotas(val) {
+  renderFrotas(val);
+}
+
+function renderFrotas(filtro) {
+  // Se ainda não carregou, usa FROTAS_FIXAS diretamente
+  if (!todasFrotas.length) {
+    todasFrotas = FROTAS_FIXAS.map(f => ({f, tipo: f.startsWith('RB') ? 'Carreta' : 'Cavalo'}));
+  }
+  const f = (filtro||'').toLowerCase();
+  const fil = f ? todasFrotas.filter(v => v.f.toLowerCase().includes(f)) : todasFrotas;
+  const el = document.getElementById('listaFrotas');
+  if (!fil.length) {
+    el.innerHTML = '<div class="empty">Nenhum resultado.</div>';
+    return;
+  }
+  el.innerHTML = fil.map(v => {
+    const checklists = lerLocal('twm_cl_' + v.f) || [];
+    const ultimo = checklists.length ? checklists[0] : null;
+    const sub = ultimo
+      ? `Último: ${ultimo.data} · ${ultimo.aprovacao === 'sim' ? '✅ Aprovado' : '❌ Reprovado'}`
+      : 'Nenhum check-list registrado';
+    return `<div class="vrow" onclick="abrirFrota('${v.f}')">
+      <div>
+        <div class="vf">${v.f}</div>
+        <div class="vi">${v.tipo} · ${sub}</div>
+      </div>
+      <span class="varr">›</span>
+    </div>`;
+  }).join('');
+}
+
+function abrirFrota(frota) {
+  frotaAtual = frota;
+  history.pushState({tela:'hist', frota}, '');
+  document.getElementById('headerTitle').textContent = frota;
+  mostrarTela('hist');
+  renderHist();
+}
+
+// ── HISTÓRICO ─────────────────────────────────────────────────
+function renderHist() {
+  const checklists = lerLocal('twm_cl_' + frotaAtual) || [];
+  const el = document.getElementById('listaHist');
+  if (!checklists.length) {
+    el.innerHTML = '<div class="empty">Nenhum check-list registrado para esta frota.</div>';
+    return;
+  }
+  el.innerHTML = checklists.map((cl, i) => {
+    const total = Object.keys(cl.respostas||{}).length;
+    const nao = Object.values(cl.respostas||{}).filter(r => r === 'nao').length;
+    return `<div class="hist-item" onclick="verChecklist(${i})">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="hist-data">${cl.data} · ${cl.hora}</div>
+        <span class="hist-status ${cl.aprovacao==='sim'?'hist-aprovado':'hist-reprovado'}">
+          ${cl.aprovacao==='sim'?'✅ APROVADO':'❌ REPROVADO'}
+        </span>
+      </div>
+      <div class="hist-info">Motorista: ${cl.motorista||'—'} · ${total} itens · ${nao} reprovado(s)</div>
+    </div>`;
+  }).join('');
+}
+
+// ── NOVO CHECKLIST ─────────────────────────────────────────────
+function novoChecklist() {
+  respostas = {};
+  // Pré-marca todos os 53 itens como SIM logo após o reset
+  for (let _i = 1; _i <= 53; _i++) { respostas[_i] = 'sim'; }
+  aprovacao = null;
+  history.pushState({tela:'form', frota: frotaAtual}, '');
+  document.getElementById('headerTitle').textContent = 'Novo Check-List';
+  mostrarTela('form');
+  construirForm();
+
+  // Preenche data/hora atual
+  const agora = new Date();
+  document.getElementById('f-data').value = agora.toISOString().split('T')[0];
+  document.getElementById('f-hora').value = agora.toTimeString().slice(0,5);
+  document.getElementById('f-vp').value = frotaAtual;
+  document.getElementById('f-motorista').value = '';
+  document.getElementById('f-km').value = '';
+  document.getElementById('f-obs').value = '';
+  document.getElementById('btn-sim').className = 'btn-aprov';
+  document.getElementById('btn-nao').className = 'btn-aprov';
+}
+
+function construirForm() {
+  SECOES.forEach(sec => {
+    const el = document.getElementById('sec-' + sec.id);
+    // Remove itens antigos (mantém header)
+    while (el.children.length > 1) el.removeChild(el.lastChild);
+    sec.itens.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'item-row';
+      div.id = 'item-' + item.n;
+      div.innerHTML = `
+        <span class="item-num">${item.n}</span>
+        <span class="item-desc">${item.desc}</span>
+        <div class="item-btns">
+          <button class="btn-opt ${respostas[item.n]==='sim'?'sim-sel':''}" id="btn-sim-${item.n}" onclick="marcar(${item.n},'sim')">S</button>
+          <button class="btn-opt ${respostas[item.n]==='nao'?'nao-sel':''}" id="btn-nao-${item.n}" onclick="marcar(${item.n},'nao')">N</button>
+          <button class="btn-opt ${respostas[item.n]==='na'?'na-sel':''}"  id="btn-na-${item.n}"  onclick="marcar(${item.n},'na')">N/A</button>
+        </div>`;
+      el.appendChild(div);
+    });
+  });
+}
+
+function marcar(n, val) {
+  respostas[n] = val;
+  // Atualiza visual
+  ['sim','nao','na'].forEach(opt => {
+    const btn = document.getElementById('btn-'+opt+'-'+n);
+    btn.className = 'btn-opt' + (val===opt ? ' '+opt+'-sel' : '');
+  });
+}
+
+function setAprov(val) {
+  aprovacao = val;
+  document.getElementById('btn-sim').className = 'btn-aprov' + (val==='sim'?' aprov-sim':'');
+  document.getElementById('btn-nao').className = 'btn-aprov' + (val==='nao'?' aprov-nao':'');
+}
+
+// ── SALVAR ────────────────────────────────────────────────────
+function salvarChecklist() {
+  const data = document.getElementById('f-data').value;
+  const hora = document.getElementById('f-hora').value;
+  const motorista = document.getElementById('f-motorista').value.trim();
+
+  if (!data) { showToast('⚠ Informe a data'); return; }
+  if (!motorista) { showToast('⚠ Informe o nome do motorista'); return; }
+  if (!aprovacao) { showToast('⚠ Indique se o veículo foi aprovado'); return; }
+
+  const totalItens = SECOES.reduce((acc, s) => acc + s.itens.length, 0);
+  const respondidos = Object.keys(respostas).length;
+  if (respondidos < totalItens) {
+    showToast(`⚠ Ainda há ${totalItens - respondidos} itens sem resposta`);
+    return;
+  }
+
+  const cl = {
+    id: Date.now(),
+    frota: frotaAtual,
+    data: data.split('-').reverse().join('/'),
+    hora,
+    motorista,
+    km: document.getElementById('f-km').value,
+    placa_cav: document.getElementById('f-placa-cav').value,
+    vp: frotaAtual,
+    ano_cav: document.getElementById('f-ano-cav').value,
+    placa_car: document.getElementById('f-placa-car').value,
+    rb: document.getElementById('f-rb').value,
+    ano_car: document.getElementById('f-ano-car').value,
+    local: document.getElementById('f-local').value,
+    responsavel: document.getElementById('f-responsavel').value,
+    obs: document.getElementById('f-obs').value,
+    aprovacao,
+    respostas: {...respostas},
+  };
+
+  // Salva local
+  const lista = lerLocal('twm_cl_' + frotaAtual) || [];
+  lista.unshift(cl);
+  salvarLocal('twm_cl_' + frotaAtual, lista);
+
+  // Salva no cache global para o módulo de relatórios
+  const cacheGlobal = lerLocal('twm_checklist_seg') || [];
+  cacheGlobal.unshift({
+    id:          cl.id,
+    data_hora:   cl.data + ' ' + cl.hora,
+    data:        cl.data.split('/').reverse().join('-'),
+    frota:       cl.frota,
+    veiculo:     cl.frota,
+    motorista:   cl.motorista,
+    km_atual:    cl.km||'',
+    placa_cav:   cl.placa_cav||'',
+    placa_car:   cl.placa_car||'',
+    rb:          cl.rb||'',
+    ano_cav:     cl.ano_cav||'',
+    ano_car:     cl.ano_car||'',
+    local:       cl.local||'',
+    responsavel: cl.responsavel||'',
+    aprovado:    cl.aprovacao === 'sim' ? 'SIM' : 'NAO',
+    justificativa:          cl.obs||'',
+    solicitacao_manutencao: cl.obs||'',
+    respostas:   cl.respostas,
+  });
+  salvarLocal('twm_checklist_seg', cacheGlobal.slice(0, 200));
+
+  // Envia ao servidor — action salvarChecklistSeg (salva na planilha do Drive)
+  if (navigator.onLine) {
+    const params = new URLSearchParams({
+      action:                  'salvarChecklistSeg',
+      frota:                   cl.frota,
+      data_hora:               cl.data + ' ' + cl.hora,
+      motorista:               cl.motorista,
+      km:                      cl.km||'',
+      placa_cav:               cl.placa_cav||'',
+      placa_car:               cl.placa_car||'',
+      rb:                      cl.rb||'',
+      ano_cav:                 cl.ano_cav||'',
+      ano_car:                 cl.ano_car||'',
+      local:                   cl.local||'',
+      responsavel:             cl.responsavel||'',
+      aprovado:                cl.aprovacao === 'sim' ? 'SIM' : 'NAO',
+      justificativa:           cl.obs||'',
+      solicitacao_manutencao:  cl.obs||'',
+      respostas:               JSON.stringify(cl.respostas),
+    });
+    fetch(SCRIPT_URL + '?' + params.toString())
+      .then(r => r.json())
+      .then(d => { if(d.ok) showToast('✅ Arquivado na planilha!'); })
+      .catch(()=>{ showToast('📵 Salvo localmente — será sincronizado'); });
+
+    // Também mantém compatibilidade com a action antiga (salva no Drive como doc)
+    const paramsOld = new URLSearchParams({
+      action:      'salvarChecklistSeguranca',
+      frota:       cl.frota,
+      data:        cl.data,
+      hora:        cl.hora,
+      motorista:   cl.motorista,
+      km:          cl.km||'',
+      placa_cav:   cl.placa_cav||'',
+      placa_car:   cl.placa_car||'',
+      rb:          cl.rb||'',
+      ano_cav:     cl.ano_cav||'',
+      ano_car:     cl.ano_car||'',
+      local:       cl.local||'',
+      responsavel: cl.responsavel||'',
+      aprovacao:   cl.aprovacao,
+      obs:         cl.obs||'',
+      respostas:   JSON.stringify(cl.respostas),
+    });
+    fetch(SCRIPT_URL + '?' + paramsOld.toString()).catch(()=>{});
+  }
+
+  showToast('✅ Check-List salvo!');
+  setTimeout(() => {
+    history.back();
+    mostrarTela('hist');
+    renderHist();
+  }, 1000);
+}
+
+// ── VER CHECKLIST ─────────────────────────────────────────────
+function verChecklist(idx) {
+  const lista = lerLocal('twm_cl_' + frotaAtual) || [];
+  checklistView = lista[idx];
+  if (!checklistView) return;
+
+  history.pushState({tela:'view', frota: frotaAtual, idx}, '');
+  document.getElementById('headerTitle').textContent = checklistView.data;
+  mostrarTela('view');
+
+  const icons = {sim:'✅', nao:'❌', na:'—'};
+  let html = `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--text);margin-bottom:8px">${checklistView.frota}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:var(--muted)">
+        <div>📅 Data: <strong style="color:var(--text)">${checklistView.data}</strong></div>
+        <div>🕐 Hora: <strong style="color:var(--text)">${checklistView.hora}</strong></div>
+        <div>👤 Motorista: <strong style="color:var(--text)">${checklistView.motorista}</strong></div>
+        <div>🚛 KM: <strong style="color:var(--text)">${checklistView.km||'—'}</strong></div>
+        <div>🚗 Cavalo: <strong style="color:var(--text)">${checklistView.placa_cav||'—'}</strong></div>
+        <div>🚛 Carreta: <strong style="color:var(--text)">${checklistView.placa_car||'—'}</strong></div>
+        <div>📍 Local: <strong style="color:var(--text)">${checklistView.local||'—'}</strong></div>
+        <div>👷 Responsável: <strong style="color:var(--text)">${checklistView.responsavel||'—'}</strong></div>
+      </div>
+      <div style="margin-top:10px;padding:8px 14px;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;text-align:center;${checklistView.aprovacao==='sim'?'background:rgba(16,185,129,.15);color:var(--green)':'background:rgba(239,68,68,.15);color:var(--red)'}">
+        ${checklistView.aprovacao==='sim'?'✅ VEÍCULO APROVADO':'❌ VEÍCULO REPROVADO'}
+      </div>
+    </div>`;
+
+  SECOES.forEach(sec => {
+    html += `<div class="section" style="margin-bottom:12px">
+      <div class="section-header">${sec.titulo}</div>`;
+    sec.itens.forEach(item => {
+      const r = checklistView.respostas[item.n] || '—';
+      const cor = r==='sim'?'var(--green)':r==='nao'?'var(--red)':'var(--muted)';
+      html += `<div class="item-row">
+        <span class="item-num">${item.n}</span>
+        <span class="item-desc" style="font-size:12px">${item.desc}</span>
+        <span style="color:${cor};font-weight:700;font-size:13px;min-width:28px;text-align:center">${icons[r]||r}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  if (checklistView.obs) {
+    html += `<div class="obs-wrap"><label>Observações</label><div style="font-size:13px;color:var(--text)">${checklistView.obs}</div></div>`;
+  }
+
+  document.getElementById('viewContent').innerHTML = html;
+}
+
+// ── IMPRESSÃO ─────────────────────────────────────────────────
+function imprimirChecklist() {
+  // Preenche campos do cabeçalho de impressão
+  const data = document.getElementById('f-data').value.split('-').reverse().join('/');
+  const hora = document.getElementById('f-hora').value;
+  document.getElementById('pr-data').textContent = 'DATA: ' + data;
+  document.getElementById('pr-hora').textContent = 'HORA: ' + hora;
+  document.getElementById('pr-motorista').textContent = document.getElementById('f-motorista').value;
+  document.getElementById('pr-placa-cav').textContent = document.getElementById('f-placa-cav').value;
+  document.getElementById('pr-vp').textContent = frotaAtual;
+  document.getElementById('pr-km').textContent = document.getElementById('f-km').value;
+  document.getElementById('pr-ano-cav').textContent = document.getElementById('f-ano-cav').value;
+  document.getElementById('pr-placa-car').textContent = document.getElementById('f-placa-car').value;
+  document.getElementById('pr-rb').textContent = document.getElementById('f-rb').value;
+  document.getElementById('pr-ano-car').textContent = document.getElementById('f-ano-car').value;
+  window.print();
+}
+
+// ── NAVEGAÇÃO ─────────────────────────────────────────────────
+function mostrarTela(tela) {
+  telaAtual = tela;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + tela).classList.add('active');
+}
+
+function voltar() {
+  if (telaAtual === 'lista') { window.location.href = 'index.html'; return; }
+  history.back();
+}
+
+window.addEventListener('popstate', function(e) {
+  const state = e.state || {};
+  if (state.tela === 'view')  { mostrarTela('hist'); document.getElementById('headerTitle').textContent = frotaAtual; return; }
+  if (state.tela === 'form')  { mostrarTela('hist'); document.getElementById('headerTitle').textContent = frotaAtual; return; }
+  if (state.tela === 'hist')  { mostrarTela('lista'); document.getElementById('headerTitle').textContent = 'Check-List Segurança Mensal'; return; }
+  mostrarTela('lista');
+  document.getElementById('headerTitle').textContent = 'Check-List Segurança Mensal';
+});
+
+// ── TOAST ─────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+history.replaceState({tela:'lista'}, '');
+carregarFrotasSeguranca();
+</script>
+</body>
+</html>
