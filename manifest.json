@@ -1,12 +1,12 @@
 {
   "name": "TWM DataLink",
   "short_name": "TWM",
-  "description": "TWM Transportes Especiais - Central de Operacoes",
+  "description": "Central de Operações TWM Transportes",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#7B3FE4",
-  "theme_color": "#7B3FE4",
+  "background_color": "#7C3AED",
+  "theme_color": "#7C3AED",
   "icons": [
     {
       "src": "icone-192.png",
@@ -20,6 +20,5 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "lang": "pt-BR"
+  ]
 }
