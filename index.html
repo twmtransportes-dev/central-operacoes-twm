@@ -385,6 +385,65 @@
   /* ── HIDDEN UTIL ──────────────────────────────────────────── */
   .hidden{display:none!important}
 
+  /* ── THEME MENU (três pontinhos) ─────────────────────────── */
+  .ios-dots-btn{
+    width:34px;height:34px;border-radius:50%;
+    background:var(--ios-fill);border:none;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    cursor:pointer;transition:.15s;
+  }
+  .ios-dots-btn:active{opacity:.6}
+  .ios-dots-btn span{display:block;width:4px;height:4px;background:var(--ios-blue);border-radius:50%}
+  .ios-theme-dropdown{
+    position:fixed;top:calc(var(--safe-top) + 54px);left:12px;
+    background:var(--ios-bg2);
+    border:1px solid var(--ios-sep);
+    border-radius:14px;
+    min-width:220px;z-index:600;
+    display:none;
+    box-shadow:0 8px 32px rgba(0,0,0,.18);
+    overflow:hidden;
+  }
+  .ios-theme-dropdown.open{display:block;animation:dropFade .18s ease}
+  @keyframes dropFade{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  .ios-theme-row{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 16px;
+  }
+  .ios-theme-label{font-size:15px;color:var(--ios-label);display:flex;align-items:center;gap:10px}
+  .ios-theme-seg{
+    display:flex;background:var(--ios-fill);border-radius:8px;padding:2px;gap:2px;
+  }
+  .ios-theme-opt{
+    display:flex;align-items:center;justify-content:center;
+    padding:5px 9px;border-radius:6px;border:none;
+    background:none;color:var(--ios-gray);cursor:pointer;
+    font-family:'Inter',sans-serif;font-size:13px;transition:.18s;min-width:34px;
+  }
+  .ios-theme-opt.on{background:var(--ios-blue);color:#fff;box-shadow:0 1px 4px rgba(0,122,255,.3)}
+  .ios-theme-sep{height:1px;background:var(--ios-sep);margin:0 16px}
+  .ios-theme-action{
+    display:flex;align-items:center;gap:12px;padding:13px 16px;
+    font-size:15px;color:var(--ios-label);cursor:pointer;
+    border:none;background:none;width:100%;text-align:left;
+    transition:.1s;
+  }
+  .ios-theme-action:active{background:var(--ios-fill2)}
+  .ios-theme-action.danger{color:var(--ios-red)}
+  /* Tema claro manual */
+  body.theme-claro{
+    --ios-bg:#F2F2F7;--ios-bg2:#FFFFFF;--ios-bg3:#F2F2F7;
+    --ios-sep:rgba(60,60,67,.12);--ios-label:#000000;
+    --ios-label2:rgba(60,60,67,.6);--ios-label3:rgba(60,60,67,.3);
+    --ios-fill:rgba(120,120,128,.2);--ios-fill2:rgba(120,120,128,.16);
+  }
+  body.theme-escuro{
+    --ios-bg:#000000;--ios-bg2:#1C1C1E;--ios-bg3:#2C2C2E;
+    --ios-sep:rgba(84,84,88,.65);--ios-label:#FFFFFF;
+    --ios-label2:rgba(235,235,245,.6);--ios-label3:rgba(235,235,245,.18);
+    --ios-fill:rgba(120,120,128,.36);--ios-fill2:rgba(120,120,128,.32);
+  }
+
   /* ── STATUS COLORS ────────────────────────────────────────── */
   .st-verde{background:#34C759}
   .st-amarelo{background:#FF9500}
@@ -425,16 +484,30 @@
   <!-- Navbar -->
   <div class="ios-navbar">
     <div class="ios-navbar-inner">
-      <button class="ios-navbar-btn" onclick="sidebarAbrir()" title="Frota">
-        <svg width="18" height="14" viewBox="0 0 18 14" fill="none">
-          <path d="M1 1h16M1 7h16M1 13h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-        </svg>
+      <button class="ios-dots-btn" id="dots-btn" onclick="toggleThemeMenu(event)" title="Opções">
+        <span></span><span></span><span></span>
       </button>
       <span class="ios-page-title">TWM DataLink</span>
       <button class="ios-avatar-btn" id="nav-avatar" onclick="profileAbrir()">
         <span id="nav-avatar-txt">?</span>
       </button>
     </div>
+  </div>
+
+  <!-- Theme dropdown (três pontinhos) -->
+  <div class="ios-theme-dropdown" id="theme-dropdown">
+    <div class="ios-theme-row">
+      <div class="ios-theme-label"><span id="theme-ico">⚙️</span> <span id="theme-lbl">Automático</span></div>
+      <div class="ios-theme-seg">
+        <button class="ios-theme-opt" id="tbtn-claro"  onclick="setTema('claro')">☀️</button>
+        <button class="ios-theme-opt" id="tbtn-auto"   onclick="setTema('auto')"><span style="font-size:10px;font-weight:800">AUTO</span></button>
+        <button class="ios-theme-opt" id="tbtn-escuro" onclick="setTema('escuro')">🌙</button>
+      </div>
+    </div>
+    <div class="ios-theme-sep"></div>
+    <button class="ios-theme-action danger" onclick="doLogout();closeThemeMenu()">
+      🚪 Sair da conta
+    </button>
   </div>
 
   <!-- Saudação + título -->
@@ -444,25 +517,28 @@
   </div>
 
   <!-- Widget de status da frota -->
-  <div style="padding:12px 0 0">
-    <div class="ios-widget">
-      <div class="ios-widget-title">Status da Frota</div>
+  <div style="padding:12px 0 0" onclick="sidebarAbrir()" style="cursor:pointer">
+    <div class="ios-widget" style="cursor:pointer">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="ios-widget-title" style="margin-bottom:0">Status Logístico</div>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3L11 8L6 13" stroke="var(--ios-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
       <div class="ios-stat-row">
         <div class="ios-stat">
-          <div class="ios-stat-num" id="s1" style="color:var(--ios-green)">—</div>
-          <div class="ios-stat-lbl">Em Rota</div>
+          <div class="ios-stat-num" id="s1" style="color:var(--ios-purple)">—</div>
+          <div class="ios-stat-lbl">Em Viagem</div>
         </div>
         <div class="ios-stat">
           <div class="ios-stat-num" id="s2" style="color:var(--ios-orange)">—</div>
-          <div class="ios-stat-lbl">Pátio</div>
+          <div class="ios-stat-lbl">Descarreg.</div>
         </div>
         <div class="ios-stat">
-          <div class="ios-stat-num" id="s3" style="color:var(--ios-red)">—</div>
-          <div class="ios-stat-lbl">Manutenção</div>
+          <div class="ios-stat-num" id="s3" style="color:var(--ios-green)">—</div>
+          <div class="ios-stat-lbl">Retorno</div>
         </div>
         <div class="ios-stat">
-          <div class="ios-stat-num" id="s4" style="color:var(--ios-purple)">—</div>
-          <div class="ios-stat-lbl">Ocorrências</div>
+          <div class="ios-stat-num" id="s4" style="color:var(--ios-gray)">—</div>
+          <div class="ios-stat-lbl">Garagem</div>
         </div>
       </div>
     </div>
@@ -597,8 +673,9 @@ function doLogin(){
     if(d.ok && d.motorista){
       var u = d.motorista;
       u._ts = Date.now();
+      // sessionToken gerado pelo script e salvo junto com os dados do usuário
       localStorage.setItem('twm_user_cache', JSON.stringify(u));
-      var perm = extrairPerms(u);
+      var perm = u.permissoes || extrairPerms(u);
       localStorage.setItem('twm_permissoes', JSON.stringify(perm));
       initApp();
     } else {
@@ -673,46 +750,78 @@ function renderMods(){
 
 // ── FROTA STATUS ──────────────────────────────────────────────
 var _frotaData = {};
-var COL = {CAVALO:0,CARRETA:1,MOTORISTA:2,STATUS:3,DESTINO:4,KM:5,OBS:6};
+var _frotaVlist = [];
+var _frotaVmap  = {};
+
+// Colunas retornadas pelo script (mesma ordem da planilha FROTA)
+var COL = {STATUS:0,MATERIAL:1,CLIENTE:2,PEDIDO:3,QT:4,ROTA:5,TRANSP:6,CAVALO:7,CARRETA1:8,CARRETA2:9,EIXOS:10,MOTORISTA:11,CNH:12,CARREG:13,AGEND:14,SM:15,PEDIDO_COMPRA:16};
+
 var SCFG = {
-  em_rota:   {lbl:'Em Rota',   cor:'#34C759',bg:'rgba(52,199,89,.15)',   dot:'st-verde'},
-  patio:     {lbl:'No Pátio',  cor:'#8E8E93',bg:'rgba(142,142,147,.15)', dot:'st-cinza'},
-  manutencao:{lbl:'Manutenção',cor:'#FF3B30',bg:'rgba(255,59,48,.15)',   dot:'st-vermelho'},
-  viagem:    {lbl:'Em Viagem', cor:'#007AFF',bg:'rgba(0,122,255,.15)',   dot:'st-azul'},
-  carregando:{lbl:'Carregando',cor:'#FF9500',bg:'rgba(255,149,0,.15)',   dot:'st-amarelo'},
+  'EM VIAGEM':       {cor:'#AF52DE',bg:'rgba(175,82,222,.18)', lbl:'Em Viagem'},
+  'DESCARREGANDO':   {cor:'#FF9500',bg:'rgba(255,149,0,.18)',  lbl:'Descarreg.'},
+  'RETORNO GARAGEM': {cor:'#34C759',bg:'rgba(52,199,89,.18)',  lbl:'Retorno'},
+  'NA GARAGEM':      {cor:'#8E8E93',bg:'rgba(142,142,147,.15)',lbl:'Garagem'},
 };
+
 function normStatus(s){
-  var v=(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  if(v.includes('rota')||v.includes('viagem')) return 'em_rota';
-  if(v.includes('manut')) return 'manutencao';
-  if(v.includes('carregando')||v.includes('carregamento')) return 'carregando';
-  if(v.includes('patio')||v.includes('pátio')||v.includes('pateo')) return 'patio';
-  return 'patio';
+  var v=(s||'').toUpperCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(v.includes('VIAGEM'))                      return 'EM VIAGEM';
+  if(v.includes('DESCARG')||v.includes('DESC')) return 'DESCARREGANDO';
+  if(v.includes('RETORNO')||v.includes('VOLTA'))return 'RETORNO GARAGEM';
+  return 'NA GARAGEM';
 }
 
 function carregarFrota(){
-  var ID='1Q1XHvwuho8nNFAUMd3XcZx70njgU7kKatVnbk45X5Xg';
-  var u=getUser(); if(!u||!u.token) return;
-  fetch('https://sheets.googleapis.com/v4/spreadsheets/'+ID+'/values/FROTA?majorDimension=ROWS',
-    {headers:{Authorization:'Bearer '+u.token}})
-  .then(r=>r.json()).then(d=>{
-    if(!d.values) return;
-    var rows=d.values; var counts={em_rota:0,patio:0,manutencao:0}; var ocorr=0;
-    var cavList=[]; var cavMap={};
-    rows.slice(1).forEach(function(r){
-      if(!r[0]) return;
-      var st=normStatus(r[COL.STATUS]);
-      if(counts[st]!==undefined) counts[st]++;
-      cavList.push(r[0]);
-      cavMap[r[0]]=r;
+  var u = getUser();
+  if(!u) return;
+
+  // 1. Mostra cache imediatamente enquanto busca dados novos
+  try{
+    var c=localStorage.getItem('twm_frota_cache');
+    if(c){var d=JSON.parse(c);if(d&&d.length) _processarFrota(d);}
+  }catch(e){}
+
+  // 2. Busca autenticada via Apps Script (planilha privada)
+  var url = SCRIPT_URL
+    + '?action=frota'
+    + '&email='+ encodeURIComponent(u.email||'')
+    + '&token='+ encodeURIComponent(u.sessionToken||'')
+    + '&_='    + Date.now();
+
+  fetch(url)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.ok && d.frota && d.frota.length){
+        _processarFrota(d.frota);
+        try{localStorage.setItem('twm_frota_cache',JSON.stringify(d.frota));}catch(e){}
+      } else if(d.ok===false && d.sessao_invalida){
+        // Token expirado — força novo login
+        doLogout();
+        showToast('Sessão expirada. Faça login novamente.');
+      }
+    })
+    .catch(function(){
+      // Sem rede: usa cache silenciosamente
     });
-    document.getElementById('s1').textContent=counts.em_rota||0;
-    document.getElementById('s2').textContent=counts.patio||0;
-    document.getElementById('s3').textContent=counts.manutencao||0;
-    document.getElementById('s4').textContent=ocorr;
-    _frotaData={list:cavList,map:cavMap};
-    renderSidebar();
-  }).catch(()=>{});
+}
+
+function _processarFrota(dados){
+  _frotaVmap={}; _frotaVlist=[];
+  for(var i=0;i<dados.length;i++){
+    var cav=(dados[i][COL.CAVALO]||'').trim();
+    if(cav&&!_frotaVmap[cav]){_frotaVmap[cav]=dados[i];_frotaVlist.push(cav);}
+  }
+  var counts={'EM VIAGEM':0,'DESCARREGANDO':0,'RETORNO GARAGEM':0,'NA GARAGEM':0};
+  _frotaVlist.forEach(function(cav){
+    var st=normStatus(_frotaVmap[cav][COL.STATUS]);
+    if(counts[st]!==undefined) counts[st]++;
+  });
+  document.getElementById('s1').textContent=counts['EM VIAGEM']||0;
+  document.getElementById('s2').textContent=counts['DESCARREGANDO']||0;
+  document.getElementById('s3').textContent=counts['RETORNO GARAGEM']||0;
+  document.getElementById('s4').textContent=counts['NA GARAGEM']||0;
+  _frotaData={list:_frotaVlist,map:_frotaVmap};
+  renderSidebar();
 }
 
 // ── SIDEBAR ───────────────────────────────────────────────────
@@ -720,6 +829,7 @@ function sidebarAbrir(){
   document.getElementById('sidebar').classList.add('open');
   document.getElementById('side-overlay').classList.add('open');
   document.body.style.overflow='hidden';
+  closeThemeMenu();
 }
 function sidebarFechar(){
   document.getElementById('sidebar').classList.remove('open');
@@ -734,7 +844,7 @@ function renderSidebar(){
   d.list.forEach(function(cav){
     var r=d.map[cav]||[];
     var st=normStatus(r[COL.STATUS]);
-    var cfg=SCFG[st]||SCFG.patio;
+    var cfg=SCFG[st]||SCFG['NA GARAGEM'];
     var mot=(r[COL.MOTORISTA]||'').split(' ');
     var motAbrev=mot.length>1?mot[0]+' '+mot[mot.length-1]:r[COL.MOTORISTA]||'—';
     html+='<div class="frota-card-ios" onclick="fmAbrir(\''+cav.replace(/'/g,"\\'")+'\')">'
@@ -755,16 +865,22 @@ function fmAbrir(cav){
   var d=_frotaData; if(!d||!d.map) return;
   var r=d.map[cav]||[];
   var st=normStatus(r[COL.STATUS]);
-  var cfg=SCFG[st]||SCFG.patio;
+  var cfg=SCFG[st]||SCFG['NA GARAGEM'];
   document.getElementById('fm-title').textContent=cav;
   var body='';
   var campos=[
-    ['Status',    '<span style="background:'+cfg.bg+';color:'+cfg.cor+';padding:3px 12px;border-radius:20px;font-size:14px;font-weight:600">'+cfg.lbl+'</span>'],
-    ['Motorista', r[COL.MOTORISTA]||'—'],
-    ['Carreta',   r[COL.CARRETA]||'—'],
-    ['Destino',   r[COL.DESTINO]||'—'],
-    ['KM',        r[COL.KM]||'—'],
-    ['Obs.',      r[COL.OBS]||'—'],
+    ['Status',        '<span style="background:'+cfg.bg+';color:'+cfg.cor+';padding:3px 12px;border-radius:20px;font-size:14px;font-weight:600">'+cfg.lbl+'</span>'],
+    ['Motorista',     r[COL.MOTORISTA]||'—'],
+    ['Rota',          r[COL.ROTA]||'—'],
+    ['Cliente',       r[COL.CLIENTE]||'—'],
+    ['Material',      r[COL.MATERIAL]||'—'],
+    ['Carreta 1',     r[COL.CARRETA1]||'—'],
+    ['Carreta 2',     r[COL.CARRETA2]||'—'],
+    ['Eixos',         r[COL.EIXOS]||'—'],
+    ['Carregamento',  r[COL.CARREG]||'—'],
+    ['Agendamento',   r[COL.AGEND]||'—'],
+    ['Nº Pedido',     r[COL.PEDIDO]||'—'],
+    ['SM',            r[COL.SM]||'—'],
   ];
   campos.forEach(function(c){
     body+='<div class="ios-modal-row"><span class="ios-modal-label">'+c[0]+'</span><span class="ios-modal-value">'+c[1]+'</span></div>';
@@ -792,6 +908,57 @@ function showToast(msg, dur){
   t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), dur||2500);
 }
+
+// ── TEMA ──────────────────────────────────────────────────────
+var _temaAtual = localStorage.getItem('twm_tema')||'auto';
+
+function aplicarTema(){
+  var body=document.body;
+  body.classList.remove('theme-claro','theme-escuro');
+  if(_temaAtual==='claro'){
+    body.classList.add('theme-claro');
+  } else if(_temaAtual==='escuro'){
+    body.classList.add('theme-escuro');
+  } else {
+    // auto: usa hora do dia
+    var h=new Date().getHours();
+    if(h>=6&&h<18) body.classList.add('theme-claro');
+  }
+  // Atualiza botões
+  ['claro','auto','escuro'].forEach(function(t){
+    var b=document.getElementById('tbtn-'+t);
+    if(b) b.classList.toggle('on',t===_temaAtual);
+  });
+  // Label
+  var labels={claro:'Claro ☀️',auto:'Automático ⚙️',escuro:'Escuro 🌙'};
+  var lbl=document.getElementById('theme-lbl');
+  if(lbl) lbl.textContent=labels[_temaAtual]||'Automático';
+}
+
+function setTema(modo){
+  _temaAtual=modo;
+  localStorage.setItem('twm_tema',modo);
+  aplicarTema();
+}
+
+function toggleThemeMenu(e){
+  e.stopPropagation();
+  var dd=document.getElementById('theme-dropdown');
+  dd.classList.toggle('open');
+}
+function closeThemeMenu(){
+  var dd=document.getElementById('theme-dropdown');
+  if(dd) dd.classList.remove('open');
+}
+document.addEventListener('click',function(e){
+  var dd=document.getElementById('theme-dropdown');
+  var btn=document.getElementById('dots-btn');
+  if(dd&&!dd.contains(e.target)&&e.target!==btn&&!btn.contains(e.target)){
+    dd.classList.remove('open');
+  }
+});
+// Reavalia a cada 5 min para modo auto
+setInterval(function(){if(_temaAtual==='auto')aplicarTema();},5*60*1000);
 
 // ── PULL TO REFRESH ────────────────────────────────────────────
 (function(){
@@ -830,6 +997,7 @@ document.getElementById('login-email').addEventListener('keydown',function(e){
 
 // ── BOOT ──────────────────────────────────────────────────────
 (function(){
+  aplicarTema();
   var u=getUser();
   if(u && (!u._ts || (Date.now()-u._ts)<SESSION_H*3600000)){
     initApp();
