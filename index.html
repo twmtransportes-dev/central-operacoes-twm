@@ -638,7 +638,11 @@ function getUser(){
 function temPerm(key){
   if(isAdmin()) return true;
   var p=getPerm();
-  return !!(p[key]||p[key.toUpperCase()]);
+  if(p[key]||p[key.toUpperCase()]) return true;
+  // Fallback: verifica direto no objeto do usuario (compatibilidade login antigo)
+  var u=getUser(); if(!u) return false;
+  var pu=u.permissoes||{};
+  return !!(pu[key]||pu[key.toUpperCase()]);
 }
 function ativo(v){ return v===true||v==='SIM'||v==='Sim'||v==='sim'||v==='TRUE'||v===1; }
 function extrairPerms(m){
@@ -676,6 +680,9 @@ function doLogin(){
       // sessionToken gerado pelo script e salvo junto com os dados do usuário
       localStorage.setItem('twm_user_cache', JSON.stringify(u));
       var perm = u.permissoes || extrairPerms(u);
+      // Garante que checklist_frota seja reconhecido independente do nome da coluna
+      if(perm['CHECK_FROTA']||perm['check_frota']||perm['CHECK FROTA']) perm['checklist_frota']=true;
+      if(perm['CHECK LIST FROTA']||perm['check_list_frota']) perm['checklist_frota']=true;
       localStorage.setItem('twm_permissoes', JSON.stringify(perm));
       initApp();
     } else {
@@ -710,8 +717,7 @@ function initApp(){
   document.getElementById('screen-main').classList.add('active');
   // Saudação
   var h=new Date().getHours();
-  var gd = h<12?'Bom dia':'h<18'?'Boa tarde':'Boa noite';
-  if(h>=12&&h<18) gd='Boa tarde'; else if(h>=18) gd='Boa noite';
+  var gd = h<12 ? 'Bom dia' : h<18 ? 'Boa tarde' : 'Boa noite';
   document.getElementById('greeting-txt').textContent = gd + ',';
   var nome = (u.nome||u.NOME||'').split(' ')[0];
   document.getElementById('greeting-name').textContent = nome || 'Bem-vindo';
@@ -771,38 +777,76 @@ function normStatus(s){
   return 'NA GARAGEM';
 }
 
+// URL do script de login (autenticação)
+// URL do script do checklist/frota (dados operacionais)
+var FROTA_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw4BZz60sy9BsFACdqKktKpzJOfP8mj0U6s1G7Em5pwhaC_kQHCk-GPbLNZOlwjvrOwsw/exec';
+
+function parseCsv(txt){
+  var rows=[];
+  var lines=txt.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  for(var li=1;li<lines.length;li++){
+    var line=lines[li]; if(!line.trim()) continue;
+    var cols=[],cur='',inQ=false;
+    for(var i=0;i<line.length;i++){
+      var c=line[i];
+      if(c==='"'){inQ=!inQ;}
+      else if(c===','&&!inQ){cols.push(cur.trim());cur='';}
+      else{cur+=c;}
+    }
+    cols.push(cur.trim());
+    if(cols.length>7 && cols[COL.CAVALO] && cols[COL.CAVALO].trim()) rows.push(cols);
+  }
+  return rows;
+}
+
 function carregarFrota(){
   var u = getUser();
-  if(!u) return;
 
-  // 1. Mostra cache imediatamente enquanto busca dados novos
+  // 1. Cache imediato enquanto busca
   try{
     var c=localStorage.getItem('twm_frota_cache');
     if(c){var d=JSON.parse(c);if(d&&d.length) _processarFrota(d);}
   }catch(e){}
 
-  // 2. Busca autenticada via Apps Script (planilha privada)
-  var url = SCRIPT_URL
-    + '?action=frota'
-    + '&email='+ encodeURIComponent(u.email||'')
-    + '&token='+ encodeURIComponent(u.sessionToken||'')
-    + '&_='    + Date.now();
+  // 2. Se tem sessionToken, busca autenticado (planilha privada)
+  if(u && u.sessionToken){
+    var url = FROTA_SCRIPT_URL
+      + '?action=frota'
+      + '&email=' + encodeURIComponent(u.email||'')
+      + '&token=' + encodeURIComponent(u.sessionToken||'')
+      + '&_='     + Date.now();
 
-  fetch(url)
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(d.ok && d.frota && d.frota.length){
-        _processarFrota(d.frota);
-        try{localStorage.setItem('twm_frota_cache',JSON.stringify(d.frota));}catch(e){}
-      } else if(d.ok===false && d.sessao_invalida){
-        // Token expirado — força novo login
-        doLogout();
-        showToast('Sessão expirada. Faça login novamente.');
+    fetch(url)
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.ok && d.frota && d.frota.length){
+          _processarFrota(d.frota);
+          try{localStorage.setItem('twm_frota_cache',JSON.stringify(d.frota));}catch(e){}
+        } else if(d.sessao_invalida){
+          doLogout();
+          showToast('Sessão expirada. Faça login novamente.');
+        }
+      })
+      .catch(function(){});
+    return;
+  }
+
+  // 3. Fallback: CSV público (enquanto usuário não tiver sessionToken — login antigo)
+  var FROTA_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx62CxMqSchj3wdG83U48YiyM8eH9vIj8Jv7Gg1QVWm0Ow7abDlyYWtAEecM4iCPWTvH8e5Y84jJdf/pub?gid=644783428&single=true&output=csv';
+  var xhr=new XMLHttpRequest();
+  xhr.timeout=12000;
+  xhr.open('GET', FROTA_CSV+'&_='+Date.now(), true);
+  xhr.onload=function(){
+    if(xhr.status===200 && xhr.responseText && xhr.responseText.length>10){
+      var dados=parseCsv(xhr.responseText);
+      if(dados.length>0){
+        _processarFrota(dados);
+        try{localStorage.setItem('twm_frota_cache',JSON.stringify(dados));}catch(e){}
       }
-    })
-    .catch(function(){
-      // Sem rede: usa cache silenciosamente
-    });
+    }
+  };
+  xhr.onerror=xhr.ontimeout=function(){};
+  xhr.send();
 }
 
 function _processarFrota(dados){
