@@ -62,10 +62,11 @@
   /* ── TELAS ────────────────────────────────────────────────── */
   .screen{display:none;min-height:100vh;padding-bottom:calc(var(--tabbar-h) + 8px)}
   .screen.active{display:block}
+  #screen-login.login-visible{display:flex!important}
 
   /* ── LOGIN ────────────────────────────────────────────────── */
   #screen-login{
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    display:none;flex-direction:column;align-items:center;justify-content:center;
     min-height:100vh;padding:40px 32px;
     background:linear-gradient(180deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
   }
@@ -701,19 +702,21 @@ function doLogout(){
   profileFechar();
   setTimeout(()=>{
     document.getElementById('screen-main').classList.remove('active');
-    document.getElementById('screen-login').style.display='flex';
+    document.getElementById('screen-login').classList.add('login-visible');
+    
   }, 200);
 }
 
 // ── INIT APP ──────────────────────────────────────────────────
 function initApp(){
   var u = getUser();
-  if(!u){ document.getElementById('screen-login').style.display='flex'; return; }
+  if(!u){ document.getElementById('screen-login').classList.add('login-visible');  return; }
   // Sessão expirada?
   if(u._ts && (Date.now()-u._ts) > SESSION_H*3600000){
     doLogout(); return;
   }
-  document.getElementById('screen-login').style.display='none';
+  document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('screen-login').classList.remove('login-visible');
   document.getElementById('screen-main').classList.add('active');
   // Saudação
   var h=new Date().getHours();
@@ -1046,7 +1049,8 @@ document.getElementById('login-email').addEventListener('keydown',function(e){
   if(u && (!u._ts || (Date.now()-u._ts)<SESSION_H*3600000)){
     initApp();
   } else {
-    document.getElementById('screen-login').style.display='flex';
+    document.getElementById('screen-login').classList.add('login-visible');
+    
   }
 })();
 </script>
