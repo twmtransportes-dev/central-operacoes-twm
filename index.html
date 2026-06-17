@@ -684,7 +684,10 @@ function doLogin(){
       // Garante que checklist_frota seja reconhecido independente do nome da coluna
       if(perm['CHECK_FROTA']||perm['check_frota']||perm['CHECK FROTA']) perm['checklist_frota']=true;
       if(perm['CHECK LIST FROTA']||perm['check_list_frota']) perm['checklist_frota']=true;
+      u.permissoes = perm;
       localStorage.setItem('twm_permissoes', JSON.stringify(perm));
+      // Grava twm_session no formato esperado pelos módulos (check_list_motoristas, etc.)
+      localStorage.setItem('twm_session', JSON.stringify({motorista: u}));
       initApp();
     } else {
       errEl.textContent = d.msg||'E-mail ou senha incorretos.';
@@ -699,6 +702,7 @@ function doLogin(){
 function doLogout(){
   localStorage.removeItem('twm_user_cache');
   localStorage.removeItem('twm_permissoes');
+  localStorage.removeItem('twm_session');
   profileFechar();
   setTimeout(()=>{
     document.getElementById('screen-main').classList.remove('active');
@@ -738,13 +742,22 @@ function initApp(){
 }
 
 // ── RENDER MÓDULOS ────────────────────────────────────────────
+function abrirModulo(href){
+  // Grava sessão no formato esperado pelos módulos antes de navegar
+  var u = getUser();
+  if(u){
+    localStorage.setItem('twm_session', JSON.stringify({motorista: u}));
+  }
+  window.location.href = href;
+}
+
 function renderMods(){
   var grid = document.getElementById('modules-grid');
   var html = '';
   MODULOS.forEach(function(m){
     if(!temPerm(m.perm)) return;
     var cls = 'ios-app-cell' + (m.wide?' wide':'');
-    html += '<a class="'+cls+'" href="'+m.href+'">'
+    html += '<div class="'+cls+'" data-href="'+m.href+'" onclick="abrirModulo(this.dataset.href)" style="cursor:pointer">'
       +'<div class="ios-app-icon" style="background:'+m.bg+'22">'
       +'<span style="font-size:28px">'+m.icon+'</span>'
       +'</div>'
@@ -752,7 +765,7 @@ function renderMods(){
         ? '<div><div class="ios-app-name" style="font-size:16px">'+m.nome+'</div><div class="ios-app-desc">'+m.desc+'</div></div>'
         : '<div class="ios-app-name">'+m.nome+'</div><div class="ios-app-desc">'+m.desc+'</div>'
       )
-      +'</a>';
+      +'</div>';
   });
   grid.innerHTML = html || '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ios-gray)">Sem módulos disponíveis.</div>';
 }
