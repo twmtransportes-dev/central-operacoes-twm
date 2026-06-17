@@ -719,18 +719,9 @@ function preencherPerfil(user) {
 
 function entrarNoApp(motorista) {
   usuarioLogado = motorista;
-  document.getElementById('user-chip').textContent = (motorista.nome || motorista.email).split(' ')[0];
-  preencherPerfil(motorista);
-  carregarFotoPerfil();
-  showScreen('app');
-  // Mostra Config só para admin_master
-  var uCache = {};
-  try { uCache = JSON.parse(localStorage.getItem('twm_user_cache')||'{}'); } catch(e){}
-  var isAdm = !!(uCache.permissoes && (uCache.permissoes.admin_master || uCache.permissoes.admin));
-  var navCfg = document.getElementById('nav-config-cl');
-  if (navCfg) navCfg.style.display = isAdm ? '' : 'none';
-  showPage('caminhoes');
-  renderCaminhoes();
+  // Mostra lista de veículos diretamente (estrutura iOS: page-lista, page-form, page-hist)
+  showPage('lista');
+  renderLista();
 }
 
 function logout() {
@@ -750,33 +741,12 @@ function showScreen(id) {
 }
 
 function showPage(page) {
-  document.querySelectorAll('.page-content').forEach(p => p.style.display = 'none');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  if (page === 'caminhoes') {
-    document.getElementById('page-caminhoes').style.display = 'block';
-    document.getElementById('nav-caminhoes').classList.add('active');
-    document.getElementById('header-title').textContent = 'CAMINHÕES';
-    history.replaceState({ screen: 'app', page: 'caminhoes' }, '');
-  } else if (page === 'detalhe') {
-    document.getElementById('page-detalhe').style.display = 'block';
-    document.getElementById('header-title').textContent = 'DETALHES';
-    history.pushState({ screen: 'app', page: 'detalhe' }, '');
-  } else if (page === 'servico') {
-    document.getElementById('page-servico').style.display = 'block';
-    document.getElementById('header-title').textContent = 'CARROS DE APOIO';
-    history.pushState({ screen: 'app', page: 'servico', tela: 'lista-carros' }, '');
-    carregarCarrosServico();
-  } else if (page === 'historico') {
-    document.getElementById('page-historico').style.display = 'block';
-    document.getElementById('nav-historico').classList.add('active');
-    carregarHistorico();
-  } else if (page === 'config-cl') {
-    document.getElementById('page-config-cl').style.display = 'block';
-    document.getElementById('nav-config-cl').classList.add('active');
-    cfgClRender();
-    document.getElementById('header-title').textContent = 'HISTÓRICO';
-    history.pushState({ screen: 'app', page: 'historico' }, '');
-    carregarHistorico();
+  // Sistema iOS: usa page-lista, page-form, page-hist
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  var el = document.getElementById('page-' + page);
+  if (el) {
+    el.classList.add('active');
+    window.scrollTo(0, 0);
   }
 }
 
@@ -1865,34 +1835,31 @@ function voltarDataLink() {
 // ===== LOGIN PERSISTENTE — verifica ao abrir =====
 // Entra no app direto via sessão do index.html
 (function iniciarApp() {
-  // 1. Sessão compartilhada do index.html (twm_session) — caminho principal
+  // 1. Sessão compartilhada do index.html (twm_session)
   try {
-    const s = JSON.parse(localStorage.getItem('twm_session') || 'null');
+    var s = JSON.parse(localStorage.getItem('twm_session') || 'null');
     if (s && s.motorista) {
       entrarNoApp(s.motorista);
-      const gt = sessionStorage.getItem('twm_goto');
-      if (gt === 'checklist') { sessionStorage.removeItem('twm_goto'); showPage('caminhoes'); }
       return;
     }
   } catch(e) {}
 
-  // 2. Cache local como fallback
+  // 2. Cache direto do usuário como fallback
   try {
-    const u = JSON.parse(localStorage.getItem('twm_user_cache') || 'null');
-    if (u) { entrarNoApp(u); return; }
+    var u = JSON.parse(localStorage.getItem('twm_user_cache') || 'null');
+    if (u && (u.nome || u.email)) {
+      entrarNoApp(u);
+      return;
+    }
   } catch(e) {}
 
-  // 3. Sem sessão — volta para o index
+  // 3. Sem sessão — volta para index
   window.location.replace('index.html');
 })();
 
 // ══ iOS UI FUNCTIONS ══════════════════════════════════════════
 
-function showPage(p) {
-  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
-  document.getElementById('page-'+p).classList.add('active');
-  window.scrollTo(0,0);
-}
+// showPage já definido acima
 
 function showToast(msg, dur) {
   var t = document.getElementById('ios-toast');
