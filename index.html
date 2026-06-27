@@ -772,9 +772,11 @@ function initApp(){
   // Saudação
   var h=new Date().getHours();
   var gd = h<12 ? 'Bom dia' : h<18 ? 'Boa tarde' : 'Boa noite';
-  document.getElementById('greeting-txt').textContent = gd + ',';
   var nome = (u.nome||u.NOME||'').split(' ')[0];
-  document.getElementById('greeting-name').textContent = nome || 'Bem-vindo';
+  var gtxt = document.getElementById('greeting-txt');
+  var gname = document.getElementById('greeting-name');
+  if(gtxt) gtxt.textContent = gd + ',';
+  if(gname) gname.textContent = nome || 'Bem-vindo';
   // Avatar
   var ini = (nome||'?')[0].toUpperCase();
   document.getElementById('nav-avatar-txt').textContent = ini;
