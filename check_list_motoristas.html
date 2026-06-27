@@ -366,14 +366,14 @@ body{
       Voltar
     </button>
     <span class="ios-nav-title" id="form-title">Check List</span>
-    <button class="ios-nav-action" onclick="salvarChecklist()" style="color:var(--ios-green);font-weight:700">Salvar</button>
+    <button class="ios-nav-action" data-btn-salvar-checklist onclick="salvarChecklist()" style="color:var(--ios-green);font-weight:700">Salvar</button>
   </div>
   <!-- Progress -->
   <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
   <!-- Form content -->
   <div id="form-content"></div>
   <div class="ios-btn-wrap">
-    <button class="ios-btn ios-btn-green" onclick="salvarChecklist()">💾 Salvar Check List</button>
+    <button class="ios-btn ios-btn-green" data-btn-salvar-checklist onclick="salvarChecklist()">💾 Salvar Check List</button>
     <button class="ios-btn ios-btn-gray" onclick="voltarLista()">Cancelar</button>
   </div>
   <div style="height:32px"></div>
@@ -1074,20 +1074,27 @@ function fecharForm() {
   showPage('detalhe');
 }
 
+let _salvandoChecklist = false;
+
 async function salvarChecklist() {
+  // ── TRAVA CONTRA CLIQUE DUPLO / SALVAMENTO REPETIDO ──────────
+  if (_salvandoChecklist) return; // já está salvando, ignora novo clique
+  _salvandoChecklist = true;
+  desabilitarBotoesSalvar(true);
+
   try {
   // Validar campos obrigatórios
   const campos_required = CAMPOS.filter(f => f.required && f.id);
   for (const c of campos_required) {
     if (c.tipo === 'simnao') {
-      if (!formDados[c.id]) { showToast('Responda: ' + c.label); return; }
+      if (!formDados[c.id]) { showToast('Responda: ' + c.label); liberarSalvarChecklist(); return; }
     } else if (c.tipo === 'foto') {
-      if (!formDados['foto_' + c.id]) { showToast('Adicione a foto de auto avaliação'); return; }
+      if (!formDados['foto_' + c.id]) { showToast('Adicione a foto de auto avaliação'); liberarSalvarChecklist(); return; }
     } else if (c.tipo === 'select-veiculo' || c.tipo === 'datetime' || c.tipo === 'carreta-reserva') {
       // campos automáticos — não validar
     } else {
       const el = document.getElementById('f_' + c.id);
-      if (!el || !el.value.trim()) { showToast('Preencha: ' + c.label); return; }
+      if (!el || !el.value.trim()) { showToast('Preencha: ' + c.label); liberarSalvarChecklist(); return; }
     }
   }
 
@@ -1216,28 +1223,50 @@ async function salvarChecklist() {
   // Enviar para planilha (com a foto)
   if (!SCRIPT_URL) {
     showToast('✅ Check List salvo!');
+    liberarSalvarChecklist();
+    setTimeout(()=>voltarLista(), 1200);
     return;
   }
   if (!navigator.onLine) {
     filaOffline.push(registro);
     localStorage.setItem('twm_fila', JSON.stringify(filaOffline));
     showToast('📵 Sem internet — salvo, enviará ao reconectar');
+    liberarSalvarChecklist();
+    setTimeout(()=>voltarLista(), 1500);
     return;
   }
   showToast('⏳ Enviando para planilha...');
   enviarParaPlanilha(registro).then(ok => {
-    if (ok) { showToast('✅ Check List salvo na planilha!'); }
+    if (ok) { showToast('✅ Check List salvo!'); }
     else {
       filaOffline.push(registro);
       localStorage.setItem('twm_fila', JSON.stringify(filaOffline));
       showToast('⚠️ Falha no envio — salvo localmente');
     }
+  }).finally(() => {
+    liberarSalvarChecklist();
+    setTimeout(()=>voltarLista(), 1200);
   });
 
   } catch(err) {
     showToast('❌ Erro: ' + err.message);
     console.error('Erro ao salvar:', err);
+    liberarSalvarChecklist();
   }
+}
+
+// ── Trava de duplo clique: desabilita/habilita os botões de Salvar ──
+function desabilitarBotoesSalvar(desabilitar) {
+  document.querySelectorAll('[data-btn-salvar-checklist]').forEach(function(btn) {
+    btn.disabled = desabilitar;
+    btn.style.opacity = desabilitar ? '0.5' : '1';
+    btn.style.pointerEvents = desabilitar ? 'none' : 'auto';
+  });
+}
+
+function liberarSalvarChecklist() {
+  _salvandoChecklist = false;
+  desabilitarBotoesSalvar(false);
 }
 
 // ===== CARROS DE SERVIÇO =====
@@ -2228,36 +2257,6 @@ function abrirDetalhe(i) {
   
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('modal-overlay').classList.add('open');
-}
-
-function salvarChecklist() {
-  // Valida campos obrigatórios
-  var erros = [];
-  if(!formDados.km_atual) erros.push('KM Atual');
-  if(!formDados.motorista) erros.push('Motorista');
-  if(erros.length) { showToast('⚠ Preencha: '+erros.join(', ')); return; }
-  
-  // Usa função existente de envio
-  var registro = Object.assign({}, formDados, {
-    veiculo: caminhaoAtual.vp,
-    placa: caminhaoAtual.placa,
-    data_hora: formDados.data_hora || new Date().toLocaleString('pt-BR'),
-  });
-  
-  showToast('⏳ Salvando...');
-  
-  enviarParaPlanilha(registro).then(ok=>{
-    if(ok) {
-      showToast('✅ Check list salvo!');
-      setTimeout(()=>voltarLista(), 1200);
-    } else {
-      // Offline — salva na fila
-      filaOffline.push(registro);
-      localStorage.setItem('twm_fila', JSON.stringify(filaOffline));
-      showToast('📵 Salvo offline — enviará quando conectar');
-      setTimeout(()=>voltarLista(), 1500);
-    }
-  });
 }
 
 // ── INIT ──────────────────────────────────────────────────
