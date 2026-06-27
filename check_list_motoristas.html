@@ -559,8 +559,6 @@ const CAMPOS = [
 let usuarioLogado = null;
 let caminhaoAtual = null;
 let formDados = {};
-  _solicitacoes = [];
-  try { sessionStorage.removeItem('twm_sols_manut'); } catch(e) {}
   // Pré-preenche todos os campos simnao com 'Sim'
   CAMPOS.filter(f => f.tipo === 'simnao').forEach(f => { formDados[f.id] = 'Sim'; });
 let checklists = JSON.parse(localStorage.getItem('twm_checklists') || '[]');
@@ -847,7 +845,6 @@ function abrirDetalhe(vp) {
 
 async function carregarHistoricoVeiculo(vp) {
   const div = document.getElementById('hist-caminhao');
-  if (!div) return; // tela de detalhe do veículo não está em uso nesta versão — não bloqueia o fluxo
   div.innerHTML = '<div class="no-items">⏳ Carregando histórico...</div>';
 
   // Função para renderizar do localStorage (fallback)
@@ -1023,17 +1020,7 @@ function abrirFormChecklist() {
         <button class="btn-nao ${preNaoSel}" id="nao_${campo.id}" onclick="selecionarSimNao('${campo.id}','Não')">Não</button>
       </div>`;
     } else if (campo.tipo === 'textarea') {
-      if (campo.id === 'solicitacao_manutencao') {
-        // Botão que abre modal de manutenção multi-frota
-        html += `<div class="field-group">
-          <button class="btn-solic-manut" id="btn-solic-manut" onclick="abrirModalManutencao()">
-            🔧 Solicitação de Manutenção
-          </button>
-          <div id="solic-manut-preview" class="solic-preview" style="display:none"></div>
-        </div>`;
-      } else {
-        html += `<div class="field-group"><textarea id="f_${campo.id}" placeholder="${campo.id === 'justificativa' ? 'Descreva o motivo...' : 'Descreva a solicitação...'}"></textarea></div>`;
-      }
+      html += `<div class="field-group"><textarea id="f_${campo.id}" placeholder="${campo.id === 'justificativa' ? 'Descreva o motivo...' : campo.id === 'solicitacao_manutencao' ? 'Ex: Trocar lâmpada de farol, regular freios...' : 'Descreva a solicitação...'}"></textarea></div>`;
     }
     html += '</div>';
   });
@@ -1078,196 +1065,98 @@ function fecharForm() {
 let _salvandoChecklist = false;
 
 async function salvarChecklist() {
-  // ── TRAVA CONTRA CLIQUE DUPLO / SALVAMENTO REPETIDO ──────────
-  if (_salvandoChecklist) return; // já está salvando, ignora novo clique
+  // Trava simples: se já está salvando, ignora cliques extras
+  if (_salvandoChecklist) return;
   _salvandoChecklist = true;
-  desabilitarBotoesSalvar(true);
+
+  const botoes = document.querySelectorAll('[data-btn-salvar-checklist]');
+  botoes.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
 
   try {
-  // Validar campos obrigatórios
-  const campos_required = CAMPOS.filter(f => f.required && f.id);
-  for (const c of campos_required) {
-    if (c.tipo === 'simnao') {
-      if (!formDados[c.id]) { showToast('Responda: ' + c.label); liberarSalvarChecklist(); return; }
-    } else if (c.tipo === 'foto') {
-      if (!formDados['foto_' + c.id]) { showToast('Adicione a foto de auto avaliação'); liberarSalvarChecklist(); return; }
-    } else if (c.tipo === 'select-veiculo' || c.tipo === 'datetime' || c.tipo === 'carreta-reserva') {
-      // campos automáticos — não validar
-    } else {
-      const el = document.getElementById('f_' + c.id);
-      if (!el || !el.value.trim()) { showToast('Preencha: ' + c.label); liberarSalvarChecklist(); return; }
-    }
-  }
-
-  const veiculo = caminhaoAtual ? caminhaoAtual.vp : '';
-  const motorista = document.getElementById('f_motorista').value.trim();
-  const km = document.getElementById('f_km_atual').value;
-  const pad = n => String(n).padStart(2,'0');
-  const utc = new Date();
-  const br = new Date(utc.getTime() - 3 * 60 * 60 * 1000);
-  const data_hora = `${pad(br.getUTCDate())}/${pad(br.getUTCMonth()+1)}/${br.getUTCFullYear()} ${pad(br.getUTCHours())}:${pad(br.getUTCMinutes())}:${pad(br.getUTCSeconds())}`;
-
-  const registro = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2),
-    veiculo,
-    placa: caminhaoAtual ? caminhaoAtual.placa : '',
-    motorista,
-    email: usuarioLogado ? usuarioLogado.email : '',
-    km_atual: km,
-    data_hora,
-    carreta_reserva: document.getElementById('f_carreta_reserva')?.value?.trim() || '',
-    foto_auto_avaliacao: formDados['foto_auto_avaliacao'] || '',
-    ...formDados,
-    justificativa: document.getElementById('f_justificativa')?.value || '',
-    solicitacao_manutencao: (function(){
-      var sols = [];
-      try { sols = JSON.parse(sessionStorage.getItem('twm_sols_manut') || '[]'); } catch(e) {}
-      if (!sols.length && typeof _solicitacoes !== 'undefined') sols = _solicitacoes || [];
-      if (!sols.length) return '';
-      return sols.map(function(s){ return s.frota + ': ' + s.problema; }).join(' | ');
-    })(),
-    solicitacoes_manutencao: (function(){
-      var sols = [];
-      try { sols = JSON.parse(sessionStorage.getItem('twm_sols_manut') || '[]'); } catch(e) {}
-      if (!sols.length && typeof _solicitacoes !== 'undefined') sols = _solicitacoes || [];
-      return sols;
-    })(),
-  };
-
-  // Versão sem foto para salvar localmente (evita erro de quota)
-  const registroLocal = { ...registro, foto_auto_avaliacao: registro.foto_auto_avaliacao ? 'Foto enviada' : '' };
-
-  // Salvar localmente — verifica duplicata pelo ID
-  const jaExiste = checklists.some(r => r.id === registroLocal.id);
-  if (!jaExiste) {
-    checklists.push(registroLocal);
-    try {
-      localStorage.setItem('twm_checklists', JSON.stringify(checklists));
-    } catch(e) {
-      checklists = checklists.slice(-20);
-      localStorage.setItem('twm_checklists', JSON.stringify(checklists));
-    }
-  }
-
-  // ── Cria card de manutenção se houver solicitação ──
-  var _sols = registroLocal.solicitacoes_manutencao || [];
-  if (_sols.length === 0 && registroLocal.solicitacao_manutencao && registroLocal.solicitacao_manutencao.trim()) {
-    _sols = [{frota: registroLocal.frota || '—', problema: registroLocal.solicitacao_manutencao.trim()}];
-  }
-  if (_sols.length > 0) {
-    try {
-      var ordens = JSON.parse(localStorage.getItem('twm_manutencao_os') || '[]');
-      var dataHoje = new Date().toLocaleDateString('pt-BR');
-      var novasOS = [];
-
-      _sols.forEach(function(s, i) {
-        var novaOS = {
-          id:        'OS-' + (Date.now() + i).toString(36).toUpperCase(),
-          frota:     s.frota || registroLocal.frota || '—',
-          prioridade:'normal',
-          status:    'aberta',
-          origem:    'checklist',
-          origem_id: registroLocal.id || '',
-          motorista: registroLocal.motorista || '—',
-          data_aber: dataHoje,
-          ts:        Date.now() + i,
-          servicos: [{
-            id:        'SV-' + (Date.now() + i).toString(36).toUpperCase(),
-            tipo:      '[44] OUTROS SERVIÇOS',
-            descricao: s.problema,
-            mecanico:  '',
-            tempo:     '',
-            status:    'aberta',
-            solucao:   '',
-            pendencia: false,
-            ts:        Date.now() + i
-          }]
-        };
-        novasOS.push(novaOS);
-        ordens.unshift(novaOS);
-      });
-
-      // Salva localmente PRIMEIRO
-      localStorage.setItem('twm_manutencao_os', JSON.stringify(ordens));
-
-      // Envia para planilha E para check list — aguarda resposta
-      const scriptUrlM = (JSON.parse(localStorage.getItem('twm_config')||'{}').scriptUrl) ||
-        'https://script.google.com/macros/s/AKfycbwAGLjEDNVAJk9nGujpVd6hTl3QY9Ss9Wl0Sm14TqCHBhdAFEPglhcXSzoN7ktSQjoa/exec';
-
-      if (navigator.onLine && scriptUrlM) {
-        // Envia todas as OS em paralelo e AGUARDA
-        await Promise.allSettled(novasOS.map(function(os_env) {
-          var pMan = new URLSearchParams({
-            action:    'salvarManutencao',
-            id_os:     os_env.id,
-            frota:     os_env.frota,
-            prioridade:os_env.prioridade,
-            status:    os_env.status,
-            origem:    os_env.origem,
-            motorista: os_env.motorista || '',
-            data_aber: os_env.data_aber,
-            obs:       'Aberta pelo Check List Frota — ' + (os_env.motorista||''),
-            servicos:  JSON.stringify(os_env.servicos || [])
-          });
-          return fetch(scriptUrlM + '?' + pMan.toString());
-        }));
+    // Validar campos obrigatórios
+    const campos_required = CAMPOS.filter(f => f.required && f.id);
+    for (const c of campos_required) {
+      if (c.tipo === 'simnao') {
+        if (!formDados[c.id]) { showToast('Responda: ' + c.label); throw new Error('validacao'); }
+      } else if (c.tipo === 'foto') {
+        if (!formDados['foto_' + c.id]) { showToast('Adicione a foto de auto avaliação'); throw new Error('validacao'); }
+      } else if (c.tipo === 'select-veiculo' || c.tipo === 'datetime' || c.tipo === 'carreta-reserva') {
+        // campos automáticos — não validar
+      } else {
+        const el = document.getElementById('f_' + c.id);
+        if (!el || !el.value.trim()) { showToast('Preencha: ' + c.label); throw new Error('validacao'); }
       }
+    }
 
-    } catch(e) {}
-  }
+    const veiculo = caminhaoAtual ? caminhaoAtual.vp : '';
+    const motorista = document.getElementById('f_motorista').value.trim();
+    const km = document.getElementById('f_km_atual').value;
+    const pad = n => String(n).padStart(2,'0');
+    const utc = new Date();
+    const br = new Date(utc.getTime() - 3 * 60 * 60 * 1000);
+    const data_hora = `${pad(br.getUTCDate())}/${pad(br.getUTCMonth()+1)}/${br.getUTCFullYear()} ${pad(br.getUTCHours())}:${pad(br.getUTCMinutes())}:${pad(br.getUTCSeconds())}`;
 
-  // Fechar form e atualizar tela
-  showScreen('app');
-  showPage('detalhe');
-  renderHistoricoVeiculo(veiculo);
+    // Pega a solicitação de manutenção escrita pelo motorista (campo de texto livre)
+    const solicitacaoManutencao = document.getElementById('f_solicitacao_manutencao')?.value?.trim() || '';
 
-  // Enviar para planilha (com a foto)
-  if (!SCRIPT_URL) {
-    showToast('✅ Check List salvo!');
-    liberarSalvarChecklist();
-    setTimeout(()=>voltarLista(), 1200);
-    return;
-  }
-  if (!navigator.onLine) {
-    filaOffline.push(registro);
-    localStorage.setItem('twm_fila', JSON.stringify(filaOffline));
-    showToast('📵 Sem internet — salvo, enviará ao reconectar');
-    liberarSalvarChecklist();
-    setTimeout(()=>voltarLista(), 1500);
-    return;
-  }
-  showToast('⏳ Enviando para planilha...');
-  enviarParaPlanilha(registro).then(ok => {
-    if (ok) { showToast('✅ Check List salvo!'); }
-    else {
+    const registro = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      veiculo,
+      placa: caminhaoAtual ? caminhaoAtual.placa : '',
+      motorista,
+      email: usuarioLogado ? usuarioLogado.email : '',
+      km_atual: km,
+      data_hora,
+      carreta_reserva: document.getElementById('f_carreta_reserva')?.value?.trim() || '',
+      foto_auto_avaliacao: formDados['foto_auto_avaliacao'] || '',
+      ...formDados,
+      justificativa: document.getElementById('f_justificativa')?.value || '',
+      solicitacao_manutencao: solicitacaoManutencao,
+    };
+
+    // Versão sem foto para salvar localmente (evita erro de quota)
+    const registroLocal = { ...registro, foto_auto_avaliacao: registro.foto_auto_avaliacao ? 'Foto enviada' : '' };
+
+    // Salva localmente — verifica duplicata pelo ID
+    const jaExiste = checklists.some(r => r.id === registroLocal.id);
+    if (!jaExiste) {
+      checklists.push(registroLocal);
+      try {
+        localStorage.setItem('twm_checklists', JSON.stringify(checklists));
+      } catch(e) {
+        checklists = checklists.slice(-20);
+        localStorage.setItem('twm_checklists', JSON.stringify(checklists));
+      }
+    }
+
+    // ── Envia o checklist para a planilha (a própria action registrarChecklist
+    //    no Apps Script já cria a OS de manutenção quando há solicitacao_manutencao) ──
+    showToast('⏳ Salvando...');
+
+    let ok = false;
+    if (SCRIPT_URL && navigator.onLine) {
+      ok = await enviarParaPlanilha(registro);
+    }
+
+    if (ok) {
+      showToast('✅ Check List salvo!');
+    } else {
       filaOffline.push(registro);
       localStorage.setItem('twm_fila', JSON.stringify(filaOffline));
-      showToast('⚠️ Falha no envio — salvo localmente');
+      showToast(navigator.onLine ? '⚠️ Falha no envio — salvo localmente' : '📵 Sem internet — salvo, enviará ao reconectar');
     }
-  }).finally(() => {
-    liberarSalvarChecklist();
-    setTimeout(()=>voltarLista(), 1200);
-  });
 
-  } catch(err) {
-    showToast('❌ Erro: ' + err.message);
-    console.error('Erro ao salvar:', err);
-    liberarSalvarChecklist();
+    setTimeout(() => voltarLista(), 1200);
+
+  } catch (err) {
+    if (err.message !== 'validacao') {
+      showToast('❌ Erro: ' + err.message);
+      console.error('Erro ao salvar:', err);
+    }
+  } finally {
+    _salvandoChecklist = false;
+    botoes.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
   }
-}
-
-// ── Trava de duplo clique: desabilita/habilita os botões de Salvar ──
-function desabilitarBotoesSalvar(desabilitar) {
-  document.querySelectorAll('[data-btn-salvar-checklist]').forEach(function(btn) {
-    btn.disabled = desabilitar;
-    btn.style.opacity = desabilitar ? '0.5' : '1';
-    btn.style.pointerEvents = desabilitar ? 'none' : 'auto';
-  });
-}
-
-function liberarSalvarChecklist() {
-  _salvandoChecklist = false;
-  desabilitarBotoesSalvar(false);
 }
 
 // ===== CARROS DE SERVIÇO =====
