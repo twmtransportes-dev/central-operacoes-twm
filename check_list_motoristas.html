@@ -847,6 +847,7 @@ function abrirDetalhe(vp) {
 
 async function carregarHistoricoVeiculo(vp) {
   const div = document.getElementById('hist-caminhao');
+  if (!div) return; // tela de detalhe do veículo não está em uso nesta versão — não bloqueia o fluxo
   div.innerHTML = '<div class="no-items">⏳ Carregando histórico...</div>';
 
   // Função para renderizar do localStorage (fallback)
