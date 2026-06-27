@@ -599,17 +599,35 @@ const IMGBB_KEY_CL = '4a02e2a2c68223fd6a37ebbffefe4501';
 
 async function comprimirFotoCL(dataUrl, maxPx, qualidade) {
   return new Promise(resolve => {
+    let resolvido = false;
+    const finalizar = (valor) => {
+      if (resolvido) return;
+      resolvido = true;
+      resolve(valor);
+    };
+    // Timeout de segurança: se a imagem não carregar em 8s, segue sem comprimir
+    const timeoutId = setTimeout(() => finalizar(dataUrl), 8000);
+
     const img = new Image();
     img.onload = () => {
-      let w = img.width, h = img.height;
-      if (w > maxPx || h > maxPx) {
-        if (w > h) { h = Math.round(h * maxPx / w); w = maxPx; }
-        else       { w = Math.round(w * maxPx / h); h = maxPx; }
+      clearTimeout(timeoutId);
+      try {
+        let w = img.width, h = img.height;
+        if (w > maxPx || h > maxPx) {
+          if (w > h) { h = Math.round(h * maxPx / w); w = maxPx; }
+          else       { w = Math.round(w * maxPx / h); h = maxPx; }
+        }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        finalizar(c.toDataURL('image/jpeg', qualidade));
+      } catch(e) {
+        finalizar(dataUrl); // fallback: usa a imagem original sem comprimir
       }
-      const c = document.createElement('canvas');
-      c.width = w; c.height = h;
-      c.getContext('2d').drawImage(img, 0, 0, w, h);
-      resolve(c.toDataURL('image/jpeg', qualidade));
+    };
+    img.onerror = () => {
+      clearTimeout(timeoutId);
+      finalizar(dataUrl); // fallback: usa a imagem original sem comprimir
     };
     img.src = dataUrl;
   });
@@ -622,7 +640,13 @@ async function uploadImgBBCL(dataUrl) {
     const fd = new FormData();
     fd.append('key', IMGBB_KEY_CL);
     fd.append('image', b64);
-    const res = await fetch('https://api.imgbb.com/1/upload', { method:'POST', body:fd });
+
+    // Timeout de segurança no upload: se em 20s não responder, desiste e segue sem foto
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    const res = await fetch('https://api.imgbb.com/1/upload', { method:'POST', body:fd, signal: controller.signal });
+    clearTimeout(timeoutId);
+
     const data = await res.json();
     if (data.success) return data.data.url;
   } catch(e) { console.warn('[CL] ImgBB falhou:', e); }
@@ -662,7 +686,10 @@ async function enviarParaPlanilha(registro) {
       auto_avaliacao:       fotoUrl ? 'Foto enviada' : '',
       foto_url:             fotoUrl,
     });
-    const res = await fetch(SCRIPT_URL + '?' + params.toString());
+    const ctrlPlanilha = new AbortController();
+    const timeoutPlanilha = setTimeout(() => ctrlPlanilha.abort(), 25000);
+    const res = await fetch(SCRIPT_URL + '?' + params.toString(), { signal: ctrlPlanilha.signal });
+    clearTimeout(timeoutPlanilha);
     const data = await res.json();
     return data.ok === true;
   } catch (e) {
@@ -731,11 +758,17 @@ function logout() {
 // ===== NAVEGAÇÃO =====
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + id).classList.add('active');
-  // Empurra estado no histórico para interceptar seta voltar
-  if (id === 'app' || id === 'form') {
-    history.pushState({ screen: id, page: 'caminhoes' }, '');
+  const el = document.getElementById('screen-' + id);
+  if (el) {
+    el.classList.add('active');
+    // Empurra estado no histórico para interceptar seta voltar
+    if (id === 'app' || id === 'form') {
+      history.pushState({ screen: id, page: 'caminhoes' }, '');
+    }
   }
+  // Nota: esta versão do app usa o sistema de "pages" (showPage), não "screens".
+  // Esta função foi deixada apenas por compatibilidade com chamadas antigas no
+  // código e não bloqueia mais o fluxo quando o elemento screen-* não existe.
 }
 
 function showPage(page) {
@@ -962,7 +995,7 @@ function horaBrasil() {
 
 function abrirFormChecklist() {
   formDados = {};
-  const body = document.getElementById('form-body');
+  const body = document.getElementById('form-content');
   const isoNow = horaBrasil();
 
   let html = '';
