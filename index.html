@@ -115,17 +115,12 @@
   /* ── NAVIGATION BAR ───────────────────────────────────────── */
   .ios-navbar{
     position:sticky;top:0;z-index:100;
-    padding:calc(var(--safe-top) + 8px) 20px 12px;
-    background:rgba(var(--navbar-bg,242,242,247),.85);
-    backdrop-filter:saturate(180%) blur(20px);
-    -webkit-backdrop-filter:saturate(180%) blur(20px);
     padding:calc(var(--safe-top) + 0px) 0 0;
     background:linear-gradient(160deg,#e8e4f8 0%,#f0edf9 40%,#eceaf5 100%);
     border-bottom:1px solid var(--ios-sep);
   }
   body.theme-escuro .ios-navbar,
   @media(prefers-color-scheme:dark){
-    .ios-navbar{--navbar-bg:0,0,0}
     .ios-navbar{background:linear-gradient(160deg,#1a1530 0%,#1c1a2e 40%,#18162a 100%)}
   }
   body.theme-escuro .ios-navbar{background:linear-gradient(160deg,#1a1530 0%,#1c1a2e 40%,#18162a 100%)}
@@ -524,17 +519,8 @@
 <!-- ══ SCREEN: MAIN ═══════════════════════════════════════════ -->
 <div id="screen-main" class="screen">
 
-  <!-- Navbar -->
   <!-- Navbar / Hero Header -->
   <div class="ios-navbar">
-    <div class="ios-navbar-inner">
-      <button class="ios-dots-btn" id="dots-btn" onclick="toggleThemeMenu(event)" title="Opções">
-        <span></span><span></span><span></span>
-      </button>
-      <span class="ios-page-title">TWM DataLink</span>
-      <button class="ios-avatar-btn" id="nav-avatar" onclick="profileAbrir()">
-        <span id="nav-avatar-txt">?</span>
-      </button>
     <div class="ios-navbar-topbar">
       <div style="display:flex;align-items:center;gap:8px">
         <button class="ios-dots-btn" id="dots-btn" onclick="toggleThemeMenu(event)" title="Opções">
@@ -576,12 +562,6 @@
     <button class="ios-theme-action danger" onclick="doLogout();closeThemeMenu()">
       🚪 Sair da conta
     </button>
-  </div>
-
-  <!-- Saudação + título -->
-  <div style="padding:12px 20px 0">
-    <div style="font-size:14px;color:var(--ios-label2)" id="greeting-txt">Bom dia</div>
-    <div class="ios-large-title" id="greeting-name">—</div>
   </div>
 
   <!-- Widget de status da frota -->
@@ -774,7 +754,7 @@ function doLogout(){
   setTimeout(()=>{
     document.getElementById('screen-main').classList.remove('active');
     document.getElementById('screen-login').classList.add('login-visible');
-
+    
   }, 200);
 }
 
@@ -1130,7 +1110,7 @@ document.getElementById('login-email').addEventListener('keydown',function(e){
     initApp();
   } else {
     document.getElementById('screen-login').classList.add('login-visible');
-
+    
   }
 })();
 </script>
