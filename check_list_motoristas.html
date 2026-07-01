@@ -552,6 +552,7 @@ async function enviarParaPlanilha(registro) {
       carreta_reserva:      registro.carreta_reserva || '',
       justificativa:        registro.justificativa   || '',
       solicitacao_manutencao: registro.solicitacao_manutencao || '',
+      frota_manutencao:     registro.frota_manutencao || registro.veiculo || '',
       respostas:            JSON.stringify(respostas),
       auto_avaliacao:       fotoUrl ? 'Foto enviada' : '',
       foto_url:             fotoUrl,
@@ -744,6 +745,7 @@ async function salvarChecklist() {
       ...formDados,
       justificativa: (formDados.justificativa || document.getElementById('f-justificativa')?.value || '').trim(),
       solicitacao_manutencao: solicitacaoManutencao,
+      frota_manutencao: formDados._manutFrota || veiculo,
     };
 
     const registroLocal = { ...registro, foto_auto_avaliacao: registro.foto_auto_avaliacao ? 'Foto enviada' : '' };
@@ -1079,7 +1081,32 @@ function renderCamposManutencao() {
   if (!wrap) return;
   var campos = formDados._manutCampos || [''];
 
-  var html = '<div class="ios-field-label" style="padding:12px 16px 4px">SOLICITAÇÃO DE MANUTENÇÃO</div>';
+  // Monta opções de frota: cavalo + carretas associadas
+  var frotaOpts = [];
+  if (caminhaoAtual) {
+    frotaOpts.push(caminhaoAtual.vp);
+    var carretasStr = (caminhaoAtual.carreta || '').trim();
+    if (carretasStr && carretasStr !== '-') {
+      carretasStr.split('/').forEach(function(c) {
+        var rb = c.trim();
+        if (rb) frotaOpts.push(rb);
+      });
+    }
+  }
+  if (!formDados._manutFrota && frotaOpts.length) formDados._manutFrota = frotaOpts[0];
+
+  var selectHtml = '';
+  if (frotaOpts.length > 1) {
+    selectHtml = '<div class="ios-field" style="padding:8px 16px 4px;display:flex;align-items:center;gap:10px">'
+      + '<div class="ios-field-label" style="margin:0;white-space:nowrap">FROTA</div>'
+      + '<select id="manut-frota-select" style="flex:1;font-size:15px;color:var(--ios-label);background:var(--ios-fill);border:none;border-radius:8px;padding:6px 10px;font-family:inherit">';
+    frotaOpts.forEach(function(f) {
+      selectHtml += '<option value="' + f + '"' + (formDados._manutFrota === f ? ' selected' : '') + '>' + f + '</option>';
+    });
+    selectHtml += '</select></div>';
+  }
+
+  var html = selectHtml + '<div class="ios-field-label" style="padding:12px 16px 4px">SOLICITAÇÃO DE MANUTENÇÃO</div>';
   campos.forEach(function(valor, idx) {
     html += '<div class="ios-field" style="display:flex;align-items:center;gap:8px">'
       + '<input class="manut-input" data-idx="' + idx + '" type="text" placeholder="Ex: Trocar lâmpada de farol..." value="' + (valor||'').replace(/"/g,'&quot;') + '"'
@@ -1120,6 +1147,13 @@ function renderCamposManutencao() {
       renderCamposManutencao();
     });
   });
+
+  var frotaSel = document.getElementById('manut-frota-select');
+  if (frotaSel) {
+    frotaSel.addEventListener('change', function() {
+      formDados._manutFrota = this.value;
+    });
+  }
 }
 
 // ── Detecta o grupo de serviço (Globus) pela palavra-chave do problema ──
