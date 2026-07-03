@@ -284,7 +284,7 @@ body{
     <button class="chip" onclick="setChip('reprovado',this)">❌ Reprovado</button>
   </div>
 
-  <div id="lista-wrap">
+  <div id="lista-pedidos">
     <div class="ios-empty"><div class="ios-spinner" style="margin:40px auto"></div></div>
   </div>
 
@@ -304,7 +304,8 @@ body{
 </div>
 
 <!-- ══ NOVO PEDIDO SHEET ════════════════════════════════════ -->
-<div id="novo-ov" onclick="fecharNovo()"><div id="novo-sheet" onclick="event.stopPropagation()">
+<div id="novo-ov" onclick="fecharNovo()"></div>
+<div id="novo-sheet">
   <div style="width:36px;height:5px;border-radius:3px;background:var(--ios-fill);margin:8px auto 0"></div>
   <div style="font-size:17px;font-weight:700;text-align:center;padding:12px 16px 8px;color:var(--ios-label)">Nova Solicitação</div>
 
@@ -348,7 +349,6 @@ body{
     <button class="ios-btn ios-btn-gray" onclick="fecharNovo()">Cancelar</button>
   </div>
 </div>
-</div>
 
 <div id="ios-toast"></div>
 
@@ -388,8 +388,8 @@ var viewerIdx     = 0;
   try {
     var u = JSON.parse(localStorage.getItem('twm_user_cache') || '{}');
     if (u.nome) {
-      document.getElementById('hd-sub-user').textContent = u.nome.split(' ')[0] + ' — TWM Transportes';
-      document.getElementById('f-solicitante').value = u.nome || '';
+      (document.getElementById('hd-sub-user')||{textContent:''}).textContent = u.nome.split(' ')[0] + ' — TWM Transportes';
+      (document.getElementById('f-solicitante')||{value:''}).value = u.nome || '';
     }
   } catch(e) {}
 
@@ -428,7 +428,8 @@ var SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gvi
 function buscarPedidos() {
   if (!SCRIPT_URL) {
     if (pedidos.length === 0) {
-      document.getElementById('lista-wrap').innerHTML =
+      var _lx = document.getElementById('lista-pedidos') || document.getElementById('lista-wrap');
+      if(_lx) _lx.innerHTML =
         '<div class="empty"><div class="empty-ico">⚙️</div><div class="empty-txt">Script não configurado</div><div class="empty-sub">SCRIPT_URL não definida</div></div>';
     }
     return;
@@ -464,7 +465,9 @@ function buscarPedidos() {
 }
 
 function renderListaVazia() {
-  document.getElementById('lista-wrap').innerHTML =
+  var _el = document.getElementById('lista-pedidos') || document.getElementById('lista-wrap');
+  if(!_el) return;
+  _el.innerHTML =
     '<div class="empty"><div class="empty-ico">📡</div><div class="empty-txt">Sem conexão</div><div class="empty-sub">Verifique sua internet e sincronize</div></div>';
 }
 
@@ -593,7 +596,7 @@ function showSyncDot() {
 //  RENDER LISTA
 // ══════════════════════════════════════════════
 function renderLista() {
-  var busca = (document.getElementById('search-inp').value || '').toLowerCase().trim();
+  var busca = ((document.getElementById('search-inp')||{value:''}).value || '').toLowerCase().trim();
   var lista = pedidos.filter(function(p) {
     if (filtroAtual === 'sol' && p.status !== 'sol') return false;
     if (filtroAtual === 'orc' && p.status !== 'orc') return false;
@@ -608,7 +611,8 @@ function renderLista() {
   });
 
   if (!lista.length) {
-    document.getElementById('lista-wrap').innerHTML =
+    var _ly = document.getElementById('lista-pedidos') || document.getElementById('lista-wrap');
+    if(_ly) _ly.innerHTML =
       '<div class="empty"><div class="empty-ico">' + (pedidos.length ? '🔍' : '📦') + '</div>' +
       '<div class="empty-txt">' + (pedidos.length ? 'Nenhum resultado' : 'Sem pedidos') + '</div>' +
       '<div class="empty-sub">' + (pedidos.length ? 'Tente outros filtros' : 'Clique em + para criar um pedido') + '</div></div>';
@@ -641,7 +645,8 @@ function renderLista() {
     '</div>';
   });
 
-  document.getElementById('lista-wrap').innerHTML = html;
+  var _lw = document.getElementById('lista-pedidos') || document.getElementById('lista-wrap');
+  if(_lw) _lw.innerHTML = html;
 }
 
 function badgeHtml(s) {
@@ -701,11 +706,11 @@ function aplicarChip(f) {
 function irNovo() {
   itensPedido = [];
   nivelAtual = 'NORMAL';
-  document.getElementById('f-frota').value = '';
-  document.getElementById('f-obs').value = '';
-  document.getElementById('f-prod').value = '';
-  document.getElementById('f-qty').value = '1';
-  document.getElementById('f-data-nec').value = '';
+  (document.getElementById('f-frota')||{value:''}).value = '';
+  (document.getElementById('f-obs')||{value:''}).value = '';
+  (document.getElementById('f-prod')||{value:''}).value = '';
+  (document.getElementById('f-qty')||{value:''}).value = '1';
+  (document.getElementById('f-data-nec')||{value:''}).value = '';
   // Restaura nível
   document.querySelectorAll('.nivel-opt').forEach(function(b) {
     b.classList.toggle('on', b.classList.contains('normal'));
@@ -714,7 +719,7 @@ function irNovo() {
   renderItens();
   renderFotosPreview();
   irTela('tela-novo');
-  setTimeout(function() { document.getElementById('f-frota').focus(); }, 200);
+  setTimeout(function() { (document.getElementById('f-frota')||{focus:''}).focus(); }, 200);
 }
 
 function setNivel(n, el) {
@@ -724,15 +729,15 @@ function setNivel(n, el) {
 }
 
 function addItem() {
-  var prod = (document.getElementById('f-prod').value || '').trim();
-  var qty = parseFloat(document.getElementById('f-qty').value) || 1;
-  var und = document.getElementById('f-und').value;
-  if (!prod) { document.getElementById('f-prod').focus(); return; }
+  var prod = ((document.getElementById('f-prod')||{value:''}).value || '').trim();
+  var qty = parseFloat((document.getElementById('f-qty')||{value:''}).value) || 1;
+  var und = (document.getElementById('f-und')||{value:''}).value;
+  if (!prod) { (document.getElementById('f-prod')||{focus:''}).focus(); return; }
   itensPedido.push({ prod: prod, qty: qty, und: und });
-  document.getElementById('f-prod').value = '';
-  document.getElementById('f-qty').value = '1';
+  (document.getElementById('f-prod')||{value:''}).value = '';
+  (document.getElementById('f-qty')||{value:''}).value = '1';
   renderItens();
-  document.getElementById('f-prod').focus();
+  (document.getElementById('f-prod')||{focus:''}).focus();
 }
 
 function remItem(idx) {
@@ -754,7 +759,7 @@ function renderItens() {
     '</div>';
   });
   if (!html) html = '<div style="font-size:12px;color:var(--muted);padding:8px 0 6px;opacity:.7">Nenhum item adicionado. Preencha acima e clique em +</div>';
-  document.getElementById('itens-lista').innerHTML = html;
+  (document.getElementById('itens-lista')||{innerHTML:''}).innerHTML = html;
 }
 
 // ══════════════════════════════════════════════
@@ -834,20 +839,20 @@ function uploadTodasFotos(fotos, callback) {
 }
 
 function salvarPedido() {
-  var frota = document.getElementById('f-frota').value;
-  var obs = (document.getElementById('f-obs').value || '').trim();
-  var solicitante = (document.getElementById('f-solicitante').value || '').trim();
-  var dataNec = document.getElementById('f-data-nec').value;
+  var frota = (document.getElementById('f-frota')||{value:''}).value;
+  var obs = ((document.getElementById('f-obs')||{value:''}).value || '').trim();
+  var solicitante = ((document.getElementById('f-solicitante')||{value:''}).value || '').trim();
+  var dataNec = (document.getElementById('f-data-nec')||{value:''}).value;
 
   // Captura item em edição se houver
-  var prodAtual = (document.getElementById('f-prod').value || '').trim();
+  var prodAtual = ((document.getElementById('f-prod')||{value:''}).value || '').trim();
   if (prodAtual) {
     itensPedido.push({
       prod: prodAtual,
-      qty: parseFloat(document.getElementById('f-qty').value) || 1,
-      und: document.getElementById('f-und').value
+      qty: parseFloat((document.getElementById('f-qty')||{value:''}).value) || 1,
+      und: (document.getElementById('f-und')||{value:''}).value
     });
-    document.getElementById('f-prod').value = '';
+    (document.getElementById('f-prod')||{value:''}).value = '';
     renderItens();
   }
 
@@ -974,9 +979,9 @@ function abrirDetalhe(id) {
   if (!p) return;
   pedidoDetalhe = p;
 
-  document.getElementById('det-titulo').textContent = 'Pedido #' + p.id;
-  document.getElementById('det-sub').textContent = (p.data || '').split(' ')[0] + (p.frota ? ' · ' + p.frota : '');
-  document.getElementById('det-badge-hd').innerHTML = badgeHtml(p.status);
+  (document.getElementById('det-titulo')||{textContent:''}).textContent = 'Pedido #' + p.id;
+  (document.getElementById('det-sub')||{textContent:''}).textContent = (p.data || '').split(' ')[0] + (p.frota ? ' · ' + p.frota : '');
+  (document.getElementById('det-badge-hd')||{innerHTML:''}).innerHTML = badgeHtml(p.status);
 
   // Hero
   var html = '';
@@ -1055,7 +1060,7 @@ function abrirDetalhe(id) {
     html += '</div>';
   }
 
-  document.getElementById('det-body').innerHTML = html;
+  (document.getElementById('det-body')||{innerHTML:''}).innerHTML = html;
 
   // Ações
   var acoes = '<button class="btn" onclick="irTela(\'tela-lista\')" style="min-width:44px">' +
@@ -1071,18 +1076,18 @@ function abrirDetalhe(id) {
     acoes += '<button class="btn btn-danger" onclick="cancelarPedido(\'' + esc(p.id) + '\')" title="Cancelar">✕</button>';
   }
 
-  document.getElementById('det-acoes').innerHTML = acoes;
+  (document.getElementById('det-acoes')||{innerHTML:''}).innerHTML = acoes;
   irTela('tela-detalhe');
 }
 
 // ══════════════════════════════════════════════
 //  FOTO VIEWER
 // ══════════════════════════════════════════════
-function abrirViewer(urls, idx) { viewerFotos=urls; viewerIdx=idx||0; atualizarViewer(); document.getElementById('foto-viewer').classList.add('show'); }
-function fecharViewer() { document.getElementById('foto-viewer').classList.remove('show'); }
+function abrirViewer(urls, idx) { viewerFotos=urls; viewerIdx=idx||0; atualizarViewer(); (document.getElementById('foto-viewer')||{classList:''}).classList.add('show'); }
+function fecharViewer() { (document.getElementById('foto-viewer')||{classList:''}).classList.remove('show'); }
 function navViewer(d) { viewerIdx=(viewerIdx+d+viewerFotos.length)%viewerFotos.length; atualizarViewer(); }
-function atualizarViewer() { document.getElementById('fv-img').src=viewerFotos[viewerIdx]||''; document.getElementById('fv-count').textContent=(viewerIdx+1)+' / '+viewerFotos.length; }
-document.getElementById('foto-viewer').addEventListener('click', function(e){ if(e.target===this) fecharViewer(); });
+function atualizarViewer() { (document.getElementById('fv-img')||{src:''}).src=viewerFotos[viewerIdx]||''; (document.getElementById('fv-count')||{textContent:''}).textContent=(viewerIdx+1)+' / '+viewerFotos.length; }
+(document.getElementById('foto-viewer')||{addEventListener:''}).addEventListener('click', function(e){ if(e.target===this) fecharViewer(); });
 
 function abrirViewerPedido(id, idx) {
   var p=pedidos.find(function(x){ return x.id===id; });
@@ -1251,19 +1256,15 @@ function irTela(id) {
 // ══════════════════════════════════════════════
 //  UI HELPERS
 // ══════════════════════════════════════════════
-function showLoading(txt) {
-  document.getElementById('loading-txt').textContent = txt || 'Aguarde...';
-  document.getElementById('loading-overlay').classList.add('show');
-}
-function hideLoading() {
-  document.getElementById('loading-overlay').classList.remove('show');
-}
+function showLoading(txt) { /* overridden by patch */ }
+function hideLoading() { /* overridden by patch */ }
 
 var _toastTimer = null;
 function showToast(msg, type) {
-  var el = document.getElementById('toast');
+  var el = document.getElementById('ios-toast');
+  if(!el) return;
   el.textContent = msg;
-  el.className = 'toast show' + (type ? ' ' + type : '');
+  el.classList.add('show');
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(function() { el.classList.remove('show'); }, 3000);
 }
@@ -1344,7 +1345,7 @@ function filtrarPedidos(v) {
 }
 
 function renderPedidos() {
-  var el = document.getElementById('lista-wrap');
+  var el = document.getElementById('lista-pedidos');
   var lista = (window.pedidos||[]).filter(function(p) {
     var st = normalizarStatus(p.status||'pendente');
     if(_chipAtivo !== 'todos' && st !== _chipAtivo) return false;
@@ -1518,6 +1519,88 @@ function renderLista() {
   renderPedidos();
 }
 
+
+// ═══════════ PATCH: corrige funções quebradas / indefinidas ═══════════
+
+// 1. renderLista: override final — usa só renderPedidos (ignora versão antiga que crashava em lista-wrap)
+renderLista = function() { try{ renderPedidos(); }catch(e){} };
+
+// 2. renderListaVazia: usa lista-pedidos em vez de lista-wrap
+renderListaVazia = function() {
+  var el = document.getElementById('lista-pedidos');
+  if(el) el.innerHTML = '<div class="ios-empty">'
+    + '<div class="ios-empty-icon">🛒</div>'
+    + '<div class="ios-empty-title">Nenhuma solicitação</div>'
+    + '<div class="ios-empty-sub">Toque em + para criar</div></div>';
+};
+
+// 3. showLoading / hideLoading — elementos não existem, usa toast
+showLoading = function(txt){ showToast('⏳ '+(txt||'Aguarde...')); };
+hideLoading = function(){};
+
+// 4. normalizarStatus — usada por renderPedidos mas nunca definida no HTML
+normalizarStatus = function(s) {
+  var v = String(s||'').toUpperCase().trim();
+  if(v==='FIN'||v==='FINALIZADO'||v.indexOf('COMPRAD')>=0||v.indexOf('FINAL')>=0) return 'comprado';
+  if(v==='CAN'||v.indexOf('CANCEL')>=0||v==='REPROVADO') return 'reprovado';
+  if(v==='ORC'||v.indexOf('ORC')>=0||v.indexOf('COTAC')>=0) return 'orc';
+  if(v==='APROVADO'||v==='APROV') return 'aprovado';
+  return 'pendente';
+};
+
+// 5. carregarPedidos — chamada 3x mas nunca definida
+function carregarPedidos(){ buscarPedidos(); }
+
+// 6. enviarPedido — chamada por enviarNovoPedido mas nunca definida
+function enviarPedido(pedido, callback) {
+  var linhas = (pedido.descricao||pedido.item||'Item').split('\n').filter(function(l){ return l.trim(); });
+  if(!linhas.length) linhas = ['Item'];
+  var itens = linhas.map(function(l){ return {prod:l.trim(), qty:1}; });
+  var params = new URLSearchParams({
+    action:'savePedido',
+    nivel:(pedido.urgencia||'NORMAL').toUpperCase(),
+    frota:pedido.frota||'',
+    obs:pedido.obs||'',
+    solicitante:'',
+    dataNec:'',
+    itens:JSON.stringify(itens),
+    fotos:JSON.stringify([])
+  });
+  fetch(SCRIPT_URL+'?'+params.toString())
+    .then(function(r){ return r.json(); })
+    .then(function(res){ callback(res.ok, res.nPed); })
+    .catch(function(){ callback(false,null); });
+}
+
+// 7. atualizarStatusPedido — chamada por mudarStatus mas nunca definida
+function atualizarStatusPedido(pid, novoSt, callback) {
+  var stMap = {pendente:'PENDENTE',orc:'ORCANDO',aprovado:'APROVADO',comprado:'FINALIZADO',reprovado:'CANCELADO'};
+  var params = new URLSearchParams({
+    action:'updateStatus',
+    id:pid,
+    status:stMap[novoSt]||novoSt.toUpperCase()
+  });
+  fetch(SCRIPT_URL+'?'+params.toString())
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if(res.ok){
+        var p = (window.pedidos||[]).find(function(x){ return x.id===pid; });
+        if(p) p.status = novoSt;
+        try{ localStorage.setItem(CACHE_KEY, JSON.stringify(window.pedidos||[])); }catch(e){}
+      }
+      callback(res.ok);
+    })
+    .catch(function(){ callback(false); });
+}
+
+// 8. abrirModal — não abria o overlay; adiciona .open ao ped-modal-ov
+var _origAbrirModal = abrirModal;
+abrirModal = function(pid) {
+  _origAbrirModal(pid);
+  document.getElementById('ped-modal-ov').classList.add('open');
+};
+
+// ─────────────────────────────────────────────────────────────────────
 // Boot
 carregarPedidos();
 </script>
