@@ -879,7 +879,7 @@ function abrirCompraSheet(pid) {
 
   // Qtd total de itens
   var qtd = (p.itens||[]).reduce(function(s,i){ return s + (parseFloat(i.qty)||1); }, 0);
-  document.getElementById('cs-qtd-display').textContent = qtd || '—';
+  document.getElementById('cs-qtd-display').value = qtd || '';
 
   // Pré-preenche campos existentes
   document.getElementById('cs-fornecedor').value = p.fornecedor || '';
@@ -923,9 +923,8 @@ function calcularTotal() {
   var valor = parseFloat(
     document.getElementById('cs-valor').value.replace(/[^0-9,.]/g,'').replace(',','.')
   ) || 0;
-  var p = pedidos.find(function(x){ return String(x.id) === String(_csPid); });
-  var qtd = p ? (p.itens||[]).reduce(function(s,i){ return s + (parseFloat(i.qty)||1); }, 0) : 1;
-  if (valor && qtd) {
+  var qtd = parseFloat(document.getElementById('cs-qtd-display').value) || 1;
+  if (valor) {
     document.getElementById('cs-total').value = 'R$ ' + (valor * qtd).toFixed(2).replace('.',',');
   }
 }
@@ -1058,7 +1057,7 @@ setInterval(carregarPedidos, 2 * 60 * 1000);
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="cs-field">
         <div class="cs-label">Qtd. Itens</div>
-        <div id="cs-qtd-display" class="cs-input" style="color:var(--ios-label2);cursor:default">—</div>
+        <input id="cs-qtd-display" class="cs-input" type="text" inputmode="numeric" placeholder="0" oninput="calcularTotal()">
       </div>
       <div class="cs-field">
         <div class="cs-label">Total do Pedido</div>
