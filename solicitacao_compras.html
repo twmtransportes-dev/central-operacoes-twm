@@ -251,6 +251,69 @@ body{
 /* UPLOAD AREA */
 .upload-area{border:2px dashed var(--ios-sep);border-radius:var(--ios-radius);padding:24px;text-align:center;cursor:pointer;color:var(--ios-gray)}
 .upload-area:active{background:var(--ios-fill2)}
+
+/* ── COMPRA SHEET ─────────────────────────────────────────── */
+#compra-ov{display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.6);backdrop-filter:blur(8px)}
+#compra-ov.open{display:flex;align-items:flex-end}
+#compra-sheet{
+  background:var(--ios-bg);width:100%;
+  border-radius:18px 18px 0 0;
+  max-height:94vh;overflow-y:auto;
+  padding-bottom:calc(env(safe-area-inset-bottom)+24px);
+  transform:translateY(100%);
+  transition:transform .3s cubic-bezier(.32,1,.23,1);
+  position:relative;z-index:601;
+}
+#compra-ov.open #compra-sheet{transform:none}
+.cs-handle{width:40px;height:5px;border-radius:3px;background:var(--ios-fill);margin:10px auto 0}
+.cs-title{font-size:20px;font-weight:800;color:var(--ios-label);padding:14px 20px 4px}
+.cs-subtitle{font-size:13px;color:var(--ios-label2);padding:0 20px 16px;border-bottom:1px solid var(--ios-sep)}
+.cs-section{padding:16px 20px 0}
+.cs-section-title{font-size:11px;font-weight:700;color:var(--ios-blue);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.cs-field{margin-bottom:14px}
+.cs-label{font-size:12px;font-weight:600;color:var(--ios-gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.cs-input{
+  width:100%;padding:13px 14px;
+  background:var(--ios-fill);
+  border:none;border-radius:12px;
+  font-size:16px;color:var(--ios-label);
+  font-family:inherit;outline:none;
+  -webkit-appearance:none;
+}
+.cs-input:focus{background:var(--ios-fill2);box-shadow:0 0 0 2px var(--ios-blue)40}
+.cs-status-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.cs-status-btn{
+  padding:11px 8px;border:2px solid var(--ios-sep);
+  border-radius:12px;background:var(--ios-bg);
+  color:var(--ios-label2);font-size:13px;font-weight:600;
+  cursor:pointer;text-align:center;transition:.15s;font-family:inherit;
+}
+.cs-status-btn.sel{border-color:var(--sel-color);background:var(--sel-color)18;color:var(--sel-color)}
+.cs-save-btn{
+  width:calc(100% - 40px);margin:20px 20px 0;
+  padding:16px;background:var(--ios-blue);
+  color:#fff;border:none;border-radius:16px;
+  font-size:17px;font-weight:700;
+  cursor:pointer;font-family:inherit;
+  box-shadow:0 4px 20px rgba(0,122,255,.4);
+  transition:.15s;
+}
+.cs-save-btn:active{transform:scale(.97);opacity:.9}
+.cs-cancel-btn{
+  width:calc(100% - 40px);margin:10px 20px 0;
+  padding:14px;background:var(--ios-fill);
+  color:var(--ios-label);border:none;border-radius:16px;
+  font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;
+}
+/* Botão compra no card */
+.card-compra-btn{
+  display:inline-flex;align-items:center;gap:4px;
+  margin-top:8px;padding:6px 12px;
+  background:rgba(0,122,255,.12);color:var(--ios-blue);
+  border:none;border-radius:8px;font-size:13px;font-weight:700;
+  cursor:pointer;font-family:inherit;
+}
+
 </style>
 </head>
 <body>
@@ -380,6 +443,15 @@ var pedidos    = [];
 var chipAtivo  = 'todos';
 var srchTxt    = '';
 var fotosNovo  = [];
+
+// ── Permissões de compras ─────────────────
+var isComprador = false;  // compras_master: edita G-N na planilha
+try {
+  var _u = JSON.parse(localStorage.getItem('twm_user_cache')||'{}');
+  var _p = _u.permissoes || JSON.parse(localStorage.getItem('twm_permissoes')||'{}');
+  isComprador = !!(_p.compras_master || _p['compras_master'] ||
+    _u.cargo === 'ADMIN' || _u.cargo === 'ADMINISTRATIVO MASTER');
+} catch(e) {}
 
 // ── Status map ────────────────────────────
 var ST = {
@@ -563,11 +635,113 @@ function abrirModal(pid) {
   });
   bodyEl.appendChild(grid);
 
+  // ── Botão de Registrar Compra (compras_master) ──
+  if (isComprador) {
+    var compraBtn = document.createElement('button');
+    compraBtn.style.cssText = 'width:100%;padding:15px;background:var(--ios-blue);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:16px;box-shadow:0 4px 16px rgba(0,122,255,.35)';
+    compraBtn.textContent = '🛒 Registrar Compra';
+    compraBtn.addEventListener('click', (function(ppid){ return function(){ abrirCompraSheet(ppid); }; })(pid));
+    bodyEl.appendChild(compraBtn);
+  }
+
+  // ── Seção exclusiva para comprador (campos avançados inline) ──
+  if (false && isComprador) {
+    var compSep = document.createElement('div');
+    compSep.style.cssText = 'margin-top:16px;padding-top:16px;border-top:2px solid var(--ios-blue)';
+
+    var compTitle = document.createElement('div');
+    compTitle.style.cssText = 'font-size:12px;font-weight:700;color:var(--ios-blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px';
+    compTitle.textContent = '🛒 Dados da Compra';
+    compSep.appendChild(compTitle);
+
+    function makeField(label, id, placeholder, value) {
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'margin-bottom:10px';
+      var lbl = document.createElement('div');
+      lbl.style.cssText = 'font-size:11px;font-weight:600;color:var(--ios-gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px';
+      lbl.textContent = label;
+      var inp = document.createElement('input');
+      inp.id = id;
+      inp.value = value || '';
+      inp.placeholder = placeholder;
+      inp.style.cssText = 'width:100%;padding:10px 12px;background:var(--ios-fill);border:none;border-radius:10px;font-size:15px;color:var(--ios-label);font-family:inherit;outline:none';
+      wrap.appendChild(lbl);
+      wrap.appendChild(inp);
+      return wrap;
+    }
+
+    compSep.appendChild(makeField('Status',      'comp-status',     'PENDENTE / FINALIZADO...', p.statusRaw||''));
+    compSep.appendChild(makeField('Fornecedor',  'comp-fornecedor', 'Nome do fornecedor...',    p.fornecedor));
+    compSep.appendChild(makeField('Valor',       'comp-valor',      'Ex: R$ 150,00',            p.valor));
+    compSep.appendChild(makeField('Comprador',   'comp-comprador',  'Quem comprou...',          p.comprador));
+    compSep.appendChild(makeField('Nota Fiscal', 'comp-nf',         'Número da NF...',          p.notaFiscal));
+    compSep.appendChild(makeField('Total Item',  'comp-total',      'Valor total do item...',   p.total));
+
+    var saveBtn = document.createElement('button');
+    saveBtn.style.cssText = 'width:100%;padding:12px;background:var(--ios-blue);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px';
+    saveBtn.textContent = '💾 Salvar Dados da Compra';
+    saveBtn.addEventListener('click', (function(ppid){ return function(){ salvarDadosCompra(ppid); }; })(pid));
+    compSep.appendChild(saveBtn);
+
+    bodyEl.appendChild(compSep);
+  }
+
   document.getElementById('ped-modal-ov').classList.add('open');
 }
 
 function fecharModal() {
   document.getElementById('ped-modal-ov').classList.remove('open');
+}
+
+function salvarDadosCompra(pid) {
+  var g = function(id){ return (document.getElementById(id)||{value:''}).value.trim(); };
+  var statusRaw  = g('comp-status');
+  var fornecedor = g('comp-fornecedor');
+  var valor      = g('comp-valor');
+  var comprador  = g('comp-comprador');
+  var nf         = g('comp-nf');
+  var total      = g('comp-total');
+
+  var p = pedidos.find(function(x){ return String(x.id) === String(pid); });
+  // Usa status do campo se preenchido, senão mantém o atual
+  var stMap = {
+    'PENDENTE':'PENDENTE','ORCANDO':'ORCANDO','APROVADO':'APROVADO',
+    'FINALIZADO':'FINALIZADO','CANCELADO':'CANCELADO','A CAMINHO':'A CAMINHO'
+  };
+  var stKey = statusRaw ? (stMap[statusRaw.toUpperCase()]||statusRaw.toUpperCase())
+                        : (ST[p ? normSt(p.status) : 'pendente']||{key:'PENDENTE'}).key;
+
+  fetch(SCRIPT_URL + '?' + new URLSearchParams({
+    action:      'updateStatus',
+    id:          pid,
+    status:      stKey,
+    fornecedor:  fornecedor,
+    valor:       valor,
+    comprador:   comprador,
+    notaFiscal:  nf,
+    total:       total
+  }).toString())
+    .then(function(r){ return r.json(); })
+    .then(function(res) {
+      if (res.ok) {
+        if (p) {
+          p.statusRaw  = stKey;
+          p.status     = normSt(stKey);
+          p.fornecedor = fornecedor;
+          p.valor      = valor;
+          p.comprador  = comprador;
+          p.notaFiscal = nf;
+          p.total      = total;
+        }
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(pedidos)); } catch(e){}
+        fecharModal();
+        toast('✅ Dados salvos!');
+        carregarPedidos();
+      } else {
+        toast('⚠️ Erro ao salvar: ' + (res.msg||''));
+      }
+    })
+    .catch(function(){ toast('⚠️ Sem conexão'); });
 }
 
 function mudarStatus(pid, novoSt) {
@@ -687,6 +861,136 @@ function enviarNovoPedido() {
     .catch(function(){ toast('⚠️ Sem conexão'); });
 }
 
+
+// ── COMPRA SHEET ──────────────────────────────────────────────
+var _csPid = null;
+var _csStatus = '';
+
+function abrirCompraSheet(pid) {
+  var p = pedidos.find(function(x){ return String(x.id) === String(pid); });
+  if (!p) return;
+  _csPid = pid;
+  _csStatus = '';
+
+  // Info do pedido
+  var desc = (p.itens||[]).map(function(i){ return i.prod; }).join(', ');
+  document.getElementById('cs-pedido-info').textContent =
+    'Pedido #' + pid + ' — ' + (p.frota||'') + ' — ' + desc.slice(0,60) + (desc.length>60?'…':'');
+
+  // Qtd total de itens
+  var qtd = (p.itens||[]).reduce(function(s,i){ return s + (parseFloat(i.qty)||1); }, 0);
+  document.getElementById('cs-qtd-display').textContent = qtd || '—';
+
+  // Pré-preenche campos existentes
+  document.getElementById('cs-fornecedor').value = p.fornecedor || '';
+  document.getElementById('cs-valor').value      = p.valor      || '';
+  document.getElementById('cs-nf').value         = p.notaFiscal || '';
+  document.getElementById('cs-total').value      = p.total      || '';
+
+  // Pré-preenche comprador com nome do usuário logado
+  var comprador = p.comprador || '';
+  if (!comprador) {
+    try {
+      var u = JSON.parse(localStorage.getItem('twm_user_cache')||'{}');
+      comprador = u.nome ? u.nome.split(' ')[0] : '';
+    } catch(e) {}
+  }
+  document.getElementById('cs-comprador').value = comprador;
+
+  // Marca status atual
+  document.querySelectorAll('.cs-status-btn').forEach(function(b){ b.classList.remove('sel'); });
+  if (p.statusRaw) {
+    var cur = document.querySelector('.cs-status-btn[data-st="' + p.statusRaw.toUpperCase() + '"]');
+    if (cur) { cur.classList.add('sel'); _csStatus = p.statusRaw.toUpperCase(); }
+  }
+
+  document.getElementById('compra-ov').classList.add('open');
+  setTimeout(function(){ document.getElementById('cs-fornecedor').focus(); }, 350);
+}
+
+function fecharCompraSheet() {
+  document.getElementById('compra-ov').classList.remove('open');
+  _csPid = null;
+}
+
+function selecionarStatus(btn) {
+  document.querySelectorAll('.cs-status-btn').forEach(function(b){ b.classList.remove('sel'); });
+  btn.classList.add('sel');
+  _csStatus = btn.dataset.st;
+}
+
+function calcularTotal() {
+  var valor = parseFloat(
+    document.getElementById('cs-valor').value.replace(/[^0-9,.]/g,'').replace(',','.')
+  ) || 0;
+  var p = pedidos.find(function(x){ return String(x.id) === String(_csPid); });
+  var qtd = p ? (p.itens||[]).reduce(function(s,i){ return s + (parseFloat(i.qty)||1); }, 0) : 1;
+  if (valor && qtd) {
+    document.getElementById('cs-total').value = 'R$ ' + (valor * qtd).toFixed(2).replace('.',',');
+  }
+}
+
+function salvarCompra() {
+  var fornecedor = document.getElementById('cs-fornecedor').value.trim();
+  var valor      = document.getElementById('cs-valor').value.trim();
+  var nf         = document.getElementById('cs-nf').value.trim();
+  var total      = document.getElementById('cs-total').value.trim();
+  var comprador  = document.getElementById('cs-comprador').value.trim();
+
+  if (!_csPid) return;
+  if (!fornecedor && !valor && !_csStatus) {
+    toast('⚠️ Preencha ao menos um campo');
+    return;
+  }
+
+  var btn = document.querySelector('.cs-save-btn');
+  btn.textContent = '⏳ Salvando...';
+  btn.disabled = true;
+
+  var p = pedidos.find(function(x){ return String(x.id) === String(_csPid); });
+  var stKey = _csStatus || (p ? (ST[normSt(p.status)]||{key:'PENDENTE'}).key : 'PENDENTE');
+
+  fetch(SCRIPT_URL + '?' + new URLSearchParams({
+    action:     'updateStatus',
+    id:         _csPid,
+    status:     stKey,
+    fornecedor: fornecedor,
+    valor:      valor,
+    comprador:  comprador,
+    notaFiscal: nf,
+    total:      total
+  }).toString())
+    .then(function(r){ return r.json(); })
+    .then(function(res) {
+      btn.textContent = '💾 Salvar Compra';
+      btn.disabled = false;
+      if (res.ok) {
+        if (p) {
+          p.statusRaw  = stKey;
+          p.status     = normSt(stKey);
+          p.fornecedor = fornecedor;
+          p.valor      = valor;
+          p.comprador  = comprador;
+          p.notaFiscal = nf;
+          p.total      = total;
+        }
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(pedidos)); } catch(e){}
+        fecharCompraSheet();
+        fecharModal();
+        toast('✅ Compra registrada!');
+        renderLista();
+      } else {
+        toast('⚠️ Erro: ' + (res.msg||'tente novamente'));
+      }
+    })
+    .catch(function(){
+      btn.textContent = '💾 Salvar Compra';
+      btn.disabled = false;
+      toast('⚠️ Sem conexão');
+    });
+}
+// ─────────────────────────────────────────────────────────────
+
 // ── Boot ──────────────────────────────────
 (function() {
   // Carrega cache local enquanto busca do servidor
@@ -708,5 +1012,74 @@ function enviarNovoPedido() {
 // Auto-refresh a cada 2 minutos
 setInterval(carregarPedidos, 2 * 60 * 1000);
 </script>
+
+<!-- ══ COMPRA SHEET (só para compras_master) ══════════════════ -->
+<div id="compra-ov" onclick="fecharCompraSheet()">
+<div id="compra-sheet" onclick="event.stopPropagation()">
+  <div class="cs-handle"></div>
+  <div class="cs-title">🛒 Registrar Compra</div>
+  <div class="cs-subtitle" id="cs-pedido-info">Pedido #—</div>
+
+  <!-- STATUS -->
+  <div class="cs-section">
+    <div class="cs-section-title">Status</div>
+    <div class="cs-status-grid">
+      <button class="cs-status-btn" data-st="A CAMINHO" style="--sel-color:#FF9500" onclick="selecionarStatus(this)">🚚 A Caminho</button>
+      <button class="cs-status-btn" data-st="FINALIZADO" style="--sel-color:#34C759" onclick="selecionarStatus(this)">✅ Finalizado</button>
+      <button class="cs-status-btn" data-st="ORCANDO" style="--sel-color:#007AFF" onclick="selecionarStatus(this)">💬 Orçando</button>
+      <button class="cs-status-btn" data-st="CANCELADO" style="--sel-color:#FF3B30" onclick="selecionarStatus(this)">❌ Cancelado</button>
+    </div>
+  </div>
+
+  <!-- FORNECEDOR -->
+  <div class="cs-section">
+    <div class="cs-section-title">Fornecedor</div>
+    <div class="cs-field">
+      <input id="cs-fornecedor" class="cs-input" type="text" placeholder="Nome da empresa ou loja..." autocomplete="off">
+    </div>
+  </div>
+
+  <!-- VALOR + NF na mesma linha -->
+  <div class="cs-section">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="cs-field">
+        <div class="cs-label">Valor Unitário</div>
+        <input id="cs-valor" class="cs-input" type="text" inputmode="decimal" placeholder="R$ 0,00" oninput="calcularTotal()">
+      </div>
+      <div class="cs-field">
+        <div class="cs-label">Nota Fiscal</div>
+        <input id="cs-nf" class="cs-input" type="text" inputmode="numeric" placeholder="Nº NF...">
+      </div>
+    </div>
+  </div>
+
+  <!-- TOTAL (calculado automaticamente) -->
+  <div class="cs-section">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="cs-field">
+        <div class="cs-label">Qtd. Itens</div>
+        <div id="cs-qtd-display" class="cs-input" style="color:var(--ios-label2);cursor:default">—</div>
+      </div>
+      <div class="cs-field">
+        <div class="cs-label">Total do Pedido</div>
+        <input id="cs-total" class="cs-input" type="text" inputmode="decimal" placeholder="R$ 0,00">
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPRADOR (auto-preenchido) -->
+  <div class="cs-section" style="padding-bottom:4px">
+    <div class="cs-section-title">Comprador</div>
+    <div class="cs-field">
+      <input id="cs-comprador" class="cs-input" type="text" placeholder="Seu nome...">
+    </div>
+  </div>
+
+  <button class="cs-save-btn" onclick="salvarCompra()">💾 Salvar Compra</button>
+  <button class="cs-cancel-btn" onclick="fecharCompraSheet()">Cancelar</button>
+</div>
+</div>
+
+
 </body>
 </html>
