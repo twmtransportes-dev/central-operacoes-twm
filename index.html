@@ -705,8 +705,9 @@ function extrairPerms(m){
     abastecimento:    ativo(m.ABASTECIMENTO||m.abastecimento),
     relatorios:       ativo(m.RELATÓRIOS||m.RELATORIOS||m.relatorios),
     manutencao:       ativo(m.MANUTENÇÃO||m.MANUTENCAO||m.manutencao),
-    solicitacao_compra:ativo(m['SOLICITAÇÃO DE COMPRA']||m.solicitacao_compra),
-    compras:           ativo(m.COMPRAS||m.compras) || String(m.COMPRAS||m.compras||'').toUpperCase()==='X',
+    solicitacao_compra:ativo(m['SOLICITAÇÃO DE COMPRA']||m['SOLICITACAO DE COMPRA']||m.solicitacao_compra),
+    compras_master:    ativo(m['COMPRAS MASTER']||m['COMPRAS_MASTER']||m.compras_master)
+                       || String(m['COMPRAS MASTER']||m.compras_master||'').toUpperCase()==='X',
     admin_master:      ativo(m['ADMINISTRATIVO MASTER']||m.admin_master),
   };
 }
@@ -732,7 +733,7 @@ function doLogin(){
       // Garante que checklist_frota seja reconhecido independente do nome da coluna
       if(perm['CHECK_FROTA']||perm['check_frota']||perm['CHECK FROTA']) perm['checklist_frota']=true;
       if(perm['CHECK LIST FROTA']||perm['check_list_frota']) perm['checklist_frota']=true;
-      if(perm['COMPRAS']||perm['Compras']) perm['compras']=true;
+      if(perm['COMPRAS MASTER']||perm['COMPRAS_MASTER']) perm['compras_master']=true;
       u.permissoes = perm;
       localStorage.setItem('twm_permissoes', JSON.stringify(perm));
       // Grava twm_session no formato esperado pelos módulos (check_list_motoristas, etc.)
