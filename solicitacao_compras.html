@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Compras — TWM</title>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   TWM iOS DESIGN SYSTEM — Compartilhado entre todos os módulos
+   ═══════════════════════════════════════════════════════════ */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --ios-bg:#F2F2F7;--ios-bg2:#FFFFFF;--ios-bg3:#F2F2F7;
+  --ios-sep:rgba(60,60,67,.12);--ios-blue:#007AFF;--ios-green:#34C759;
+  --ios-orange:#FF9500;--ios-red:#FF3B30;--ios-purple:#AF52DE;
+  --ios-teal:#32ADE6;--ios-indigo:#5856D6;--ios-gray:#8E8E93;--ios-gray2:#AEAEB2;
+  --ios-label:#000;--ios-label2:rgba(60,60,67,.6);--ios-label3:rgba(60,60,67,.3);
+  --ios-fill:rgba(120,120,128,.2);--ios-fill2:rgba(120,120,128,.16);
+  --ios-radius:13px;--ios-radius-lg:22px;
+  --safe-top:env(safe-area-inset-top,44px);--safe-bot:env(safe-area-inset-bottom,34px);
+  --tabbar-h:0px;--accent:#7C3AED;
+}
+@media(prefers-color-scheme:dark){:root{
+  --ios-bg:#000;--ios-bg2:#1C1C1E;--ios-bg3:#2C2C2E;
+  --ios-sep:rgba(84,84,88,.65);--ios-label:#FFF;
+  --ios-label2:rgba(235,235,245,.6);--ios-label3:rgba(235,235,245,.18);
+  --ios-fill:rgba(120,120,128,.36);--ios-fill2:rgba(120,120,128,.32);
+}}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Inter',sans-serif;
+  background:var(--ios-bg);color:var(--ios-label);
+  min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+/* ── NAVBAR ── */
+.ios-nav{
+  position:sticky;top:0;z-index:100;
+  padding:calc(var(--safe-top) + 6px) 16px 10px;
+  background:rgba(var(--nav-rgb,242,242,247),.85);
+  backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:1px solid var(--ios-sep);display:flex;align-items:center;gap:10px;
+}
+@media(prefers-color-scheme:dark){.ios-nav{--nav-rgb:0,0,0}}
+.ios-nav-back{
+  display:flex;align-items:center;gap:4px;background:none;border:none;
+  color:var(--ios-blue);font-size:16px;font-weight:400;cursor:pointer;padding:4px;
+  font-family:inherit;
+}
+.ios-nav-back svg{flex-shrink:0}
+.ios-nav-title{flex:1;text-align:center;font-size:17px;font-weight:600;color:var(--ios-label)}
+.ios-nav-action{
+  background:none;border:none;color:var(--ios-blue);
+  font-size:15px;font-weight:500;cursor:pointer;padding:4px;font-family:inherit;
+}
+.ios-nav-icon-btn{
+  width:34px;height:34px;border-radius:50%;background:var(--ios-fill);
+  border:none;color:var(--ios-blue);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:17px;flex-shrink:0;
+}
+/* ── LARGE TITLE ── */
+.ios-large-title{
+  font-size:34px;font-weight:700;color:var(--ios-label);
+  letter-spacing:-.5px;padding:8px 20px 4px;
+}
+/* ── SECTION HEADER ── */
+.ios-sec{
+  font-size:13px;font-weight:600;color:var(--ios-gray);
+  text-transform:uppercase;letter-spacing:.5px;padding:20px 20px 8px;
+}
+/* ── INSET LIST ── */
+.ios-list{background:var(--ios-bg2);border-radius:var(--ios-radius);margin:0 16px 8px;overflow:hidden}
+.ios-row{
+  display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:52px;
+  border-bottom:1px solid var(--ios-sep);cursor:pointer;transition:.1s;
+  text-decoration:none;color:inherit;background:none;border:none;width:100%;text-align:left;font-family:inherit;
+}
+.ios-row:last-child{border-bottom:none}
+.ios-row:active{background:var(--ios-fill2)}
+.ios-row-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.ios-row-body{flex:1;min-width:0}
+.ios-row-title{font-size:17px;color:var(--ios-label)}
+.ios-row-sub{font-size:13px;color:var(--ios-label2);margin-top:1px}
+.ios-row-right{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.ios-chevron{color:var(--ios-label3);font-size:13px}
+.ios-badge{min-width:20px;height:20px;border-radius:10px;background:var(--ios-red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+/* ── FORM ── */
+.ios-form{background:var(--ios-bg2);border-radius:var(--ios-radius);margin:0 16px 8px;overflow:hidden}
+.ios-field{padding:12px 16px;border-bottom:1px solid var(--ios-sep)}
+.ios-field:last-child{border-bottom:none}
+.ios-field-label{font-size:12px;font-weight:600;color:var(--ios-gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.ios-field input,.ios-field select,.ios-field textarea{
+  width:100%;background:none;border:none;outline:none;
+  font-size:17px;color:var(--ios-label);font-family:inherit;
+  padding:2px 0;resize:none;
+}
+.ios-field input::placeholder,.ios-field textarea::placeholder{color:var(--ios-label3)}
+.ios-field select{-webkit-appearance:none;appearance:none}
+/* ── CARDS ── */
+.ios-card{
+  background:var(--ios-bg2);border-radius:var(--ios-radius-lg);
+  margin:0 16px 12px;padding:16px;
+  box-shadow:0 1px 3px rgba(0,0,0,.08);
+}
+/* ── BUTTONS ── */
+.ios-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:14px 20px;border-radius:14px;border:none;cursor:pointer;
+  font-size:17px;font-weight:600;font-family:inherit;transition:.15s;width:100%;
+}
+.ios-btn:active{opacity:.8;transform:scale(.98)}
+.ios-btn-primary{background:var(--ios-blue);color:#fff}
+.ios-btn-green{background:var(--ios-green);color:#fff}
+.ios-btn-red{background:var(--ios-red);color:#fff}
+.ios-btn-gray{background:var(--ios-fill);color:var(--ios-label)}
+.ios-btn-wrap{padding:0 16px 16px;display:flex;flex-direction:column;gap:8px}
+/* ── SIM/NÃO SEGMENTED ── */
+.ios-seg{display:flex;background:var(--ios-fill);border-radius:9px;padding:2px;gap:2px}
+.ios-seg-btn{
+  flex:1;padding:8px;border:none;border-radius:7px;
+  font-size:15px;font-weight:500;cursor:pointer;transition:.15s;
+  background:none;color:var(--ios-label2);font-family:inherit;
+}
+.ios-seg-btn.active-sim{background:#fff;color:var(--ios-green);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.ios-seg-btn.active-nao{background:#fff;color:var(--ios-red);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+@media(prefers-color-scheme:dark){
+  .ios-seg-btn.active-sim,.ios-seg-btn.active-nao{background:var(--ios-bg3)}
+}
+/* ── STATUS PILL ── */
+.ios-pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+/* ── SEARCH ── */
+.ios-search-wrap{padding:8px 16px 4px}
+.ios-search{display:flex;align-items:center;gap:8px;background:var(--ios-fill);border-radius:10px;padding:8px 12px}
+.ios-search input{flex:1;background:none;border:none;outline:none;font-size:16px;color:var(--ios-label);font-family:inherit}
+.ios-search input::placeholder{color:var(--ios-gray)}
+/* ── EMPTY STATE ── */
+.ios-empty{text-align:center;padding:60px 20px;color:var(--ios-gray)}
+.ios-empty-icon{font-size:48px;margin-bottom:12px}
+.ios-empty-title{font-size:17px;font-weight:600;color:var(--ios-label);margin-bottom:4px}
+.ios-empty-sub{font-size:15px;color:var(--ios-gray)}
+/* ── SHEET ── */
+.ios-sheet-ov{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.4);backdrop-filter:blur(4px)}
+.ios-sheet-ov.open{display:block}
+.ios-sheet{
+  position:fixed;bottom:0;left:0;right:0;z-index:401;
+  background:var(--ios-bg2);border-radius:14px 14px 0 0;
+  padding-bottom:calc(var(--safe-bot)+8px);
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.32,1,.23,1);
+  max-height:92vh;overflow-y:auto;
+}
+.ios-sheet.open{transform:none}
+.ios-sheet-handle{width:36px;height:5px;border-radius:3px;background:var(--ios-fill);margin:8px auto 12px}
+.ios-sheet-title{font-size:17px;font-weight:600;text-align:center;padding:0 20px 16px;color:var(--ios-label)}
+/* ── FAB ── */
+.ios-fab{
+  position:fixed;bottom:calc(var(--safe-bot)+24px);right:20px;z-index:200;
+  width:56px;height:56px;border-radius:28px;
+  background:var(--ios-blue);color:#fff;border:none;
+  font-size:28px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;box-shadow:0 4px 16px rgba(0,122,255,.4);transition:.15s;
+}
+.ios-fab:active{transform:scale(.93);opacity:.9}
+/* ── TOAST ── */
+#ios-toast{
+  position:fixed;bottom:calc(var(--tabbar-h)+24px);left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:rgba(0,0,0,.8);color:#fff;padding:10px 20px;border-radius:20px;
+  font-size:14px;font-weight:500;z-index:9999;opacity:0;transition:.3s;
+  pointer-events:none;backdrop-filter:blur(10px);white-space:nowrap;
+}
+#ios-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ── SPINNER ── */
+@keyframes ios-spin{to{transform:rotate(360deg)}}
+.ios-spinner{
+  width:20px;height:20px;border:2.5px solid var(--ios-sep);
+  border-top-color:var(--ios-blue);border-radius:50%;
+  animation:ios-spin .7s linear infinite;display:inline-block;
+}
+/* ── STATUS BAR SAFE AREA ── */
+.ios-scroll{padding-bottom:calc(var(--safe-bot)+24px)}
+/* ── KANBAN CARD (manutenção) ── */
+.ios-kcard{
+  background:var(--ios-bg2);border-radius:var(--ios-radius);
+  padding:12px 14px;margin-bottom:8px;
+  box-shadow:0 1px 3px rgba(0,0,0,.08);border-left:3px solid transparent;
+  cursor:pointer;transition:.1s;
+}
+.ios-kcard:active{opacity:.7}
+/* ── AVATAR CIRCLE ── */
+.ios-av{
+  width:36px;height:36px;border-radius:18px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;flex-shrink:0;
+}
+/* ── DIVIDER ── */
+.ios-div{height:1px;background:var(--ios-sep);margin:0 16px}
+/* ── SCROLL CONTENT ── */
+.ios-content{padding:0 0 32px}
+
+
+.page{display:none;min-height:100vh}
+.page.active{display:block}
+
+/* STATUS PILLS */
+.st-pend  {background:rgba(255,149,0,.15);color:#FF9500}
+.st-aprov {background:rgba(52,199,89,.15);color:#34C759}
+.st-repr  {background:rgba(255,59,48,.15);color:#FF3B30}
+.st-orc   {background:rgba(0,122,255,.15);color:#007AFF}
+.st-compr {background:rgba(175,82,222,.15);color:#AF52DE}
+
+/* PEDIDO CARD */
+.ped-card{
+  background:var(--ios-bg2);border-radius:var(--ios-radius);
+  margin:0 16px 8px;padding:14px 16px;cursor:pointer;
+  transition:.1s;border-left:4px solid var(--ios-orange);
+}
+.ped-card:active{opacity:.7}
+.ped-card.aprov{border-left-color:#34C759}
+.ped-card.repr {border-left-color:#FF3B30}
+.ped-card.orc  {border-left-color:#007AFF}
+.ped-card.compr{border-left-color:#AF52DE}
+.ped-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.ped-id{font-size:11px;font-weight:700;color:var(--ios-gray);font-family:monospace}
+.ped-frota{font-size:18px;font-weight:700;color:var(--ios-label)}
+.ped-desc{font-size:14px;color:var(--ios-label2);margin-top:4px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ped-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+.ped-data{font-size:12px;color:var(--ios-gray)}
+.ped-solicitante{font-size:12px;color:var(--ios-gray)}
+
+/* FOTO PREVIEW */
+.foto-thumb{width:60px;height:60px;border-radius:8px;object-fit:cover;cursor:pointer}
+.fotos-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+
+/* FILTER CHIPS */
+.chips{display:flex;gap:8px;padding:4px 16px 12px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{padding:6px 14px;border-radius:20px;border:none;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap;font-family:inherit;background:var(--ios-fill);color:var(--ios-label2);transition:.15s}
+.chip.active{background:var(--ios-blue);color:#fff}
+
+/* MODAL */
+#ped-modal-ov{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.5);backdrop-filter:blur(8px)}
+#ped-modal-ov.open{display:flex;align-items:flex-end}
+#ped-modal{background:var(--ios-bg);width:100%;border-radius:14px 14px 0 0;max-height:94vh;overflow-y:auto;padding-bottom:calc(env(safe-area-inset-bottom)+16px);transform:translateY(100%);transition:transform .3s cubic-bezier(.32,1,.23,1)}
+#ped-modal-ov.open #ped-modal{transform:none}
+
+/* NOVO PEDIDO SHEET */
+#novo-ov{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.5);backdrop-filter:blur(8px)}
+#novo-ov.open{display:flex;align-items:flex-end}
+#novo-sheet{background:var(--ios-bg);width:100%;border-radius:14px 14px 0 0;max-height:96vh;overflow-y:auto;padding-bottom:calc(env(safe-area-inset-bottom)+16px);transform:translateY(100%);transition:transform .3s cubic-bezier(.32,1,.23,1)}
+#novo-ov.open #novo-sheet{transform:none}
+
+/* UPLOAD AREA */
+.upload-area{border:2px dashed var(--ios-sep);border-radius:var(--ios-radius);padding:24px;text-align:center;cursor:pointer;color:var(--ios-gray)}
+.upload-area:active{background:var(--ios-fill2)}
+</style>
+</head>
+<body>
+
+<!-- ══ PAGE LISTA ═══════════════════════════════════════════ -->
+<div id="page-lista" class="page active">
+  <div class="ios-nav">
+    <button class="ios-nav-back" onclick="history.back()">
+      <svg width="10" height="16" viewBox="0 0 10 16" fill="none"><path d="M8 2L2 8L8 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Central
+    </button>
+    <span class="ios-nav-title">Compras</span>
+    <button class="ios-nav-action" onclick="carregarPedidos()" style="font-size:18px">↻</button>
+    <button class="ios-nav-action" onclick="abrirNovoPedido()" style="font-size:22px;font-weight:700;color:var(--ios-blue)">＋</button>
+  </div>
+
+  <div style="padding:8px 20px 0"><div class="ios-large-title">Solicitações</div></div>
+
+  <div class="ios-search-wrap">
+    <div class="ios-search">
+      <span style="color:var(--ios-gray);font-size:15px">🔍</span>
+      <input id="srch-ped" placeholder="Buscar pedido, frota, item..." oninput="filtrarPedidos(this.value)">
+    </div>
+  </div>
+
+  <div class="chips">
+    <button class="chip active" onclick="setChip('todos',this)">Todos</button>
+    <button class="chip" onclick="setChip('pendente',this)">⏳ Pendente</button>
+    <button class="chip" onclick="setChip('orc',this)">💬 Orçando</button>
+    <button class="chip" onclick="setChip('aprovado',this)">✅ Aprovado</button>
+    <button class="chip" onclick="setChip('comprado',this)">🛒 Comprado</button>
+    <button class="chip" onclick="setChip('reprovado',this)">❌ Reprovado</button>
+  </div>
+
+  <div id="lista-pedidos">
+    <div class="ios-empty"><div class="ios-spinner" style="margin:40px auto"></div></div>
+  </div>
+
+  <button class="ios-fab" onclick="abrirNovoPedido()">+</button>
+</div>
+
+<!-- ══ MODAL DETALHE ════════════════════════════════════════ -->
+<div id="ped-modal-ov" onclick="fecharModal()">
+  <div id="ped-modal" onclick="event.stopPropagation()">
+    <div style="width:36px;height:5px;border-radius:3px;background:var(--ios-fill);margin:8px auto 0"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 0">
+      <div id="modal-frota" style="font-size:20px;font-weight:700">—</div>
+      <button onclick="fecharModal()" style="background:var(--ios-fill);border:none;border-radius:14px;width:28px;height:28px;color:var(--ios-gray);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div id="modal-body" style="padding:0 16px 16px"></div>
+  </div>
+</div>
+
+<!-- ══ NOVO PEDIDO SHEET ════════════════════════════════════ -->
+<div id="novo-ov" onclick="fecharNovo()">
+<div id="novo-sheet" onclick="event.stopPropagation()">
+  <div style="width:36px;height:5px;border-radius:3px;background:var(--ios-fill);margin:8px auto 0"></div>
+  <div style="font-size:17px;font-weight:700;text-align:center;padding:12px 16px 8px;color:var(--ios-label)">Nova Solicitação</div>
+
+  <div class="ios-form" style="margin:0 16px 8px">
+    <div class="ios-field">
+      <div class="ios-field-label">Frota / Setor</div>
+      <input id="n-frota" placeholder="VP-183, Oficina..." style="font-size:17px;color:var(--ios-label);background:none;border:none;width:100%;outline:none;font-family:inherit">
+    </div>
+    <div class="ios-field">
+      <div class="ios-field-label">Item(ns) Solicitado(s)</div>
+      <textarea id="n-desc" placeholder="Descreva os itens necessários..." rows="3" style="font-size:15px;color:var(--ios-label);background:none;border:none;width:100%;outline:none;font-family:inherit;resize:none"></textarea>
+    </div>
+    <div class="ios-field">
+      <div class="ios-field-label">Urgência</div>
+      <select id="n-urgencia" style="font-size:17px;color:var(--ios-label);background:none;border:none;width:100%;outline:none;font-family:inherit">
+        <option value="normal">Normal</option>
+        <option value="urgente">Urgente</option>
+        <option value="critico">Crítico</option>
+      </select>
+    </div>
+    <div class="ios-field">
+      <div class="ios-field-label">Observações</div>
+      <input id="n-obs" placeholder="Opcional..." style="font-size:17px;color:var(--ios-label);background:none;border:none;width:100%;outline:none;font-family:inherit">
+    </div>
+  </div>
+
+  <!-- Upload Fotos -->
+  <div style="padding:0 16px 8px">
+    <div class="ios-field-label" style="margin-bottom:8px">FOTOS (opcional)</div>
+
+    <!-- Área inicial: abre câmera diretamente -->
+    <div id="n-foto-area" class="upload-area" onclick="abrirCamera()">
+      <div style="font-size:32px;margin-bottom:6px">📷</div>
+      <div style="font-size:15px;font-weight:500">Toque para tirar foto</div>
+      <div style="font-size:13px;margin-top:2px">Abre a câmera</div>
+    </div>
+
+    <!-- Opções que aparecem após a 1ª foto -->
+    <div id="n-foto-opcoes" style="display:none;gap:8px;margin-top:8px">
+      <button onclick="abrirCamera()" style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--ios-fill2);color:var(--ios-label);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">📷 Outra foto</button>
+      <button onclick="abrirGaleria()" style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--ios-fill2);color:var(--ios-label);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">🖼️ Da galeria</button>
+    </div>
+
+    <!-- Input câmera -->
+    <input type="file" id="n-foto-camera" accept="image/*" capture="environment" style="display:none" onchange="adicionarFoto(this)">
+    <!-- Input galeria -->
+    <input type="file" id="n-foto-galeria" accept="image/*" multiple style="display:none" onchange="adicionarFoto(this)">
+
+    <div id="n-fotos-preview" class="fotos-row" style="margin-top:8px"></div>
+  </div>
+
+  <div class="ios-btn-wrap">
+    <button class="ios-btn ios-btn-primary" onclick="enviarNovoPedido()">📤 Enviar Solicitação</button>
+    <button class="ios-btn ios-btn-gray" onclick="fecharNovo()">Cancelar</button>
+  </div>
+</div>
+</div>
+
+<div id="ios-toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// TWM Compras — JavaScript reescrito do zero
+// ══════════════════════════════════════════
+
+var SCRIPT_URL = localStorage.getItem('twm_compras_script') ||
+  'https://script.google.com/macros/s/AKfycbyEG37aoa1NuTtmyeXRNeNYa7-BvOiK5WwBdr2jsfdppoexxZ5yeFiULWORO47BCQPZ/exec';
+
+var CACHE_KEY  = 'twm_compras_pedidos';
+var pedidos    = [];
+var chipAtivo  = 'todos';
+var srchTxt    = '';
+var fotosNovo  = [];
+
+// ── Status map ────────────────────────────
+var ST = {
+  pendente:  { cls:'st-pend',  label:'⏳ Pendente',  key:'PENDENTE'  },
+  orc:       { cls:'st-orc',   label:'💬 Orçando',   key:'ORCANDO'   },
+  aprovado:  { cls:'st-aprov', label:'✅ Aprovado',  key:'APROVADO'  },
+  comprado:  { cls:'st-compr', label:'🛒 Comprado',  key:'FINALIZADO'},
+  reprovado: { cls:'st-repr',  label:'❌ Reprovado', key:'CANCELADO' }
+};
+
+function normSt(s) {
+  var v = String(s||'').toUpperCase();
+  if (v==='FIN'||v.indexOf('FINAL')>=0||v.indexOf('COMPRAD')>=0) return 'comprado';
+  if (v==='CAN'||v.indexOf('CANCEL')>=0||v==='REPROVADO') return 'reprovado';
+  if (v==='ORC'||v.indexOf('ORC')>=0||v.indexOf('COTAC')>=0) return 'orc';
+  if (v==='APROVADO') return 'aprovado';
+  return 'pendente';
+}
+
+// ── Toast ─────────────────────────────────
+function toast(msg) {
+  var el = document.getElementById('ios-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(function(){ el.classList.remove('show'); }, 2500);
+}
+
+// ── Render lista ──────────────────────────
+function renderLista() {
+  var el = document.getElementById('lista-pedidos');
+  if (!el) return;
+
+  var lista = pedidos.filter(function(p) {
+    if (chipAtivo !== 'todos' && normSt(p.status) !== chipAtivo) return false;
+    if (srchTxt) {
+      var txt = ((p.id||'')+(p.frota||'')+(p.itens||[]).map(function(i){return i.prod;}).join(' ')).toLowerCase();
+      if (txt.indexOf(srchTxt) < 0) return false;
+    }
+    return true;
+  });
+
+  if (!lista.length) {
+    el.innerHTML = '<div class="ios-empty">'
+      + '<div class="ios-empty-icon">' + (pedidos.length ? '🔍' : '🛒') + '</div>'
+      + '<div class="ios-empty-title">' + (pedidos.length ? 'Nenhum resultado' : 'Nenhuma solicitação') + '</div>'
+      + '<div class="ios-empty-sub">' + (pedidos.length ? 'Tente outros filtros' : 'Toque em + para criar') + '</div>'
+      + '</div>';
+    return;
+  }
+
+  el.innerHTML = '';
+  lista.forEach(function(p) {
+    var st  = normSt(p.status);
+    var cfg = ST[st] || ST.pendente;
+    var desc = (p.itens||[]).map(function(i){ return i.prod; }).join(', ') || '—';
+    var div = document.createElement('div');
+    div.className = 'ped-card';
+    div.innerHTML = '<div class="ped-card-header">'
+      + '<span class="ped-id">#' + esc(p.id) + '</span>'
+      + '<span class="ios-pill ' + cfg.cls + '">' + cfg.label + '</span>'
+      + '</div>'
+      + '<div class="ped-frota">' + esc(p.frota||'—') + '</div>'
+      + '<div class="ped-desc">' + esc(desc) + '</div>'
+      + '<div class="ped-footer">'
+      + '<span class="ped-data">' + esc(p.data||'') + '</span>'
+      + '<span class="ped-solicitante">' + esc(p.solicitante||'') + '</span>'
+      + '</div>';
+    div.addEventListener('click', (function(pid){ return function(){ abrirModal(pid); }; })(p.id));
+    el.appendChild(div);
+  });
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Chips ─────────────────────────────────
+function setChip(f, btn) {
+  chipAtivo = f;
+  document.querySelectorAll('.chip').forEach(function(b){ b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  renderLista();
+}
+
+function filtrarPedidos(v) {
+  srchTxt = (v||'').toLowerCase().trim();
+  renderLista();
+}
+
+// ── Buscar dados ──────────────────────────
+function carregarPedidos() {
+  fetch(SCRIPT_URL + '?action=getPedidos&_=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(res) {
+      if (res.ok && Array.isArray(res.pedidos)) {
+        pedidos = res.pedidos;
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(pedidos)); } catch(e){}
+      }
+      renderLista();
+    })
+    .catch(function(e) {
+      console.error('[Compras]', e);
+      renderLista();
+    });
+}
+
+// ── Modal detalhe ─────────────────────────
+function abrirModal(pid) {
+  var p = pedidos.find(function(x){ return String(x.id) === String(pid); });
+  if (!p) return;
+
+  var st  = normSt(p.status);
+  var cfg = ST[st] || ST.pendente;
+
+  document.getElementById('modal-frota').textContent = p.frota || '—';
+
+  var bodyEl = document.getElementById('modal-body');
+  bodyEl.innerHTML = '';
+
+  // Status pill
+  var pill = document.createElement('div');
+  pill.style.marginBottom = '12px';
+  var span = document.createElement('span');
+  span.className = 'ios-pill ' + cfg.cls;
+  span.textContent = cfg.label;
+  pill.appendChild(span);
+  bodyEl.appendChild(pill);
+
+  // Info rows
+  var info = [
+    ['Pedido', '#' + (p.id||'—')],
+    ['Data', p.data||'—'],
+    ['Solicitante', p.solicitante||'—'],
+    ['Fornecedor', p.fornecedor||'—'],
+    ['Valor', p.valor||'—'],
+    ['Comprador', p.comprador||'—'],
+    ['Nota Fiscal', p.notaFiscal||'—'],
+    ['Total', p.total||'—'],
+    ['Obs', p.obs||'—'],
+  ];
+  info.forEach(function(r) {
+    if (!r[1] || r[1] === '—') return;
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--ios-sep)';
+    row.innerHTML = '<span style="font-size:14px;color:var(--ios-label2)">' + esc(r[0]) + '</span>'
+      + '<span style="font-size:14px;font-weight:500;text-align:right;max-width:60%">' + esc(r[1]) + '</span>';
+    bodyEl.appendChild(row);
+  });
+
+  // Itens
+  var itens = p.itens||[];
+  if (itens.length) {
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'margin-top:12px;font-size:12px;font-weight:700;color:var(--ios-gray);text-transform:uppercase;letter-spacing:.5px';
+    hdr.textContent = 'Itens';
+    bodyEl.appendChild(hdr);
+    itens.forEach(function(i) {
+      var d = document.createElement('div');
+      d.style.cssText = 'padding:6px 0;border-bottom:1px solid var(--ios-sep);font-size:14px';
+      d.textContent = i.qty + 'x ' + i.prod;
+      bodyEl.appendChild(d);
+    });
+  }
+
+  // Status buttons
+  var stHdr = document.createElement('div');
+  stHdr.style.cssText = 'margin-top:16px;font-size:12px;font-weight:700;color:var(--ios-gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px';
+  stHdr.textContent = 'Alterar Status';
+  bodyEl.appendChild(stHdr);
+
+  var grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px';
+  Object.keys(ST).filter(function(s){ return s !== st; }).forEach(function(s) {
+    var btn = document.createElement('button');
+    btn.style.cssText = 'padding:10px;border:none;border-radius:10px;background:var(--ios-fill2);color:var(--ios-label);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
+    btn.textContent = ST[s].label;
+    btn.addEventListener('click', (function(ppid,ss){ return function(){ mudarStatus(ppid,ss); }; })(pid,s));
+    grid.appendChild(btn);
+  });
+  bodyEl.appendChild(grid);
+
+  document.getElementById('ped-modal-ov').classList.add('open');
+}
+
+function fecharModal() {
+  document.getElementById('ped-modal-ov').classList.remove('open');
+}
+
+function mudarStatus(pid, novoSt) {
+  fecharModal();
+  var stKey = (ST[novoSt]||{key:novoSt.toUpperCase()}).key;
+  fetch(SCRIPT_URL + '?' + new URLSearchParams({action:'updateStatus', id:pid, status:stKey}).toString())
+    .then(function(r){ return r.json(); })
+    .then(function(res) {
+      if (res.ok) {
+        var p = pedidos.find(function(x){ return String(x.id) === String(pid); });
+        if (p) p.status = novoSt;
+        renderLista();
+        toast('\u2705 Status atualizado');
+      } else {
+        toast('\u26a0\ufe0f Erro ao atualizar');
+      }
+    })
+    .catch(function(){ toast('\u26a0\ufe0f Sem conex\u00e3o'); });
+}
+
+// ── Novo pedido ───────────────────────────
+function abrirNovoPedido() {
+  fotosNovo = [];
+  document.getElementById('n-fotos-preview').innerHTML = '';
+  document.getElementById('n-frota').value = '';
+  document.getElementById('n-desc').value = '';
+  document.getElementById('n-obs').value = '';
+  var area = document.getElementById('n-foto-area');
+  var opcoes = document.getElementById('n-foto-opcoes');
+  if (area) area.style.display = '';
+  if (opcoes) opcoes.style.display = 'none';
+  document.getElementById('novo-ov').classList.add('open');
+  document.getElementById('novo-sheet').classList.add('open');
+  setTimeout(function(){ document.getElementById('n-frota').focus(); }, 300);
+}
+
+function fecharNovo() {
+  document.getElementById('novo-ov').classList.remove('open');
+  document.getElementById('novo-sheet').classList.remove('open');
+  // Reset foto area
+  var area = document.getElementById('n-foto-area');
+  var opcoes = document.getElementById('n-foto-opcoes');
+  if (area) area.style.display = '';
+  if (opcoes) opcoes.style.display = 'none';
+}
+
+function abrirCamera() {
+  document.getElementById('n-foto-camera').value = '';
+  document.getElementById('n-foto-camera').click();
+}
+
+function abrirGaleria() {
+  document.getElementById('n-foto-galeria').value = '';
+  document.getElementById('n-foto-galeria').click();
+}
+
+function adicionarFoto(input) {
+  if (!input.files || !input.files.length) return;
+  Array.from(input.files).forEach(function(file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      fotosNovo.push(e.target.result);
+      var preview = document.getElementById('n-fotos-preview');
+      var img = document.createElement('img');
+      img.className = 'foto-thumb';
+      img.src = e.target.result;
+      img.style.cssText = 'width:72px;height:72px;object-fit:cover;border-radius:8px;cursor:pointer';
+      img.onclick = function(){ window.open(e.target.result,'_blank'); };
+      preview.appendChild(img);
+      // Mostra botões de opção após 1ª foto
+      var opcoes = document.getElementById('n-foto-opcoes');
+      if (opcoes) { opcoes.style.display = 'flex'; }
+      var area = document.getElementById('n-foto-area');
+      if (area) { area.style.display = 'none'; }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function enviarNovoPedido() {
+  var frota   = document.getElementById('n-frota').value.trim();
+  var desc    = document.getElementById('n-desc').value.trim();
+  var urgencia= document.getElementById('n-urgencia').value;
+  var obs     = document.getElementById('n-obs').value.trim();
+
+  if (!frota || !desc) { toast('⚠️ Preencha frota e descrição'); return; }
+
+  toast('⏳ Enviando...');
+
+  var linhas = desc.split('\n').filter(function(l){ return l.trim(); });
+  if (!linhas.length) linhas = [desc];
+  var itens  = linhas.map(function(l){ return {prod:l.trim(), qty:1}; });
+
+  var u = '';
+  try { var ud = JSON.parse(localStorage.getItem('twm_user_cache')||'{}'); u = ud.nome||''; } catch(e){}
+
+  fetch(SCRIPT_URL + '?' + new URLSearchParams({
+    action: 'savePedido',
+    nivel:  urgencia.toUpperCase(),
+    frota:  frota,
+    obs:    obs,
+    solicitante: u,
+    dataNec: '',
+    itens:  JSON.stringify(itens),
+    fotos:  JSON.stringify([])
+  }).toString())
+    .then(function(r){ return r.json(); })
+    .then(function(res) {
+      if (res.ok) {
+        fecharNovo();
+        toast('✅ Pedido #' + res.nPed + ' criado!');
+        carregarPedidos();
+      } else {
+        toast('⚠️ Erro: ' + (res.msg||'tente novamente'));
+      }
+    })
+    .catch(function(){ toast('⚠️ Sem conexão'); });
+}
+
+// ── Boot ──────────────────────────────────
+(function() {
+  // Carrega cache local enquanto busca do servidor
+  try {
+    var c = JSON.parse(localStorage.getItem(CACHE_KEY)||'[]');
+    if (c.length) { pedidos = c; renderLista(); }
+  } catch(e) {}
+
+  // Tema
+  var tema = localStorage.getItem('twm_tema')||'auto';
+  var h = new Date().getHours();
+  if (tema === 'claro' || (tema === 'auto' && h >= 6 && h < 18)) {
+    document.body.classList.add('light');
+  }
+
+  carregarPedidos();
+})();
+
+// Auto-refresh a cada 2 minutos
+setInterval(carregarPedidos, 2 * 60 * 1000);
+</script>
+</body>
+</html>
