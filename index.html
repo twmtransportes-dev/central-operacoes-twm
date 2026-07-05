@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>TWM DataLink</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── iOS BASE ─────────────────────────────────────────────── */
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  :root{
+    --ios-bg:       #F2F2F7;
+    --ios-bg2:      #FFFFFF;
+    --ios-bg3:      #F2F2F7;
+    --ios-sep:      rgba(60,60,67,.12);
+    --ios-blue:     #007AFF;
+    --ios-green:    #34C759;
+    --ios-orange:   #FF9500;
+    --ios-red:      #FF3B30;
+    --ios-purple:   #AF52DE;
+    --ios-teal:     #32ADE6;
+    --ios-indigo:   #5856D6;
+    --ios-gray:     #8E8E93;
+    --ios-gray2:    #AEAEB2;
+    --ios-label:    #000000;
+    --ios-label2:   rgba(60,60,67,.6);
+    --ios-label3:   rgba(60,60,67,.3);
+    --ios-fill:     rgba(120,120,128,.2);
+    --ios-fill2:    rgba(120,120,128,.16);
+    --ios-radius:   13px;
+    --ios-radius-lg:22px;
+    --safe-top:     env(safe-area-inset-top, 44px);
+    --safe-bot:     env(safe-area-inset-bottom, 34px);
+    --tabbar-h:     83px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ios-bg:     #000000;
+      --ios-bg2:    #1C1C1E;
+      --ios-bg3:    #2C2C2E;
+      --ios-sep:    rgba(84,84,88,.65);
+      --ios-label:  #FFFFFF;
+      --ios-label2: rgba(235,235,245,.6);
+      --ios-label3: rgba(235,235,245,.18);
+      --ios-fill:   rgba(120,120,128,.36);
+      --ios-fill2:  rgba(120,120,128,.32);
+    }
+  }
+  body{
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;
+    background:var(--ios-bg);
+    color:var(--ios-label);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+
+  /* ── TELAS ────────────────────────────────────────────────── */
+  .screen{display:none;min-height:100vh;padding-bottom:calc(var(--tabbar-h) + 8px)}
+  .screen.active{display:block}
+  #screen-login.login-visible{display:flex!important}
+
+  /* ── LOGIN ────────────────────────────────────────────────── */
+  #screen-login{
+    display:none;flex-direction:column;align-items:center;justify-content:center;
+    min-height:100vh;padding:40px 32px;
+    background:linear-gradient(180deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
+  }
+  .login-logo{
+    width:96px;height:96px;border-radius:22px;
+    background:linear-gradient(145deg,#7c3aed,#4f46e5);
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:28px;
+    box-shadow:0 8px 32px rgba(124,58,237,.5);
+  }
+  .login-logo img{width:72px;height:72px;object-fit:contain;border-radius:14px}
+  .login-logo-txt{
+    font-family:'Inter',sans-serif;font-size:28px;font-weight:700;
+    color:#fff;letter-spacing:-0.5px;margin-bottom:6px;text-align:center;
+  }
+  .login-subtitle{font-size:15px;color:rgba(255,255,255,.5);margin-bottom:40px;text-align:center}
+  .login-card{
+    width:100%;max-width:380px;
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:20px;padding:28px 24px;
+    backdrop-filter:blur(20px);
+  }
+  .login-field{margin-bottom:16px}
+  .login-label{font-size:12px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+  .login-input{
+    width:100%;padding:14px 16px;
+    background:rgba(255,255,255,.1);
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:12px;color:#fff;font-size:16px;font-family:'Inter',sans-serif;
+    outline:none;transition:.2s;
+  }
+  .login-input:focus{border-color:rgba(124,58,237,.8);background:rgba(255,255,255,.13)}
+  .login-input::placeholder{color:rgba(255,255,255,.3)}
+  .login-btn{
+    width:100%;padding:15px;margin-top:8px;
+    background:linear-gradient(135deg,#7c3aed,#4f46e5);
+    border:none;border-radius:14px;
+    color:#fff;font-size:16px;font-weight:600;font-family:'Inter',sans-serif;
+    cursor:pointer;transition:.15s;
+    box-shadow:0 4px 16px rgba(124,58,237,.4);
+  }
+  .login-btn:active{transform:scale(.97);opacity:.9}
+  .login-err{color:#ff6b6b;font-size:13px;text-align:center;margin-top:12px;min-height:18px}
+
+  /* ── NAVIGATION BAR ───────────────────────────────────────── */
+  .ios-navbar{
+    position:sticky;top:0;z-index:100;
+    padding:calc(var(--safe-top) + 0px) 0 0;
+    background:linear-gradient(160deg,#e8e4f8 0%,#f0edf9 40%,#eceaf5 100%);
+    border-bottom:1px solid var(--ios-sep);
+  }
+  body.theme-escuro .ios-navbar,
+  @media(prefers-color-scheme:dark){
+    .ios-navbar{background:linear-gradient(160deg,#1a1530 0%,#1c1a2e 40%,#18162a 100%)}
+  }
+  body.theme-escuro .ios-navbar{background:linear-gradient(160deg,#1a1530 0%,#1c1a2e 40%,#18162a 100%)}
+  .ios-navbar-topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 20px 0;
+  }
+  .ios-navbar-brand{display:flex;align-items:center;gap:10px}
+  .ios-navbar-logo{
+    width:36px;height:36px;border-radius:10px;
+    background:linear-gradient(135deg,#7c3aed,#4f46e5);
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:800;color:#fff;letter-spacing:-.5px;
+    flex-shrink:0;
+  }
+  .ios-navbar-brand-text{}
+  .ios-navbar-brand-name{font-size:15px;font-weight:700;color:var(--ios-label);line-height:1.1}
+  .ios-navbar-brand-sub{font-size:10px;font-weight:500;color:var(--ios-gray);text-transform:uppercase;letter-spacing:.8px}
+  .ios-navbar-online{
+    display:flex;align-items:center;gap:5px;
+    font-size:12px;font-weight:600;color:#34C759;
+  }
+  .ios-navbar-online-dot{
+    width:7px;height:7px;border-radius:50%;background:#34C759;
+    box-shadow:0 0 0 2px rgba(52,199,89,.25);
+  }
+  .ios-navbar-hero{padding:14px 20px 18px}
+  .ios-navbar-hero-label{
+    font-size:11px;font-weight:700;color:#7c3aed;
+    text-transform:uppercase;letter-spacing:1px;
+    display:flex;align-items:center;gap:6px;margin-bottom:6px;
+  }
+  .ios-navbar-hero-label::before{content:'';display:block;width:18px;height:2px;background:#7c3aed;border-radius:1px}
+  .ios-navbar-hero-title{
+    font-size:30px;font-weight:800;color:var(--ios-label);
+    letter-spacing:-.5px;line-height:1.05;margin-bottom:1px;
+  }
+  .ios-navbar-hero-title span{color:#7c3aed}
+  .ios-navbar-hero-desc{font-size:13px;color:var(--ios-label2);margin-top:6px;line-height:1.4}
+
+  .ios-navbar-inner{display:flex;align-items:center;justify-content:space-between}
+  .ios-page-title{font-size:17px;font-weight:600;color:var(--ios-label)}
+  .ios-large-title{
+    font-size:34px;font-weight:700;color:var(--ios-label);
+    letter-spacing:-.5px;padding:8px 0 4px;
+  }
+  .ios-navbar-btn{
+    width:34px;height:34px;border-radius:50%;
+    background:var(--ios-fill);border:none;
+    color:var(--ios-blue);font-size:18px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;transition:.15s;
+  }
+  .ios-navbar-btn:active{opacity:.6}
+  .ios-avatar-btn{
+    width:34px;height:34px;border-radius:50%;
+    background:linear-gradient(135deg,#7c3aed,#4f46e5);
+    border:none;color:#fff;font-size:13px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;overflow:hidden;
+  }
+  .ios-avatar-btn img{width:100%;height:100%;object-fit:cover}
+
+  /* ── SCROLL CONTENT ───────────────────────────────────────── */
+  .ios-scroll{padding:0 16px}
+
+  /* ── SEARCH BAR iOS ───────────────────────────────────────── */
+  .ios-search-wrap{padding:8px 16px 4px}
+  .ios-search{
+    display:flex;align-items:center;gap:8px;
+    background:var(--ios-fill);border-radius:10px;
+    padding:8px 12px;
+  }
+  .ios-search-icon{color:var(--ios-gray);font-size:14px}
+  .ios-search input{
+    flex:1;background:none;border:none;outline:none;
+    font-size:17px;color:var(--ios-label);font-family:'Inter',sans-serif;
+  }
+  .ios-search input::placeholder{color:var(--ios-gray)}
+
+  /* ── SECTION HEADER ───────────────────────────────────────── */
+  .ios-section-header{
+    font-size:13px;font-weight:600;color:var(--ios-gray);
+    text-transform:uppercase;letter-spacing:.5px;
+    padding:20px 16px 8px;
+  }
+
+  /* ── iOS LIST (inset grouped) ─────────────────────────────── */
+  .ios-list{
+    background:var(--ios-bg2);border-radius:var(--ios-radius);
+    margin:0 16px 8px;overflow:hidden;
+  }
+  .ios-list-item{
+    display:flex;align-items:center;gap:12px;
+    padding:12px 16px;min-height:56px;
+    border-bottom:1px solid var(--ios-sep);
+    cursor:pointer;transition:.1s;text-decoration:none;color:inherit;
+  }
+  .ios-list-item:last-child{border-bottom:none}
+  .ios-list-item:active{background:var(--ios-fill2)}
+  .ios-list-icon{
+    width:30px;height:30px;border-radius:7px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:17px;flex-shrink:0;
+  }
+  .ios-list-content{flex:1;min-width:0}
+  .ios-list-title{font-size:17px;font-weight:400;color:var(--ios-label)}
+  .ios-list-subtitle{font-size:13px;color:var(--ios-label2);margin-top:1px}
+  .ios-list-right{display:flex;align-items:center;gap:4px;flex-shrink:0}
+  .ios-list-badge{
+    min-width:20px;height:20px;border-radius:10px;
+    background:var(--ios-red);color:#fff;
+    font-size:12px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+    padding:0 6px;
+  }
+  .ios-list-chevron{color:var(--ios-label3);font-size:14px}
+  .ios-list-detail{font-size:15px;color:var(--ios-label2)}
+
+  /* ── APP GRID (2 cols) ────────────────────────────────────── */
+  .ios-app-grid{
+    display:grid;grid-template-columns:1fr 1fr;
+    gap:16px;padding:0 16px;
+  }
+  .ios-app-cell{
+    background:var(--ios-bg2);border-radius:var(--ios-radius-lg);
+    padding:20px 16px 16px;cursor:pointer;
+    transition:transform .1s,opacity .1s;
+    text-decoration:none;display:block;
+    box-shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+  }
+  .ios-app-cell:active{transform:scale(.95);opacity:.85}
+  .ios-app-cell.wide{grid-column:1/-1;display:flex;align-items:center;gap:16px;padding:18px 20px}
+  .ios-app-cell.wide .ios-app-icon{margin-bottom:0}
+  .ios-app-icon{
+    width:56px;height:56px;border-radius:14px;
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:14px;font-size:26px;
+  }
+  .ios-app-name{font-size:13px;font-weight:600;color:var(--ios-label);letter-spacing:-.1px}
+  .ios-app-desc{font-size:11px;color:var(--ios-label2);margin-top:2px;line-height:1.3}
+  .ios-app-badge{
+    position:absolute;top:-4px;right:-4px;
+    min-width:18px;height:18px;border-radius:9px;
+    background:var(--ios-red);color:#fff;
+    font-size:10px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;padding:0 4px;
+  }
+  .ios-app-cell > .ios-app-icon{position:relative}
+
+  /* ── STATUS WIDGET ────────────────────────────────────────── */
+  .ios-widget{
+    background:var(--ios-bg2);border-radius:var(--ios-radius-lg);
+    margin:0 16px 8px;padding:16px;
+    box-shadow:0 1px 3px rgba(0,0,0,.08);
+  }
+  .ios-widget-title{font-size:13px;font-weight:600;color:var(--ios-gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+  .ios-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .ios-stat{text-align:center}
+  .ios-stat-num{font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1}
+  .ios-stat-lbl{font-size:10px;font-weight:600;color:var(--ios-gray);text-transform:uppercase;letter-spacing:.3px;margin-top:2px}
+
+  /* ── TAB BAR ──────────────────────────────────────────────── */
+  .ios-tabbar{
+    position:fixed;bottom:0;left:0;right:0;
+    height:var(--tabbar-h);z-index:200;
+    background:rgba(var(--tabbar-rgb,242,242,247),.85);
+    backdrop-filter:saturate(180%) blur(20px);
+    -webkit-backdrop-filter:saturate(180%) blur(20px);
+    border-top:1px solid var(--ios-sep);
+    display:flex;align-items:flex-start;justify-content:space-around;
+    padding-top:8px;
+    padding-bottom:var(--safe-bot);
+  }
+  @media(prefers-color-scheme:dark){.ios-tabbar{--tabbar-rgb:0,0,0}}
+  .ios-tab{
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:4px 12px;cursor:pointer;flex:1;
+    border:none;background:none;
+    transition:opacity .1s;
+  }
+  .ios-tab:active{opacity:.5}
+  .ios-tab-icon{font-size:24px;line-height:1}
+  .ios-tab-label{font-size:10px;font-weight:500;color:var(--ios-gray)}
+  .ios-tab.active .ios-tab-icon{filter:none}
+  .ios-tab.active .ios-tab-label{color:var(--ios-blue);font-weight:600}
+  .ios-tab-icon-svg{width:24px;height:24px}
+
+  /* ── PULL TO REFRESH ──────────────────────────────────────── */
+  #ptr-bar{
+    display:none;position:fixed;top:0;left:0;right:0;z-index:9999;
+    padding:12px;background:var(--ios-bg2);text-align:center;
+    font-size:13px;color:var(--ios-gray);align-items:center;justify-content:center;gap:8px;
+  }
+  #ptr-bar.show{display:flex}
+  #ptr-bar.done{background:var(--ios-green);color:#fff}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #ptr-spinner{display:none;width:16px;height:16px;border:2px solid var(--ios-gray);border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite}
+
+  /* ── PROFILE SHEET ────────────────────────────────────────── */
+  .ios-sheet-overlay{
+    display:none;position:fixed;inset:0;z-index:400;
+    background:rgba(0,0,0,.4);
+    backdrop-filter:blur(4px);
+  }
+  .ios-sheet-overlay.open{display:block}
+  .ios-sheet{
+    position:fixed;bottom:0;left:0;right:0;z-index:401;
+    background:var(--ios-bg2);
+    border-radius:14px 14px 0 0;
+    padding:0 0 calc(var(--safe-bot) + 8px);
+    transform:translateY(100%);transition:transform .3s cubic-bezier(.32,1,.23,1);
+  }
+  .ios-sheet.open{transform:none}
+  .ios-sheet-handle{width:36px;height:5px;border-radius:3px;background:var(--ios-fill);margin:8px auto 0}
+  .ios-sheet-profile{display:flex;align-items:center;gap:14px;padding:20px 20px 16px;border-bottom:1px solid var(--ios-sep)}
+  .ios-sheet-avatar{
+    width:56px;height:56px;border-radius:28px;
+    background:linear-gradient(135deg,#7c3aed,#4f46e5);
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;
+  }
+  .ios-sheet-avatar img{width:100%;height:100%;object-fit:cover}
+  .ios-sheet-name{font-size:20px;font-weight:600;color:var(--ios-label)}
+  .ios-sheet-role{font-size:13px;color:var(--ios-label2);margin-top:2px}
+  .ios-sheet-mat{font-size:12px;color:var(--ios-blue);font-weight:500;margin-top:1px}
+  .ios-sheet-actions{padding:8px 0}
+  .ios-sheet-action{
+    display:flex;align-items:center;gap:14px;
+    padding:13px 20px;cursor:pointer;transition:.1s;
+    font-size:17px;color:var(--ios-label);border:none;background:none;width:100%;text-align:left;
+  }
+  .ios-sheet-action:active{background:var(--ios-fill2)}
+  .ios-sheet-action .ico{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+  .ios-sheet-action.danger{color:var(--ios-red)}
+  .ios-sheet-sep{height:1px;background:var(--ios-sep);margin:0 20px}
+
+  /* ── SIDEBAR FROTA PANEL ──────────────────────────────────── */
+  .ios-side-overlay{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.3)}
+  .ios-side-overlay.open{display:block}
+  .ios-sidebar{
+    position:fixed;right:0;top:0;bottom:0;z-index:301;
+    width:min(85vw,360px);
+    background:var(--ios-bg);
+    transform:translateX(100%);transition:transform .3s cubic-bezier(.32,1,.23,1);
+    display:flex;flex-direction:column;
+    padding-top:var(--safe-top);padding-bottom:var(--safe-bot);
+    overflow-y:auto;
+  }
+  .ios-sidebar.open{transform:none}
+  .ios-sidebar-header{padding:16px 20px 12px;border-bottom:1px solid var(--ios-sep)}
+  .ios-sidebar-title{font-size:20px;font-weight:700;color:var(--ios-label)}
+  .ios-sidebar-sub{font-size:13px;color:var(--ios-gray);margin-top:2px}
+  .frota-card-ios{
+    background:var(--ios-bg2);border-radius:12px;
+    margin:6px 12px;padding:12px 14px;cursor:pointer;
+    display:flex;align-items:center;gap:12px;
+    transition:.1s;
+  }
+  .frota-card-ios:active{opacity:.7}
+  .frota-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .frota-info-wrap{flex:1;min-width:0}
+  .frota-id-ios{font-size:16px;font-weight:600;color:var(--ios-label)}
+  .frota-mot-ios{font-size:12px;color:var(--ios-label2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .frota-st-ios{font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px}
+
+  /* ── TOAST ────────────────────────────────────────────────── */
+  #toast{
+    position:fixed;bottom:calc(var(--tabbar-h) + 16px);left:50%;transform:translateX(-50%) translateY(20px);
+    background:rgba(0,0,0,.8);color:#fff;padding:10px 20px;border-radius:20px;
+    font-size:14px;font-weight:500;z-index:9999;opacity:0;transition:.3s;pointer-events:none;
+    backdrop-filter:blur(10px);white-space:nowrap;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* ── FROTA DETAIL MODAL ───────────────────────────────────── */
+  .ios-modal-overlay{
+    display:none;position:fixed;inset:0;z-index:500;
+    background:rgba(0,0,0,.5);backdrop-filter:blur(8px);
+  }
+  .ios-modal-overlay.open{display:flex;align-items:flex-end}
+  .ios-modal{
+    background:var(--ios-bg2);width:100%;
+    border-radius:14px 14px 0 0;
+    max-height:90vh;overflow-y:auto;
+    padding-bottom:calc(var(--safe-bot) + 16px);
+    transform:translateY(100%);transition:transform .3s cubic-bezier(.32,1,.23,1);
+  }
+  .ios-modal-overlay.open .ios-modal{transform:none}
+  .ios-modal-handle{width:36px;height:5px;border-radius:3px;background:var(--ios-fill);margin:8px auto 0}
+  .ios-modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--ios-sep)}
+  .ios-modal-title{font-size:17px;font-weight:600}
+  .ios-modal-close{width:28px;height:28px;border-radius:14px;background:var(--ios-fill);border:none;color:var(--ios-gray);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .ios-modal-body{padding:0 20px}
+  .ios-modal-row{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid var(--ios-sep)}
+  .ios-modal-row:last-child{border-bottom:none}
+  .ios-modal-label{font-size:15px;color:var(--ios-label2)}
+  .ios-modal-value{font-size:15px;font-weight:500;color:var(--ios-label);text-align:right;max-width:60%}
+
+  /* ── HIDDEN UTIL ──────────────────────────────────────────── */
+  .hidden{display:none!important}
+
+  /* ── THEME MENU (três pontinhos) ─────────────────────────── */
+  .ios-dots-btn{
+    width:34px;height:34px;border-radius:50%;
+    background:var(--ios-fill);border:none;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    cursor:pointer;transition:.15s;
+  }
+  .ios-dots-btn:active{opacity:.6}
+  .ios-dots-btn span{display:block;width:4px;height:4px;background:var(--ios-blue);border-radius:50%}
+  .ios-theme-dropdown{
+    position:fixed;top:calc(var(--safe-top) + 54px);left:12px;
+    background:var(--ios-bg2);
+    border:1px solid var(--ios-sep);
+    border-radius:14px;
+    min-width:220px;z-index:600;
+    display:none;
+    box-shadow:0 8px 32px rgba(0,0,0,.18);
+    overflow:hidden;
+  }
+  .ios-theme-dropdown.open{display:block;animation:dropFade .18s ease}
+  @keyframes dropFade{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  .ios-theme-row{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 16px;
+  }
+  .ios-theme-label{font-size:15px;color:var(--ios-label);display:flex;align-items:center;gap:10px}
+  .ios-theme-seg{
+    display:flex;background:var(--ios-fill);border-radius:8px;padding:2px;gap:2px;
+  }
+  .ios-theme-opt{
+    display:flex;align-items:center;justify-content:center;
+    padding:5px 9px;border-radius:6px;border:none;
+    background:none;color:var(--ios-gray);cursor:pointer;
+    font-family:'Inter',sans-serif;font-size:13px;transition:.18s;min-width:34px;
+  }
+  .ios-theme-opt.on{background:var(--ios-blue);color:#fff;box-shadow:0 1px 4px rgba(0,122,255,.3)}
+  .ios-theme-sep{height:1px;background:var(--ios-sep);margin:0 16px}
+  .ios-theme-action{
+    display:flex;align-items:center;gap:12px;padding:13px 16px;
+    font-size:15px;color:var(--ios-label);cursor:pointer;
+    border:none;background:none;width:100%;text-align:left;
+    transition:.1s;
+  }
+  .ios-theme-action:active{background:var(--ios-fill2)}
+  .ios-theme-action.danger{color:var(--ios-red)}
+  /* Tema claro manual */
+  body.theme-claro{
+    --ios-bg:#F2F2F7;--ios-bg2:#FFFFFF;--ios-bg3:#F2F2F7;
+    --ios-sep:rgba(60,60,67,.12);--ios-label:#000000;
+    --ios-label2:rgba(60,60,67,.6);--ios-label3:rgba(60,60,67,.3);
+    --ios-fill:rgba(120,120,128,.2);--ios-fill2:rgba(120,120,128,.16);
+  }
+  body.theme-escuro{
+    --ios-bg:#000000;--ios-bg2:#1C1C1E;--ios-bg3:#2C2C2E;
+    --ios-sep:rgba(84,84,88,.65);--ios-label:#FFFFFF;
+    --ios-label2:rgba(235,235,245,.6);--ios-label3:rgba(235,235,245,.18);
+    --ios-fill:rgba(120,120,128,.36);--ios-fill2:rgba(120,120,128,.32);
+  }
+
+  /* ── STATUS COLORS ────────────────────────────────────────── */
+  .st-verde{background:#34C759}
+  .st-amarelo{background:#FF9500}
+  .st-vermelho{background:#FF3B30}
+  .st-azul{background:#007AFF}
+  .st-cinza{background:#8E8E93}
+</style>
+</head>
+<body>
+
+<!-- Pull to refresh -->
+<div id="ptr-bar"><div id="ptr-spinner"></div><span id="ptr-txt">Puxe para atualizar...</span></div>
+
+<!-- ══ SCREEN: LOGIN ══════════════════════════════════════════ -->
+<div id="screen-login">
+  <div class="login-logo">
+    <img src="icone-192.png" alt="TWM" onerror="this.style.display='none';this.parentElement.innerHTML='<span style=\'font-size:36px;font-weight:800;color:#fff\'>TWM</span>'">
+  </div>
+  <div class="login-logo-txt">TWM DataLink</div>
+  <div class="login-subtitle">Transportes Especiais Ltda</div>
+  <div class="login-card">
+    <div class="login-field">
+      <div class="login-label">E-mail</div>
+      <input class="login-input" id="login-email" type="email" placeholder="seu@email.com" autocomplete="email" inputmode="email">
+    </div>
+    <div class="login-field">
+      <div class="login-label">Senha</div>
+      <input class="login-input" id="login-senha" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- ══ SCREEN: MAIN ═══════════════════════════════════════════ -->
+<div id="screen-main" class="screen">
+
+  <!-- Navbar / Hero Header -->
+  <div class="ios-navbar">
+    <div class="ios-navbar-topbar">
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="ios-dots-btn" id="dots-btn" onclick="toggleThemeMenu(event)" title="Opções">
+          <span></span><span></span><span></span>
+        </button>
+        <div class="ios-navbar-brand">
+          <div class="ios-navbar-logo">TWM</div>
+          <div class="ios-navbar-brand-text">
+            <div class="ios-navbar-brand-name">TWM</div>
+            <div class="ios-navbar-brand-sub">DataLink</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="ios-navbar-online"><div class="ios-navbar-online-dot"></div>ONLINE</div>
+        <button class="ios-avatar-btn" id="nav-avatar" onclick="profileAbrir()">
+          <span id="nav-avatar-txt">?</span>
+        </button>
+      </div>
+    </div>
+    <div class="ios-navbar-hero">
+      <div class="ios-navbar-hero-label">Sistema de Gestão</div>
+      <div class="ios-navbar-hero-title">CENTRAL DE<br><span>OPERAÇÕES</span></div>
+      <div class="ios-navbar-hero-desc"><span id="greeting-txt"></span> <span id="greeting-name"></span></div>
+    </div>
+  </div>
+
+  <!-- Theme dropdown (três pontinhos) -->
+  <div class="ios-theme-dropdown" id="theme-dropdown">
+    <div class="ios-theme-row">
+      <div class="ios-theme-label"><span id="theme-ico">⚙️</span> <span id="theme-lbl">Automático</span></div>
+      <div class="ios-theme-seg">
+        <button class="ios-theme-opt" id="tbtn-claro"  onclick="setTema('claro')">☀️</button>
+        <button class="ios-theme-opt" id="tbtn-auto"   onclick="setTema('auto')"><span style="font-size:10px;font-weight:800">AUTO</span></button>
+        <button class="ios-theme-opt" id="tbtn-escuro" onclick="setTema('escuro')">🌙</button>
+      </div>
+    </div>
+    <div class="ios-theme-sep"></div>
+    <button class="ios-theme-action danger" onclick="doLogout();closeThemeMenu()">
+      🚪 Sair da conta
+    </button>
+  </div>
+
+  <!-- Widget de status da frota -->
+  <div style="padding:12px 0 0" onclick="sidebarAbrir()" style="cursor:pointer">
+    <div class="ios-widget" style="cursor:pointer">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="ios-widget-title" style="margin-bottom:0">Status Logístico</div>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3L11 8L6 13" stroke="var(--ios-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="ios-stat-row">
+        <div class="ios-stat">
+          <div class="ios-stat-num" id="s1" style="color:var(--ios-purple)">—</div>
+          <div class="ios-stat-lbl">Em Viagem</div>
+        </div>
+        <div class="ios-stat">
+          <div class="ios-stat-num" id="s2" style="color:var(--ios-orange)">—</div>
+          <div class="ios-stat-lbl">Descarreg.</div>
+        </div>
+        <div class="ios-stat">
+          <div class="ios-stat-num" id="s3" style="color:var(--ios-green)">—</div>
+          <div class="ios-stat-lbl">Retorno</div>
+        </div>
+        <div class="ios-stat">
+          <div class="ios-stat-num" id="s4" style="color:var(--ios-gray)">—</div>
+          <div class="ios-stat-lbl">Garagem</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Seção Módulos -->
+  <div class="ios-section-header">Módulos</div>
+  <div class="ios-app-grid" id="modules-grid">
+    <!-- Renderizado por JS -->
+  </div>
+
+  <div style="height:16px"></div>
+</div><!-- /screen-main -->
+
+<!-- ══ PROFILE SHEET ══════════════════════════════════════════ -->
+<div class="ios-sheet-overlay" id="profile-overlay" onclick="profileFechar()"></div>
+<div class="ios-sheet" id="profile-sheet">
+  <div class="ios-sheet-handle"></div>
+  <div class="ios-sheet-profile">
+    <div class="ios-sheet-avatar" id="sheet-avatar"><span id="sheet-avatar-txt">?</span></div>
+    <div>
+      <div class="ios-sheet-name" id="sheet-nome">—</div>
+      <div class="ios-sheet-role" id="sheet-cargo">—</div>
+      <div class="ios-sheet-mat" id="sheet-mat">—</div>
+    </div>
+  </div>
+  <div class="ios-sheet-actions">
+    <div class="ios-sheet-sep"></div>
+    <button class="ios-sheet-action danger" onclick="doLogout()">
+      <div class="ico" style="background:rgba(255,59,48,.15)">🚪</div>
+      Sair da conta
+    </button>
+  </div>
+</div>
+
+<!-- ══ SIDEBAR FROTA ══════════════════════════════════════════ -->
+<div class="ios-side-overlay" id="side-overlay" onclick="sidebarFechar()"></div>
+<div class="ios-sidebar" id="sidebar">
+  <div class="ios-sidebar-header">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div class="ios-sidebar-title">Frota</div>
+      <button class="ios-navbar-btn" onclick="sidebarFechar()">✕</button>
+    </div>
+    <div class="ios-sidebar-sub" id="sidebar-sub">Carregando...</div>
+  </div>
+  <div style="padding:8px 0" id="sidebar-content">
+    <div style="text-align:center;padding:40px;color:var(--ios-gray);font-size:14px">Carregando frota...</div>
+  </div>
+</div>
+
+<!-- ══ FROTA DETAIL MODAL ═════════════════════════════════════ -->
+<div class="ios-modal-overlay" id="frota-modal-overlay" onclick="fmFechar()">
+  <div class="ios-modal" onclick="event.stopPropagation()">
+    <div class="ios-modal-handle"></div>
+    <div class="ios-modal-header">
+      <div class="ios-modal-title" id="fm-title">—</div>
+      <button class="ios-modal-close" onclick="fmFechar()">✕</button>
+    </div>
+    <div class="ios-modal-body" id="fm-body"></div>
+  </div>
+</div>
+
+<!-- ══ TOAST ══════════════════════════════════════════════════ -->
+<div id="toast"></div>
+
+<!-- ══ JS ════════════════════════════════════════════════════ -->
+<script>
+// ── CONFIG ────────────────────────────────────────────────────
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwAskGgXeNOKDB5sdt8VWdbpwPY6rYU1XVzPNzKgDvw9OF9XW92FJ_-wZMaYh5d6LzE/exec';
+const SESSION_H  = 8;
+
+// ── MÓDULOS ───────────────────────────────────────────────────
+const MODULOS = [
+  {id:'checklist_frota',  nome:'Check List',      desc:'Inspeção diária da frota',           href:'check_list_motoristas.html', icon:'📋', bg:'#007AFF', perm:'checklist_frota'},
+  {id:'lvt',              nome:'LVT',             desc:'Lista de verificação Petrobras',      href:'checklist_lvt.html',         icon:'📄', bg:'#34C759', perm:'lvt'},
+  {id:'seg_mensal',       nome:'Seg. Mensal',     desc:'Checklist de segurança mensal',       href:'checklist_seguranca_mensal.html', icon:'🛡', bg:'#FF9500', perm:'seg_mensal'},
+  {id:'manutencao',       nome:'Manutenção',      desc:'Ordens de serviço e reparos',         href:'manutencao.html',            icon:'🔧', bg:'#FF3B30', perm:'manutencao'},
+  {id:'pneus',            nome:'Pneus',           desc:'Controle e vida útil dos pneus',      href:'pneus.html',                 icon:'🔘', bg:'#FF9500', perm:'pneus'},
+  {id:'estoque',          nome:'Estoque',         desc:'Estoque de pneus e peças',            href:'estoque.html',               icon:'📦', bg:'#5856D6', perm:'pneus'},
+  {id:'carros_apoio',     nome:'Apoio',           desc:'Carros de apoio e serviço',           href:'carros-apoio.html',          icon:'🚗', bg:'#32ADE6', perm:'carros_apoio'},
+  {id:'lavagem',          nome:'Lavagem',         desc:'Controle de lavagem da frota',        href:'lavagem.html',               icon:'💧', bg:'#06C8E0', perm:'controle_lavagem'},
+  {id:'abastecimento',    nome:'Abastecimento',   desc:'Diesel, Arla 32 e consumo',           href:'abastecimento.html',         icon:'⛽', bg:'#FF9500', perm:'abastecimento'},
+  {id:'compras',          nome:'Compras',         desc:'Solicitações de compra',              href:'solicitacao_compras.html',   icon:'🛒', bg:'#AF52DE', perm:'solicitacao_compra', wide:true},
+  {id:'relatorios',       nome:'Relatórios',      desc:'Análises e relatórios gerenciais',    href:'relatorios.html',            icon:'📊', bg:'#007AFF', perm:'relatorios'},
+];
+
+// ── PERMISSÕES ────────────────────────────────────────────────
+function getPerm(){
+  try{ return JSON.parse(localStorage.getItem('twm_permissoes')||'{}'); }catch(e){return {};}
+}
+function isAdmin(){
+  var u=getUser(); return u && (u.cargo==='ADMIN'||u.cargo==='ADMINISTRATIVO MASTER'||getPerm().admin_master);
+}
+function getUser(){
+  try{ return JSON.parse(localStorage.getItem('twm_user_cache')||'null'); }catch(e){return null;}
+}
+function temPerm(key){
+  if(isAdmin()) return true;
+  var p=getPerm();
+  if(p[key]||p[key.toUpperCase()]) return true;
+  // Fallback: verifica direto no objeto do usuario (compatibilidade login antigo)
+  var u=getUser(); if(!u) return false;
+  var pu=u.permissoes||{};
+  return !!(pu[key]||pu[key.toUpperCase()]);
+}
+function ativo(v){ return v===true||v==='SIM'||v==='Sim'||v==='sim'||v==='TRUE'||v===1||v==='X'||v==='x'; }
+function extrairPerms(m){
+  if(m.permissoes && typeof m.permissoes==='object') return m.permissoes;
+  return {
+    checklist_frota:  ativo(m.CHECK_FROTA||m.checklist_frota),
+    lvt:              ativo(m.LVT||m.lvt),
+    seg_mensal:       ativo(m.SEG_MENSAL||m.seg_mensal),
+    pneus:            ativo(m.PNEUS||m.pneus),
+    carros_apoio:     ativo(m.CARROS_APOIO||m.carros_apoio||m.carros),
+    controle_lavagem: ativo(m.CONTROLE_DE_LAVAGEM||m.controle_lavagem||m.lavagem),
+    abastecimento:    ativo(m.ABASTECIMENTO||m.abastecimento),
+    relatorios:       ativo(m.RELATÓRIOS||m.RELATORIOS||m.relatorios),
+    manutencao:       ativo(m.MANUTENÇÃO||m.MANUTENCAO||m.manutencao),
+    solicitacao_compra:ativo(m['SOLICITAÇÃO DE COMPRA']||m['SOLICITACAO DE COMPRA']||m['COMPRAS']||m.solicitacao_compra||m.compras),
+    compras_master:    ativo(m['COMPRAS MASTER']||m['COMPRAS_MASTER']||m.compras_master),
+    admin_master:     ativo(m['ADMINISTRATIVO MASTER']||m.admin_master),
+  };
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────
+function doLogin(){
+  var email = document.getElementById('login-email').value.trim();
+  var senha = document.getElementById('login-senha').value;
+  var errEl = document.getElementById('login-err');
+  var btn   = document.getElementById('login-btn');
+  if(!email||!senha){ errEl.textContent='Preencha e-mail e senha.'; return; }
+  errEl.textContent='';
+  btn.textContent='Entrando…'; btn.disabled=true;
+  var url = SCRIPT_URL+'?action=login&email='+encodeURIComponent(email)+'&senha='+encodeURIComponent(senha);
+  fetch(url).then(r=>r.json()).then(d=>{
+    btn.textContent='Entrar'; btn.disabled=false;
+    if(d.ok && (d.motorista || d.nome)){
+      var u = d.motorista || {
+        nome:      d.nome,
+        permissao: d.permissao,
+        cargo:     d.cargo,
+        matricula: d.matricula,
+        permissoes: d.permissoes || {}
+      };
+      u._ts = Date.now();
+      // sessionToken gerado pelo script e salvo junto com os dados do usuário
+      localStorage.setItem('twm_user_cache', JSON.stringify(u));
+      var perm = u.permissoes || extrairPerms(u);
+      // Garante que checklist_frota seja reconhecido independente do nome da coluna
+      if(perm['CHECK_FROTA']||perm['check_frota']||perm['CHECK FROTA']) perm['checklist_frota']=true;
+      if(perm['CHECK LIST FROTA']||perm['check_list_frota']) perm['checklist_frota']=true;
+      if(perm['SOLICITAÇÃO DE COMPRA']||perm['SOLICITACAO DE COMPRA']||perm['COMPRAS']) perm['solicitacao_compra']=true;
+      if(perm['COMPRAS MASTER']||perm['COMPRAS_MASTER']) perm['compras_master']=true;
+      u.permissoes = perm;
+      localStorage.setItem('twm_permissoes', JSON.stringify(perm));
+      // Grava twm_session no formato esperado pelos módulos (check_list_motoristas, etc.)
+      localStorage.setItem('twm_session', JSON.stringify({motorista: u}));
+      initApp();
+    } else {
+      errEl.textContent = d.msg||'E-mail ou senha incorretos.';
+    }
+  }).catch(()=>{
+    btn.textContent='Entrar'; btn.disabled=false;
+    errEl.textContent='Sem conexão. Tente novamente.';
+  });
+}
+
+// ── LOGOUT ────────────────────────────────────────────────────
+function doLogout(){
+  localStorage.removeItem('twm_user_cache');
+  localStorage.removeItem('twm_permissoes');
+  localStorage.removeItem('twm_session');
+  profileFechar();
+  setTimeout(()=>{
+    document.getElementById('screen-main').classList.remove('active');
+    document.getElementById('screen-login').classList.add('login-visible');
+    
+  }, 200);
+}
+
+// ── INIT APP ──────────────────────────────────────────────────
+function initApp(){
+  var u = getUser();
+  if(!u){ document.getElementById('screen-login').classList.add('login-visible');  return; }
+  // Sessão expirada?
+  if(u._ts && (Date.now()-u._ts) > SESSION_H*3600000){
+    doLogout(); return;
+  }
+  document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('screen-login').classList.remove('login-visible');
+  document.getElementById('screen-main').classList.add('active');
+  // Saudação
+  var h=new Date().getHours();
+  var gd = h<12 ? 'Bom dia' : h<18 ? 'Boa tarde' : 'Boa noite';
+  document.getElementById('greeting-txt').textContent = gd + ',';
+  var nome = (u.nome||u.NOME||'').split(' ')[0];
+  document.getElementById('greeting-name').textContent = nome || 'Bem-vindo';
+  // Avatar
+  var ini = (nome||'?')[0].toUpperCase();
+  document.getElementById('nav-avatar-txt').textContent = ini;
+  document.getElementById('sheet-avatar-txt').textContent = ini;
+  document.getElementById('sheet-nome').textContent = u.nome||u.NOME||'—';
+  document.getElementById('sheet-cargo').textContent = u.cargo||u.CARGO||'—';
+  document.getElementById('sheet-mat').textContent = 'Mat: '+(u.matricula||u.MATRÍCULA||'—');
+  // Módulos
+  renderMods();
+  // Frota
+  carregarFrota();
+}
+
+// ── RENDER MÓDULOS ────────────────────────────────────────────
+function abrirModulo(href){
+  // Grava sessão no formato esperado pelos módulos antes de navegar
+  var u = getUser();
+  if(u){
+    localStorage.setItem('twm_session', JSON.stringify({motorista: u}));
+  }
+  window.location.href = href;
+}
+
+function renderMods(){
+  var grid = document.getElementById('modules-grid');
+  var html = '';
+  MODULOS.forEach(function(m){
+    if(!temPerm(m.perm)) return;
+    var cls = 'ios-app-cell' + (m.wide?' wide':'');
+    html += '<div class="'+cls+'" data-href="'+m.href+'" onclick="abrirModulo(this.dataset.href)" style="cursor:pointer">'
+      +'<div class="ios-app-icon" style="background:'+m.bg+'22">'
+      +'<span style="font-size:28px">'+m.icon+'</span>'
+      +'</div>'
+      +(m.wide
+        ? '<div><div class="ios-app-name" style="font-size:16px">'+m.nome+'</div><div class="ios-app-desc">'+m.desc+'</div></div>'
+        : '<div class="ios-app-name">'+m.nome+'</div><div class="ios-app-desc">'+m.desc+'</div>'
+      )
+      +'</div>';
+  });
+  grid.innerHTML = html || '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ios-gray)">Sem módulos disponíveis.</div>';
+}
+
+// ── FROTA STATUS ──────────────────────────────────────────────
+var _frotaData = {};
+var _frotaVlist = [];
+var _frotaVmap  = {};
+
+// Colunas retornadas pelo script (mesma ordem da planilha FROTA)
+var COL = {STATUS:0,MATERIAL:1,CLIENTE:2,PEDIDO:3,QT:4,ROTA:5,TRANSP:6,CAVALO:7,CARRETA1:8,CARRETA2:9,EIXOS:10,MOTORISTA:11,CNH:12,CARREG:13,AGEND:14,SM:15,PEDIDO_COMPRA:16};
+
+var SCFG = {
+  'EM VIAGEM':       {cor:'#AF52DE',bg:'rgba(175,82,222,.18)', lbl:'Em Viagem'},
+  'DESCARREGANDO':   {cor:'#FF9500',bg:'rgba(255,149,0,.18)',  lbl:'Descarreg.'},
+  'RETORNO GARAGEM': {cor:'#34C759',bg:'rgba(52,199,89,.18)',  lbl:'Retorno'},
+  'NA GARAGEM':      {cor:'#8E8E93',bg:'rgba(142,142,147,.15)',lbl:'Garagem'},
+};
+
+function normStatus(s){
+  var v=(s||'').toUpperCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(v.includes('VIAGEM'))                      return 'EM VIAGEM';
+  if(v.includes('DESCARG')||v.includes('DESC')) return 'DESCARREGANDO';
+  if(v.includes('RETORNO')||v.includes('VOLTA'))return 'RETORNO GARAGEM';
+  return 'NA GARAGEM';
+}
+
+// URL do script de login (autenticação)
+// URL do script do checklist/frota (dados operacionais)
+var FROTA_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw4BZz60sy9BsFACdqKktKpzJOfP8mj0U6s1G7Em5pwhaC_kQHCk-GPbLNZOlwjvrOwsw/exec';
+
+function parseCsv(txt){
+  var rows=[];
+  var lines=txt.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  for(var li=1;li<lines.length;li++){
+    var line=lines[li]; if(!line.trim()) continue;
+    var cols=[],cur='',inQ=false;
+    for(var i=0;i<line.length;i++){
+      var c=line[i];
+      if(c==='"'){inQ=!inQ;}
+      else if(c===','&&!inQ){cols.push(cur.trim());cur='';}
+      else{cur+=c;}
+    }
+    cols.push(cur.trim());
+    if(cols.length>7 && cols[COL.CAVALO] && cols[COL.CAVALO].trim()) rows.push(cols);
+  }
+  return rows;
+}
+
+function carregarFrota(){
+  var u = getUser();
+
+  // 1. Cache imediato enquanto busca
+  try{
+    var c=localStorage.getItem('twm_frota_cache');
+    if(c){var d=JSON.parse(c);if(d&&d.length) _processarFrota(d);}
+  }catch(e){}
+
+  // 2. Se tem sessionToken, busca autenticado (planilha privada)
+  if(u && u.sessionToken){
+    var url = FROTA_SCRIPT_URL
+      + '?action=frota'
+      + '&email=' + encodeURIComponent(u.email||'')
+      + '&token=' + encodeURIComponent(u.sessionToken||'')
+      + '&_='     + Date.now();
+
+    fetch(url)
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.ok && d.frota && d.frota.length){
+          _processarFrota(d.frota);
+          try{localStorage.setItem('twm_frota_cache',JSON.stringify(d.frota));}catch(e){}
+        } else if(d.sessao_invalida){
+          doLogout();
+          showToast('Sessão expirada. Faça login novamente.');
+        }
+      })
+      .catch(function(){});
+    return;
+  }
+
+  // 3. Fallback: CSV público (enquanto usuário não tiver sessionToken — login antigo)
+  var FROTA_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx62CxMqSchj3wdG83U48YiyM8eH9vIj8Jv7Gg1QVWm0Ow7abDlyYWtAEecM4iCPWTvH8e5Y84jJdf/pub?gid=644783428&single=true&output=csv';
+  var xhr=new XMLHttpRequest();
+  xhr.timeout=12000;
+  xhr.open('GET', FROTA_CSV+'&_='+Date.now(), true);
+  xhr.onload=function(){
+    if(xhr.status===200 && xhr.responseText && xhr.responseText.length>10){
+      var dados=parseCsv(xhr.responseText);
+      if(dados.length>0){
+        _processarFrota(dados);
+        try{localStorage.setItem('twm_frota_cache',JSON.stringify(dados));}catch(e){}
+      }
+    }
+  };
+  xhr.onerror=xhr.ontimeout=function(){};
+  xhr.send();
+}
+
+function _processarFrota(dados){
+  _frotaVmap={}; _frotaVlist=[];
+  for(var i=0;i<dados.length;i++){
+    var cav=(dados[i][COL.CAVALO]||'').trim();
+    if(cav&&!_frotaVmap[cav]){_frotaVmap[cav]=dados[i];_frotaVlist.push(cav);}
+  }
+  var counts={'EM VIAGEM':0,'DESCARREGANDO':0,'RETORNO GARAGEM':0,'NA GARAGEM':0};
+  _frotaVlist.forEach(function(cav){
+    var st=normStatus(_frotaVmap[cav][COL.STATUS]);
+    if(counts[st]!==undefined) counts[st]++;
+  });
+  document.getElementById('s1').textContent=counts['EM VIAGEM']||0;
+  document.getElementById('s2').textContent=counts['DESCARREGANDO']||0;
+  document.getElementById('s3').textContent=counts['RETORNO GARAGEM']||0;
+  document.getElementById('s4').textContent=counts['NA GARAGEM']||0;
+  _frotaData={list:_frotaVlist,map:_frotaVmap};
+  renderSidebar();
+}
+
+// ── SIDEBAR ───────────────────────────────────────────────────
+function sidebarAbrir(){
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('side-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+  closeThemeMenu();
+}
+function sidebarFechar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('side-overlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+function renderSidebar(){
+  var d=_frotaData; if(!d||!d.list) return;
+  var sub=document.getElementById('sidebar-sub');
+  sub.textContent=d.list.length+' veículos';
+  var html='';
+  d.list.forEach(function(cav){
+    var r=d.map[cav]||[];
+    var st=normStatus(r[COL.STATUS]);
+    var cfg=SCFG[st]||SCFG['NA GARAGEM'];
+    var mot=(r[COL.MOTORISTA]||'').split(' ');
+    var motAbrev=mot.length>1?mot[0]+' '+mot[mot.length-1]:r[COL.MOTORISTA]||'—';
+    html+='<div class="frota-card-ios" onclick="fmAbrir(\''+cav.replace(/'/g,"\\'")+'\')">'
+      +'<div class="frota-dot" style="background:'+cfg.cor+'"></div>'
+      +'<div class="frota-info-wrap">'
+      +'<div class="frota-id-ios">'+cav+'</div>'
+      +'<div class="frota-mot-ios">'+motAbrev+'</div>'
+      +'</div>'
+      +'<div class="frota-st-ios" style="background:'+cfg.bg+';color:'+cfg.cor+'">'+cfg.lbl+'</div>'
+      +'</div>';
+  });
+  document.getElementById('sidebar-content').innerHTML=html||'<div style="text-align:center;padding:40px;color:var(--ios-gray)">Sem dados.</div>';
+}
+
+// ── FROTA MODAL ───────────────────────────────────────────────
+function fmAbrir(cav){
+  sidebarFechar();
+  var d=_frotaData; if(!d||!d.map) return;
+  var r=d.map[cav]||[];
+  var st=normStatus(r[COL.STATUS]);
+  var cfg=SCFG[st]||SCFG['NA GARAGEM'];
+  document.getElementById('fm-title').textContent=cav;
+  var body='';
+  var campos=[
+    ['Status',        '<span style="background:'+cfg.bg+';color:'+cfg.cor+';padding:3px 12px;border-radius:20px;font-size:14px;font-weight:600">'+cfg.lbl+'</span>'],
+    ['Motorista',     r[COL.MOTORISTA]||'—'],
+    ['Rota',          r[COL.ROTA]||'—'],
+    ['Cliente',       r[COL.CLIENTE]||'—'],
+    ['Material',      r[COL.MATERIAL]||'—'],
+    ['Carreta 1',     r[COL.CARRETA1]||'—'],
+    ['Carreta 2',     r[COL.CARRETA2]||'—'],
+    ['Eixos',         r[COL.EIXOS]||'—'],
+    ['Carregamento',  r[COL.CARREG]||'—'],
+    ['Agendamento',   r[COL.AGEND]||'—'],
+    ['Nº Pedido',     r[COL.PEDIDO]||'—'],
+    ['SM',            r[COL.SM]||'—'],
+  ];
+  campos.forEach(function(c){
+    body+='<div class="ios-modal-row"><span class="ios-modal-label">'+c[0]+'</span><span class="ios-modal-value">'+c[1]+'</span></div>';
+  });
+  document.getElementById('fm-body').innerHTML=body;
+  document.getElementById('frota-modal-overlay').classList.add('open');
+}
+function fmFechar(){
+  document.getElementById('frota-modal-overlay').classList.remove('open');
+}
+
+// ── PROFILE SHEET ─────────────────────────────────────────────
+function profileAbrir(){
+  document.getElementById('profile-overlay').classList.add('open');
+  document.getElementById('profile-sheet').classList.add('open');
+}
+function profileFechar(){
+  document.getElementById('profile-overlay').classList.remove('open');
+  document.getElementById('profile-sheet').classList.remove('open');
+}
+
+// ── TOAST ──────────────────────────────────────────────────────
+function showToast(msg, dur){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), dur||2500);
+}
+
+// ── TEMA ──────────────────────────────────────────────────────
+var _temaAtual = localStorage.getItem('twm_tema')||'auto';
+
+function aplicarTema(){
+  var body=document.body;
+  body.classList.remove('theme-claro','theme-escuro');
+  if(_temaAtual==='claro'){
+    body.classList.add('theme-claro');
+  } else if(_temaAtual==='escuro'){
+    body.classList.add('theme-escuro');
+  } else {
+    // auto: usa hora do dia
+    var h=new Date().getHours();
+    if(h>=6&&h<18) body.classList.add('theme-claro');
+  }
+  // Atualiza botões
+  ['claro','auto','escuro'].forEach(function(t){
+    var b=document.getElementById('tbtn-'+t);
+    if(b) b.classList.toggle('on',t===_temaAtual);
+  });
+  // Label
+  var labels={claro:'Claro ☀️',auto:'Automático ⚙️',escuro:'Escuro 🌙'};
+  var lbl=document.getElementById('theme-lbl');
+  if(lbl) lbl.textContent=labels[_temaAtual]||'Automático';
+}
+
+function setTema(modo){
+  _temaAtual=modo;
+  localStorage.setItem('twm_tema',modo);
+  aplicarTema();
+}
+
+function toggleThemeMenu(e){
+  e.stopPropagation();
+  var dd=document.getElementById('theme-dropdown');
+  dd.classList.toggle('open');
+}
+function closeThemeMenu(){
+  var dd=document.getElementById('theme-dropdown');
+  if(dd) dd.classList.remove('open');
+}
+document.addEventListener('click',function(e){
+  var dd=document.getElementById('theme-dropdown');
+  var btn=document.getElementById('dots-btn');
+  if(dd&&!dd.contains(e.target)&&e.target!==btn&&!btn.contains(e.target)){
+    dd.classList.remove('open');
+  }
+});
+// Reavalia a cada 5 min para modo auto
+setInterval(function(){if(_temaAtual==='auto')aplicarTema();},5*60*1000);
+
+// ── PULL TO REFRESH ────────────────────────────────────────────
+(function(){
+  var startY=0,pulling=false,triggered=false;
+  var bar=document.getElementById('ptr-bar');
+  var txt=document.getElementById('ptr-txt');
+  var th=70;
+  document.addEventListener('touchstart',function(e){
+    if(window.scrollY===0){startY=e.touches[0].clientY;pulling=true;triggered=false;}
+  },{passive:true});
+  document.addEventListener('touchmove',function(e){
+    if(!pulling) return;
+    var dy=e.touches[0].clientY-startY;
+    if(dy<0){pulling=false;return;}
+    if(dy>20&&dy<th){bar.classList.add('show');bar.classList.remove('done');txt.textContent='Puxe para atualizar…';}
+    if(dy>=th&&!triggered){triggered=true;txt.textContent='Solte para atualizar';}
+  },{passive:true});
+  document.addEventListener('touchend',function(){
+    if(!pulling) return; pulling=false;
+    if(triggered){
+      txt.textContent='Atualizando…';
+      carregarFrota();
+      setTimeout(()=>{bar.classList.add('done');txt.textContent='Atualizado!';
+        setTimeout(()=>bar.classList.remove('show','done'),800);},1500);
+    } else { bar.classList.remove('show'); }
+  });
+})();
+
+// ── ENTER NO LOGIN ────────────────────────────────────────────
+document.getElementById('login-senha').addEventListener('keydown',function(e){
+  if(e.key==='Enter') doLogin();
+});
+document.getElementById('login-email').addEventListener('keydown',function(e){
+  if(e.key==='Enter') document.getElementById('login-senha').focus();
+});
+
+// ── BOOT ──────────────────────────────────────────────────────
+(function(){
+  aplicarTema();
+  var u=getUser();
+  if(u && (!u._ts || (Date.now()-u._ts)<SESSION_H*3600000)){
+    initApp();
+  } else {
+    document.getElementById('screen-login').classList.add('login-visible');
+    
+  }
+})();
+</script>
+</body>
+</html>
