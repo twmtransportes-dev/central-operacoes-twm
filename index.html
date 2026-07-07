@@ -843,9 +843,10 @@ var SCFG = {
 
 function normStatus(s){
   var v=(s||'').toUpperCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  if(v.includes('VIAGEM'))                      return 'EM VIAGEM';
-  if(v.includes('DESCARG')||v.includes('DESC')) return 'DESCARREGANDO';
-  if(v.includes('RETORNO')||v.includes('VOLTA'))return 'RETORNO GARAGEM';
+  if(v.includes('VIAGEM')||v.includes('CAMINHO')||v.includes('PROGRAMADO')||v.includes('CARREGADO')) return 'EM VIAGEM';
+  if(v.includes('DESCARG')||v.includes('DESC'))   return 'DESCARREGANDO';
+  if(v.includes('RETORNO')||v.includes('VOLTA'))   return 'RETORNO GARAGEM';
+  if(v.includes('GARAGEM')||v.includes('DISPONIV')) return 'NA GARAGEM';
   return 'NA GARAGEM';
 }
 
