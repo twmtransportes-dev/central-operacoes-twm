@@ -881,44 +881,21 @@ function carregarFrota(){
     if(c){var d=JSON.parse(c);if(d&&d.length) _processarFrota(d);}
   }catch(e){}
 
-  // 2. Se tem sessionToken, busca autenticado (planilha privada)
-  if(u && u.sessionToken){
-    var url = FROTA_SCRIPT_URL
-      + '?action=frota'
-      + '&email=' + encodeURIComponent(u.email||'')
-      + '&token=' + encodeURIComponent(u.sessionToken||'')
-      + '&_='     + Date.now();
-
-    fetch(url)
-      .then(function(r){return r.json();})
-      .then(function(d){
-        if(d.ok && d.frota && d.frota.length){
-          _processarFrota(d.frota);
-          try{localStorage.setItem('twm_frota_cache',JSON.stringify(d.frota));}catch(e){}
-        } else if(d.sessao_invalida){
-          doLogout();
-          showToast('Sessão expirada. Faça login novamente.');
-        }
-      })
-      .catch(function(){});
-    return;
-  }
-
-  // 3. Fallback: CSV público (enquanto usuário não tiver sessionToken — login antigo)
+  // 2. Sempre carrega do CSV público (fonte confiável e sincronizada)
   var FROTA_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx62CxMqSchj3wdG83U48YiyM8eH9vIj8Jv7Gg1QVWm0Ow7abDlyYWtAEecM4iCPWTvH8e5Y84jJdf/pub?gid=644783428&single=true&output=csv';
-  var xhr=new XMLHttpRequest();
-  xhr.timeout=12000;
-  xhr.open('GET', FROTA_CSV+'&_='+Date.now(), true);
-  xhr.onload=function(){
-    if(xhr.status===200 && xhr.responseText && xhr.responseText.length>10){
-      var dados=parseCsv(xhr.responseText);
-      if(dados.length>0){
+  var xhr = new XMLHttpRequest();
+  xhr.timeout = 12000;
+  xhr.open('GET', FROTA_CSV + '&_=' + Date.now(), true);
+  xhr.onload = function(){
+    if(xhr.status === 200 && xhr.responseText && xhr.responseText.length > 10){
+      var dados = parseCsv(xhr.responseText);
+      if(dados.length > 0){
         _processarFrota(dados);
-        try{localStorage.setItem('twm_frota_cache',JSON.stringify(dados));}catch(e){}
+        try{localStorage.setItem('twm_frota_cache', JSON.stringify(dados));}catch(e){}
       }
     }
   };
-  xhr.onerror=xhr.ontimeout=function(){};
+  xhr.onerror = xhr.ontimeout = function(){};
   xhr.send();
 }
 
