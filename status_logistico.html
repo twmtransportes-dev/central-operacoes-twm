@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Status Logístico — TWM Datalink</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
     --bg:        #0f0f1a;
@@ -330,6 +329,18 @@
     color: var(--muted);
     padding-top: 12px;
   }
+
+  /* ── ALERTAS DE MANUTENÇÃO ─── */
+  .alert-badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10px; font-weight: 700;
+    padding: 2px 6px; border-radius: 10px;
+    margin-top: 4px;
+  }
+  .alert-os   { background: rgba(239,68,68,.2);  color: #ef4444; }
+  .alert-pend { background: rgba(245,158,11,.2); color: #f59e0b; }
+  .truck-alerts { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; margin-top: 2px; }
+
 </style>
 </head>
 <body>
@@ -347,17 +358,10 @@
   </div>
 </div>
 
-<!-- UPLOAD -->
-<div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
-     ondragover="event.preventDefault();this.classList.add('drag')"
-     ondragleave="this.classList.remove('drag')"
-     ondrop="handleDrop(event)">
-  <div class="upload-icon">📊</div>
-  <div class="upload-text">
-    <h3>Carregar planilha da frota</h3>
-    <p id="uploadHint">Selecione ou arraste o arquivo .xlsx / .xlsm</p>
-  </div>
-  <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls,.csv" onchange="handleFile(this.files[0])">
+<!-- STATUS CARREGAMENTO -->
+<div id="loadingState" style="text-align:center;padding:40px 20px;color:var(--muted)">
+  <div style="font-size:32px;margin-bottom:12px">⏳</div>
+  <p id="loadingMsg">Carregando dados da frota...</p>
 </div>
 
 <!-- KPIs -->
@@ -409,23 +413,28 @@
 </div>
 
 <script>
+// ── CONFIG ──────────────────────────────────────────────────────
+const FROTA_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx62CxMqSchj3wdG83U48YiyM8eH9vIj8Jv7Gg1QVWm0Ow7abDlyYWtAEecM4iCPWTvH8e5Y84jJdf/pub?gid=644783428&single=true&output=csv&_=' + Date.now();
+const MANUT_URL  = 'https://script.google.com/macros/s/AKfycbwAGLjEDNVAJk9nGujpVd6hTl3QY9Ss9Wl0Sm14TqCHBhdAFEPglhcXSzoN7ktSQjoa/exec?action=getManutencoes&status=aberta&_=';
+const REFRESH_MS = 2 * 60 * 1000; // 2 minutos
+
 // ── STATUS MAPPING ──────────────────────────────────────────────
-// Maps values from column STATUS (and keywords) to display buckets
 const STATUS_MAP = {
   'EM VIAGEM':    'viagem',
   'VIAGEM':       'viagem',
   'CARREGADO':    'viagem',
-  'PROGRAMADO':   'viagem',     // default fallback for loaded orders
+  'PROGRAMADO':   'viagem',
   'DESCARREGANDO':'desc',
   'DESCARREG':    'desc',
   'DESCARGA':     'desc',
+  'A CAMINHO':    'viagem',
   'RETORNO':      'retorno',
   'RETORNANDO':   'retorno',
+  'VOLTANDO':     'retorno',
   'GARAGEM':      'garagem',
   'NA GARAGEM':   'garagem',
-  'MANUTENÇÃO':   'garagem',
-  'MANUTENCAO':   'garagem',
-  'PARADO':       'garagem',
+  'DISPONIVEL':   'garagem',
+  'DISPONÍVEL':   'garagem',
 };
 
 const STATUS_META = {
@@ -435,79 +444,149 @@ const STATUS_META = {
   garagem: { label:'NA GARAGEM',   color:'var(--gray)',      icon:'🏠', iconClass:'icon-garagem', dotClass:'dot-garagem', badgeClass:'badge-garagem' },
 };
 
-// ── PARSE STATUS ────────────────────────────────────────────────
+// ── STATE ──────────────────────────────────────────────────────
+var fleetData   = [];
+var manutOS     = {};   // { frota: [os, ...] }
+var pendencias  = {};   // { frota: [pend, ...] }
+
+// ── STATUS RESOLVER ────────────────────────────────────────────
 function resolveStatus(raw) {
   if (!raw) return 'garagem';
-  const s = String(raw).toUpperCase().trim();
+  const s = String(raw).trim().toUpperCase();
   if (STATUS_MAP[s]) return STATUS_MAP[s];
-  for (const [key, val] of Object.entries(STATUS_MAP)) {
-    if (s.includes(key)) return val;
+  for (const k of Object.keys(STATUS_MAP)) {
+    if (s.includes(k)) return STATUS_MAP[k];
   }
-  return 'viagem'; // default to "em viagem" for active orders
+  return 'garagem';
 }
 
-// ── PARSE DRIVER (short first name) ────────────────────────────
 function shortName(full) {
   if (!full) return '—';
-  const name = String(full).trim();
-  // "GERRY/ FILIPE OLIVEIRA" → first token
-  const first = name.split(/[\/\s]/)[0];
-  return first.charAt(0) + first.slice(1).toLowerCase();
+  const parts = full.trim().split(/[/,\s]+/);
+  return parts[0] || full;
 }
 
-// ── LOAD XLSX ───────────────────────────────────────────────────
-let fleetData = [];
-
-function handleDrop(e) {
-  e.preventDefault();
-  document.getElementById('uploadZone').classList.remove('drag');
-  const file = e.dataTransfer.files[0];
-  if (file) handleFile(file);
+// ── CSV PARSER ─────────────────────────────────────────────────
+function parseCsv(txt) {
+  var rows = [];
+  var lines = txt.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  var headers = [];
+  for (var li = 0; li < lines.length; li++) {
+    var line = lines[li]; if (!line.trim()) continue;
+    var cols = [], cur = '', inQ = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else { cur += c; }
+    }
+    cols.push(cur.trim());
+    if (li === 0) { headers = cols; continue; }
+    if (!cols[7] && !cols[11]) continue; // skip rows without cavalo or motorista
+    var obj = {};
+    headers.forEach(function(h, idx) { obj[h] = cols[idx] || ''; });
+    rows.push(obj);
+  }
+  return rows;
 }
 
-function handleFile(file) {
-  if (!file) return;
-  const hint = document.getElementById('uploadHint');
-  hint.textContent = `Carregando ${file.name}…`;
+// ── CARREGAR MANUTENÇÃO ────────────────────────────────────────
+function carregarManutencao() {
+  // Pendências do servidor
+  fetch('https://script.google.com/macros/s/AKfycbwAGLjEDNVAJk9nGujpVd6hTl3QY9Ss9Wl0Sm14TqCHBhdAFEPglhcXSzoN7ktSQjoa/exec?action=getPendencias&_=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(res) {
+      pendencias = {};
+      if (res.ok && Array.isArray(res.pendencias)) {
+        res.pendencias.forEach(function(p) {
+          var f = (p.frota || '').toUpperCase();
+          if (!pendencias[f]) pendencias[f] = [];
+          pendencias[f].push(p);
+        });
+      }
+    }).catch(function(){});
 
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
-      // Try "Frota" sheet first, then first sheet
-      const sheetName = wb.SheetNames.includes('Frota') ? 'Frota' : wb.SheetNames[0];
-      const ws  = wb.Sheets[sheetName];
-      const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+  // OS abertas do servidor
+  fetch(MANUT_URL + Date.now())
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      manutOS = {};
+      if (res.ok && Array.isArray(res.ordens)) {
+        res.ordens.forEach(function(os) {
+          var f = (os.frota || '').toUpperCase();
+          if (!manutOS[f]) manutOS[f] = [];
+          manutOS[f].push(os);
+        });
+      }
+      if (fleetData.length) renderDashboard();
+    })
+    .catch(function() {
+      if (fleetData.length) renderDashboard();
+    });
+}
 
-      // Normalize column names
-      fleetData = raw
-        .filter(r => r['CAVALO/BI-TRI'] || r['MOTORISTA'])
-        .map(r => ({
+// ── VERIFICAR ALERTAS ──────────────────────────────────────────
+function getAlertas(cavalo) {
+  var c = (cavalo || '').toUpperCase();
+  var os    = manutOS[c]   || [];
+  var pends = pendencias[c] || [];
+  // Busca parcial: VP-183 pode estar como "VP183" ou vice-versa
+  if (!os.length && !pends.length) {
+    Object.keys(manutOS).forEach(function(k) {
+      if (k.replace(/[^A-Z0-9]/g,'') === c.replace(/[^A-Z0-9]/g,'')) {
+        os = manutOS[k];
+      }
+    });
+    Object.keys(pendencias).forEach(function(k) {
+      if (k.replace(/[^A-Z0-9]/g,'') === c.replace(/[^A-Z0-9]/g,'')) {
+        pends = pendencias[k];
+      }
+    });
+  }
+  return { os: os, pends: pends };
+}
+
+// ── CARREGAR FROTA ─────────────────────────────────────────────
+function carregarFrota() {
+  document.getElementById('loadingMsg').textContent = 'Carregando dados da frota...';
+
+  var url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx62CxMqSchj3wdG83U48YiyM8eH9vIj8Jv7Gg1QVWm0Ow7abDlyYWtAEecM4iCPWTvH8e5Y84jJdf/pub?gid=644783428&single=true&output=csv&_=' + Date.now();
+
+  fetch(url)
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(function(txt) {
+      var raw = parseCsv(txt);
+      fleetData = raw.map(function(r) {
+        return {
           status:    resolveStatus(r['STATUS']),
-          cavalo:    String(r['CAVALO/BI-TRI'] || '').trim().toUpperCase() || 'SEM PLACA',
-          motorista: String(r['MOTORISTA']      || '').trim(),
-          rota:      String(r['ROTA']           || '').trim(),
+          cavalo:    String(r['CAVALO/BI-TRI'] || r['CAVALO'] || '').trim().toUpperCase() || 'SEM PLACA',
+          motorista: String(r['MOTORISTA'] || '').trim(),
+          rota:      String(r['ROTA'] || '').trim(),
           cliente:   String(r['CLIENTE RECEBEDOR'] || '').trim(),
-          material:  String(r['DESC. MATERIAL']    || '').trim(),
+          material:  String(r['DESC. MATERIAL'] || '').trim(),
           qt:        r['QT DA ORDEM'] || '',
           carreta1:  String(r['CARRETA 1'] || '').trim(),
           agend:     r['AGENDAMENTO'] || '',
           raw:       r,
-        }));
+        };
+      });
 
-      hint.textContent = `✅ ${file.name} — ${fleetData.length} viagens`;
+      document.getElementById('loadingState').style.display = 'none';
+      carregarManutencao();
       renderDashboard();
-    } catch(err) {
-      hint.textContent = `❌ Erro ao ler o arquivo: ${err.message}`;
-    }
-  };
-  reader.readAsArrayBuffer(file);
+    })
+    .catch(function(err) {
+      document.getElementById('loadingMsg').textContent = '❌ Erro ao carregar: ' + err.message + ' — verifique se a planilha está publicada.';
+    });
 }
 
 // ── RENDER ──────────────────────────────────────────────────────
 function renderDashboard() {
   const groups = { viagem: [], desc: [], retorno: [], garagem: [] };
-  fleetData.forEach(v => groups[v.status].push(v));
+  fleetData.forEach(function(v) { groups[v.status].push(v); });
 
   // KPIs
   document.getElementById('kpiGrid').style.display = 'grid';
@@ -521,80 +600,89 @@ function renderDashboard() {
   sections.innerHTML = '';
 
   const order = ['viagem','desc','retorno','garagem'];
-  order.forEach(key => {
+  order.forEach(function(key) {
     const list = groups[key];
     if (!list.length) return;
     const meta = STATUS_META[key];
 
     const sec = document.createElement('div');
     sec.className = 'section';
-    sec.innerHTML = `
-      <div class="section-header">
-        <div class="section-label">
-          <span class="section-dot ${meta.dotClass}"></span>
-          ${meta.label}
-        </div>
-        <span class="section-count">${list.length}</span>
-      </div>
-      <div class="truck-grid" id="grid-${key}"></div>
-    `;
+    sec.innerHTML = '<div class="section-header"><div class="section-label"><span class="section-dot ' + meta.dotClass + '"></span>' + meta.label + '</div><span class="section-count">' + list.length + '</span></div><div class="truck-grid" id="grid-' + key + '"></div>';
     sections.appendChild(sec);
 
-    const grid = sec.querySelector(`#grid-${key}`);
-    list.forEach(v => {
+    const grid = sec.querySelector('#grid-' + key);
+    list.forEach(function(v) {
+      var alertas = getAlertas(v.cavalo);
+      var alertHtml = '';
+      if (alertas.os.length) {
+        alertHtml += '<span class="alert-badge alert-os">🔧 ' + alertas.os.length + ' OS</span>';
+      }
+      if (alertas.pends.length) {
+        alertHtml += '<span class="alert-badge alert-pend">⚠️ ' + alertas.pends.length + ' Pend.</span>';
+      }
+
       const card = document.createElement('div');
       card.className = 'truck-card';
-      card.onclick = () => openModal(v);
-      card.innerHTML = `
-        <div class="truck-icon-wrap ${meta.iconClass}">${meta.icon}</div>
-        <div class="truck-plate">${v.cavalo}</div>
-        <div class="truck-driver">${shortName(v.motorista)}</div>
-      `;
+      card.onclick = function() { openModal(v); };
+      card.innerHTML = '<div class="truck-icon-wrap ' + meta.iconClass + '">' + meta.icon + '</div>'
+        + '<div class="truck-plate">' + v.cavalo + '</div>'
+        + '<div class="truck-driver">' + shortName(v.motorista) + '</div>'
+        + (alertHtml ? '<div class="truck-alerts">' + alertHtml + '</div>' : '');
       grid.appendChild(card);
     });
   });
 
   // Timestamp
   const now = new Date();
-  document.getElementById('timestamp').textContent =
-    `Última atualização: ${now.toLocaleString('pt-BR')}`;
+  document.getElementById('timestamp').textContent = 'Última atualização: ' + now.toLocaleString('pt-BR');
 }
 
 // ── MODAL ───────────────────────────────────────────────────────
 function openModal(v) {
   const meta = STATUS_META[v.status];
-  document.getElementById('modalIcon').className = `modal-icon ${meta.iconClass}`;
+  document.getElementById('modalIcon').className = 'modal-icon ' + meta.iconClass;
   document.getElementById('modalIcon').textContent = meta.icon;
   document.getElementById('modalPlate').textContent = v.cavalo;
   document.getElementById('modalDriver').textContent = v.motorista || '—';
 
-  document.getElementById('modalBadge').innerHTML = `
-    <div class="modal-status-badge ${meta.badgeClass}">
-      <span>⬤</span> ${meta.label}
-    </div>
-  `;
+  document.getElementById('modalBadge').innerHTML = '<div class="modal-status-badge ' + meta.badgeClass + '"><span>⬤</span> ' + meta.label + '</div>';
 
-  const fmtDate = (d) => {
+  var alertas = getAlertas(v.cavalo);
+  var alertSection = '';
+  if (alertas.os.length || alertas.pends.length) {
+    alertSection = '<div style="margin:12px 0;padding:12px;background:rgba(239,68,68,.1);border-radius:10px;border:1px solid rgba(239,68,68,.2)">';
+    if (alertas.os.length) {
+      alertSection += '<div style="font-weight:700;color:#ef4444;margin-bottom:6px">🔧 OS em aberto (' + alertas.os.length + ')</div>';
+      alertas.os.forEach(function(os) {
+        alertSection += '<div style="font-size:12px;color:var(--text);margin-bottom:2px">• ' + (os.id || '') + ': ' + ((os.servicos||[])[0]||{}).descricao + '</div>';
+      });
+    }
+    if (alertas.pends.length) {
+      alertSection += '<div style="font-weight:700;color:#f59e0b;margin-top:8px;margin-bottom:6px">⚠️ Pendências (' + alertas.pends.length + ')</div>';
+      alertas.pends.forEach(function(p) {
+        alertSection += '<div style="font-size:12px;color:var(--text);margin-bottom:2px">• ' + (p.descricao || p.tipo || '') + '</div>';
+      });
+    }
+    alertSection += '</div>';
+  }
+
+  const fmtDate = function(d) {
     if (!d) return '—';
-    if (d instanceof Date) return d.toLocaleString('pt-BR');
     return String(d);
   };
 
   const rows = [
-    ['Rota',       v.rota     || '—'],
-    ['Cliente',    v.cliente  || '—'],
-    ['Material',   v.material || '—'],
-    ['Quantidade', v.qt ? Number(v.qt).toLocaleString('pt-BR') + ' L' : '—'],
-    ['Carreta',    v.carreta1 || '—'],
-    ['Agendamento',fmtDate(v.agend)],
+    ['Rota',        v.rota     || '—'],
+    ['Cliente',     v.cliente  || '—'],
+    ['Material',    v.material || '—'],
+    ['Quantidade',  v.qt ? Number(String(v.qt).replace(/[^\d.]/g,'')).toLocaleString('pt-BR') + ' L' : '—'],
+    ['Carreta',     v.carreta1 || '—'],
+    ['Agendamento', fmtDate(v.agend)],
   ];
 
-  document.getElementById('modalRows').innerHTML = rows.map(([label, val]) => `
-    <div class="modal-row">
-      <label>${label}</label>
-      <span>${val}</span>
-    </div>
-  `).join('');
+  document.getElementById('modalRows').innerHTML = alertSection + rows.map(function(r) {
+    return '<div class="modal-row"><label>' + r[0] + '</label><span>' + r[1] + '</span></div>';
+  }).join('');
 
   document.getElementById('modalOverlay').classList.add('open');
 }
@@ -605,11 +693,9 @@ function closeModal(e) {
   }
 }
 
-// ── AUTO-REFRESH ─────────────────────────────────────────────────
-// Re-renders every 60s if data exists (for live file-watch integration)
-setInterval(() => {
-  if (fleetData.length) renderDashboard();
-}, 60000);
+// ── INIT & AUTO-REFRESH ────────────────────────────────────────
+carregarFrota();
+setInterval(carregarFrota, 120000);
 </script>
 </body>
 </html>
