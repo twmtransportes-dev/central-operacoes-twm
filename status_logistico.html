@@ -420,21 +420,24 @@ const REFRESH_MS = 2 * 60 * 1000; // 2 minutos
 
 // ── STATUS MAPPING ──────────────────────────────────────────────
 const STATUS_MAP = {
-  'EM VIAGEM':    'viagem',
-  'VIAGEM':       'viagem',
-  'CARREGADO':    'viagem',
-  'PROGRAMADO':   'viagem',
-  'DESCARREGANDO':'desc',
-  'DESCARREG':    'desc',
-  'DESCARGA':     'desc',
-  'A CAMINHO':    'viagem',
-  'RETORNO':      'retorno',
-  'RETORNANDO':   'retorno',
-  'VOLTANDO':     'retorno',
-  'GARAGEM':      'garagem',
-  'NA GARAGEM':   'garagem',
-  'DISPONIVEL':   'garagem',
-  'DISPONÍVEL':   'garagem',
+  // Valores exatos usados pela equipe TWM
+  'A CAMINHO DA ENTREGA': 'viagem',
+  'A CAMINHO':            'viagem',
+  'EM VIAGEM':            'viagem',
+  'VIAGEM':               'viagem',
+  'CARREGADO':            'viagem',
+  'PROGRAMADO':           'viagem',
+  'DESCARREGANDO':        'desc',
+  'DESCARREG':            'desc',
+  'DESCARGA':             'desc',
+  'VOLTANDO DA ENTREGA':  'retorno',
+  'VOLTANDO':             'retorno',
+  'RETORNO':              'retorno',
+  'RETORNANDO':           'retorno',
+  'NA GARAGEM':           'garagem',
+  'GARAGEM':              'garagem',
+  'DISPONIVEL':           'garagem',
+  'DISPONÍVEL':           'garagem',
 };
 
 const STATUS_META = {
