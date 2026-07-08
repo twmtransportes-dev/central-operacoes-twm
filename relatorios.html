@@ -1829,6 +1829,308 @@ window.onload=function(){
 
 
 
+
+
+// ══════════════════════════════════════════════════════════════════
+// CHECKLIST FROTA
+// ══════════════════════════════════════════════════════════════════
+var _clDados = [];
+function gerarRelChecklist() {
+  var de    = document.getElementById('cl-de').value;
+  var ate   = document.getElementById('cl-ate').value;
+  var frota = (document.getElementById('cl-frota').value||'').toUpperCase().trim();
+  var motor = (document.getElementById('cl-motorista').value||'').toLowerCase().trim();
+  var res   = document.getElementById('cl-resultado').value;
+  var xhr = new XMLHttpRequest(); xhr.timeout = 20000;
+  xhr.open('GET', SCRIPT_CL+'?action=historico&_='+Date.now(), true);
+  xhr.onload = function(){
+    try {
+      var data = JSON.parse(xhr.responseText);
+      var src = data.registros || [];
+      var dados = src.filter(function(r){
+        var d = r.data_hora||r.data||'';
+        if(de  && d.substring(0,10) < de)  return false;
+        if(ate && d.substring(0,10) > ate) return false;
+        if(frota && !(r.veiculo||'').toUpperCase().includes(frota)) return false;
+        if(motor && !(r.motorista||'').toLowerCase().includes(motor)) return false;
+        var temN = r.temNao; var temM = !!(r.solicitacao_manutencao);
+        if(res==='ok'    && (temN||temM)) return false;
+        if(res==='nao'   && !temN)  return false;
+        if(res==='manut' && !temM) return false;
+        return true;
+      });
+      _clDados = dados;
+      var total=dados.length, comN=dados.filter(function(r){return r.temNao;}).length;
+      var comM=dados.filter(function(r){return !!r.solicitacao_manutencao;}).length;
+      setText('cl-n-total',total); setText('cl-n-ok',total-comN);
+      setText('cl-n-nao',comN); setText('cl-n-manut',comM);
+      document.getElementById('cl-stats').style.display='flex';
+      renderChart('chart-cl-result','doughnut',['✅ OK','⚠️ C/ Reprov.','🔧 C/ Manut.'],[{data:[total-comN,comN,comM],backgroundColor:['#34C759','#FF9500','#FF3B30']}]);
+      var pf={};dados.forEach(function(r){var f=r.veiculo||'?';pf[f]=(pf[f]||0)+1;});
+      var tf=Object.entries(pf).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+      renderChart('chart-cl-frota','bar',tf.map(function(x){return x[0];}),[ {label:'Checklists',data:tf.map(function(x){return x[1];}),backgroundColor:'#007AFF',borderRadius:4}]);
+      var pm={};dados.forEach(function(r){var m=(r.data_hora||r.data||'').substring(0,7);if(m)pm[m]=(pm[m]||0)+1;});
+      var ms=Object.keys(pm).sort().slice(-6);
+      renderChart('chart-cl-trend','line',ms,[{label:'Checklists/mês',data:ms.map(function(m){return pm[m]||0;}),borderColor:'#007AFF',backgroundColor:'rgba(0,122,255,.1)',fill:true,tension:0.4}]);
+      var html='<table style="width:100%;border-collapse:collapse;font-size:11px"><tr style="background:#1e3a8a;color:#fff"><th>Data/Hora</th><th>Frota</th><th>Motorista</th><th>KM</th><th>Resultado</th><th>Manutenção</th></tr>';
+      dados.forEach(function(r,i){
+        var bg=i%2?'#eff6ff':'#fff';
+        html+='<tr style="background:'+bg+'"><td>'+(r.data_hora||r.data||'—')+'</td><td>'+(r.veiculo||'—')+'</td><td>'+((r.motorista||'').split('/')[0])+'</td><td>'+(r.km||'—')+'</td><td>'+(r.temNao?'⚠️ C/Reprov.':'✅ OK')+'</td><td>'+((r.solicitacao_manutencao||'').substring(0,40))+'</td></tr>';
+      });
+      html+='</table>';
+      document.getElementById('cl-tabela').innerHTML=html;
+      document.getElementById('cl-preview').style.display='block';
+    } catch(e){toast('Erro checklist: '+e,'err');}
+  };
+  xhr.onerror=xhr.ontimeout=function(){toast('Sem conexão','err');};
+  xhr.send();
+}
+function impCL(){ imprimir(cabRel('Relatório Check List Frota','')+document.getElementById('cl-tabela').innerHTML+rodapeRel(_clDados.length)); }
+function csvCL(){
+  var rows=_clDados.map(function(r){return [(r.data_hora||''),(r.veiculo||''),(r.motorista||''),(r.km||''),(r.temNao?'Com Reprovações':'OK'),(r.solicitacao_manutencao||'')].join(';');});
+  dlCSV('Data;Frota;Motorista;KM;Resultado;Manutenção
+'+rows.join('
+'),'checklist_frota.csv');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// FROTA COMPLETA — Cavalos e Carretas
+// ══════════════════════════════════════════════════════════════════
+var _frDados = [];
+var _frStatus = {};
+
+function gerarRelFrota() {
+  // Carrega cadastro completo da frota (cavalos + carretas)
+  var xhrF = new XMLHttpRequest(); xhrF.timeout = 15000;
+  xhrF.open('GET', SCRIPT_CL+'?action=getFrotasChecklist&_='+Date.now(), true);
+  xhrF.onload = function(){
+    try {
+      var res = JSON.parse(xhrF.responseText);
+      var frotas = res.frotas || [];
+      // Carrega status logístico do CSV para cruzar
+      fetch(FROTA_CSV+'&_='+Date.now())
+        .then(function(r){return r.text();})
+        .then(function(txt){
+          _frStatus = {};
+          var lines=txt.split('
+');
+          for(var i=1;i<lines.length;i++){
+            var cols=lines[i].split(',');
+            var st=(cols[0]||'').replace(/"/g,'').trim();
+            var cav=(cols[7]||'').replace(/"/g,'').trim().toUpperCase();
+            if(cav && st) _frStatus[cav]=st;
+          }
+          _frDados = frotas;
+          renderRelFrota(frotas);
+        }).catch(function(){ _frDados=frotas; renderRelFrota(frotas); });
+    } catch(e){toast('Erro frota: '+e,'err');}
+  };
+  xhrF.onerror=xhrF.ontimeout=function(){toast('Sem conexão','err');};
+  xhrF.send();
+}
+
+function normStatusFrota(s){
+  var v=(s||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  if(v.includes('CAMINHO')||v.includes('VIAGEM')||v.includes('PROGRAMADO')) return 'Em Viagem';
+  if(v.includes('DESCARG')) return 'Descarregando';
+  if(v.includes('RETORNO')||v.includes('VOLTA')) return 'Retorno';
+  if(v.includes('GARAGEM')) return 'Na Garagem';
+  return '—';
+}
+
+function renderRelFrota(frotas) {
+  // Separa cavalos e carretas
+  var cavalos = frotas.filter(function(f){ return /^VP|^VPL/i.test(f.vp); });
+  var carretas = frotas.filter(function(f){ return /^RB/i.test(f.vp); });
+  var total = frotas.length;
+
+  setText('fr-total', total);
+  setText('fr-viagem', cavalos.length);
+  setText('fr-desc', carretas.length);
+  setText('fr-ret', '');
+  document.getElementById('fr-stats').style.display='flex';
+
+  // Gráfico por modelo
+  var pm={};
+  frotas.forEach(function(f){ var m=f.modelo||'Outros'; pm[m]=(pm[m]||0)+1; });
+  var tm=Object.entries(pm).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+  renderChart('chart-fr-status','doughnut',tm.map(function(x){return x[0];}),[ {data:tm.map(function(x){return x[1];}),backgroundColor:['#AF52DE','#007AFF','#34C759','#FF9500','#FF3B30','#32ADE6','#5856D6','#FF2D55']}]);
+
+  // Gráfico por ano de fabricação
+  var pa={};
+  frotas.forEach(function(f){ var a=f.ano||'—'; pa[a]=(pa[a]||0)+1; });
+  var ta=Object.entries(pa).sort(function(a,b){return a[0]>b[0]?1:-1;}).slice(-8);
+  renderChart('chart-fr-rota','bar',ta.map(function(x){return x[0];}),[ {label:'Veículos',data:ta.map(function(x){return x[1];}),backgroundColor:'#007AFF',borderRadius:4}]);
+
+  // Tabela
+  var html='<table style="width:100%;border-collapse:collapse;font-size:11px">'
+    +'<tr style="background:#1e3a8a;color:#fff"><th>Nº Frota</th><th>Placa</th><th>Carreta(s)</th><th>Marca/Modelo</th><th>Ano</th><th>Tipo</th><th>Status Logístico</th></tr>';
+  // Cavalos primeiro
+  html+='<tr><td colspan="7" style="background:#0f2a5e;color:#93c5fd;font-weight:700;padding:4px 6px;font-size:10px;text-transform:uppercase;letter-spacing:.5px">🚛 Cavalos (' + cavalos.length + ')</td></tr>';
+  cavalos.forEach(function(f,i){
+    var bg=i%2?'#eff6ff':'#fff';
+    var plca = (f.placa||'').toUpperCase();
+    var stLog = normStatusFrota(_frStatus[plca]||'');
+    var stColor = stLog==='Em Viagem'?'#AF52DE':stLog==='Descarregando'?'#FF9500':stLog==='Retorno'?'#34C759':'#8E8E93';
+    html+='<tr style="background:'+bg+'">'
+      +'<td style="font-weight:700">'+f.vp+'</td>'
+      +'<td>'+f.placa+'</td>'
+      +'<td style="font-size:10px">'+f.carreta+'</td>'
+      +'<td style="font-size:10px">'+f.marca+'</td>'
+      +'<td>'+f.ano+'</td>'
+      +'<td style="font-size:10px">'+f.modelo+'</td>'
+      +'<td style="color:'+stColor+';font-weight:600">'+stLog+'</td></tr>';
+  });
+  // Carretas depois
+  html+='<tr><td colspan="7" style="background:#0f2a5e;color:#93c5fd;font-weight:700;padding:4px 6px;font-size:10px;text-transform:uppercase;letter-spacing:.5px">🔗 Carretas / Reservas (' + carretas.length + ')</td></tr>';
+  carretas.forEach(function(f,i){
+    var bg=i%2?'#f0fdf4':'#fff';
+    html+='<tr style="background:'+bg+'">'
+      +'<td style="font-weight:700;color:#16a34a">'+f.vp+'</td>'
+      +'<td>'+f.placa+'</td>'
+      +'<td>'+f.carreta+'</td>'
+      +'<td style="font-size:10px">'+f.marca+'</td>'
+      +'<td>'+f.ano+'</td>'
+      +'<td style="font-size:10px">'+f.modelo+'</td>'
+      +'<td>—</td></tr>';
+  });
+  html+='</table>';
+  document.getElementById('fr-tabela').innerHTML=html;
+  document.getElementById('fr-preview').style.display='block';
+}
+
+function impFrota(){ imprimir(cabRel('Relatório Completo da Frota','')+document.getElementById('fr-tabela').innerHTML+rodapeRel(_frDados.length)); }
+function csvFrota(){
+  var rows=_frDados.map(function(f){return [f.vp,f.placa,f.carreta,f.marca,f.ano,f.modelo].join(';');});
+  dlCSV('Nº Frota;Placa;Carreta;Marca;Ano;Modelo
+'+rows.join('
+'),'frota_completa.csv');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// LVT
+// ══════════════════════════════════════════════════════════════════
+var _lvtDados = [];
+function gerarRelLVT(){
+  var de=document.getElementById('lvt-de').value, ate=document.getElementById('lvt-ate').value;
+  var fr=(document.getElementById('lvt-frota').value||'').toUpperCase().trim();
+  var mo=(document.getElementById('lvt-motorista').value||'').toLowerCase().trim();
+  var url=SCRIPT_LVT+'?action=getLVT&_='+Date.now();
+  if(fr) url+='&frota='+encodeURIComponent(fr);
+  var xhr=new XMLHttpRequest();xhr.timeout=15000;
+  xhr.open('GET',url,true);
+  xhr.onload=function(){
+    try{
+      var res=JSON.parse(xhr.responseText);
+      if(!res.ok){toast(res.msg||'Erro LVT','err');return;}
+      var dados=(res.registros||[]).filter(function(r){
+        if(de&&(r.data||'')<de)return false;
+        if(ate&&(r.data||'')>ate)return false;
+        if(mo&&!(r.motorista||'').toLowerCase().includes(mo))return false;
+        return true;
+      });
+      if(!dados.length){toast('Nenhum registro LVT','err');return;}
+      _lvtDados=dados;
+      var total=dados.length;
+      var frotas=new Set(dados.map(function(r){return r.frota||'?';})).size;
+      var ym=new Date().toISOString().substring(0,7);
+      var mes=dados.filter(function(r){return (r.data||'').substring(0,7)===ym;}).length;
+      setText('lvt-n-total',total);setText('lvt-n-frotas',frotas);setText('lvt-n-mes',mes);
+      document.getElementById('lvt-stats').style.display='flex';
+      var comN=dados.filter(function(r){return r.liberado==='não'||r.liberado==='nao';}).length;
+      renderChart('chart-lvt-result','doughnut',['✅ Liberado','❌ Não Liberado'],[{data:[total-comN,comN],backgroundColor:['#34C759','#FF3B30']}]);
+      var pf={};dados.forEach(function(r){var f=r.frota||'?';pf[f]=(pf[f]||0)+1;});
+      var tf=Object.entries(pf).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+      renderChart('chart-lvt-frota','bar',tf.map(function(x){return x[0];}),[ {label:'LVTs',data:tf.map(function(x){return x[1];}),backgroundColor:'#34C759',borderRadius:4}]);
+      var html='<table style="width:100%;border-collapse:collapse;font-size:11px">'
+        +'<tr style="background:#1e3a8a;color:#fff"><th>Data</th><th>Hora</th><th>Frota</th><th>Motorista</th><th>Produto</th><th>Placa Cav.</th><th>Placa Car.</th><th>Liberado</th></tr>';
+      dados.forEach(function(r,i){
+        var bg=i%2?'#eff6ff':'#fff';
+        html+='<tr style="background:'+bg+'"><td>'+(r.data||'—')+'</td><td>'+(r.hora||'—')+'</td><td>'+(r.frota||'—')+'</td><td>'+(r.motorista||'—')+'</td><td>'+(r.produto||'—')+'</td><td>'+(r.placa_cav||'—')+'</td><td>'+(r.placa_car||'—')+'</td><td>'+(r.liberado==='sim'?'✅ Sim':'❌ Não')+'</td></tr>';
+      });
+      html+='</table>';
+      document.getElementById('lvt-tabela').innerHTML=html;
+      document.getElementById('lvt-preview').style.display='block';
+    }catch(e){toast('Erro LVT: '+e,'err');}
+  };
+  xhr.onerror=xhr.ontimeout=function(){toast('Sem conexão','err');};
+  xhr.send();
+}
+function impLVT(){imprimir(cabRel('Relatório LVT — Lista de Verificação Técnica','')+document.getElementById('lvt-tabela').innerHTML+rodapeRel(_lvtDados.length));}
+function csvLVT(){
+  var rows=_lvtDados.map(function(r){return [r.data||'',r.hora||'',r.frota||'',r.motorista||'',r.produto||'',r.placa_cav||'',r.placa_car||'',r.liberado||''].join(';');});
+  dlCSV('Data;Hora;Frota;Motorista;Produto;Placa Cav.;Placa Car.;Liberado
+'+rows.join('
+'),'lvt.csv');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CARROS DE APOIO
+// ══════════════════════════════════════════════════════════════════
+var _caDados=[];
+function gerarRelCarros(){
+  var de=document.getElementById('ca-de').value, ate=document.getElementById('ca-ate').value;
+  var ca=(document.getElementById('ca-carro').value||'').toLowerCase().trim();
+  var mo=(document.getElementById('ca-motorista').value||'').toLowerCase().trim();
+  var xhr=new XMLHttpRequest();xhr.timeout=15000;
+  xhr.open('GET',SCRIPT_CARROS+'?action=historico&_='+Date.now(),true);
+  xhr.onload=function(){
+    try{
+      var res=JSON.parse(xhr.responseText);
+      var src=res.registros||[];
+      var dados=src.filter(function(r){
+        var d=r.data_hora||r.DATA||r.data||'';
+        if(de&&d.substring(0,10)<de)return false;
+        if(ate&&d.substring(0,10)>ate)return false;
+        if(ca&&!(r.veiculo||r.placa||'').toLowerCase().includes(ca))return false;
+        if(mo&&!(r.motorista||'').toLowerCase().includes(mo))return false;
+        return true;
+      });
+      _caDados=dados;
+      var total=dados.length;
+      var carros=new Set(dados.map(function(r){return r.veiculo||r.placa||'?';})).size;
+      var ym=new Date().toISOString().substring(0,7);
+      var mes=dados.filter(function(r){return (r.data_hora||r.data||'').substring(0,7)===ym;}).length;
+      setText('ca-n-total',total);setText('ca-n-carros',carros);setText('ca-n-mes',mes);
+      document.getElementById('ca-stats').style.display='flex';
+      var pc={};dados.forEach(function(r){var c=r.veiculo||r.placa||'?';pc[c]=(pc[c]||0)+1;});
+      var tc=Object.entries(pc).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+      renderChart('chart-ca-carro','bar',tc.map(function(x){return x[0];}),[ {label:'Viagens',data:tc.map(function(x){return x[1];}),backgroundColor:'#32ADE6',borderRadius:4}]);
+      var pm={};dados.forEach(function(r){var m=(r.data_hora||r.data||'').substring(0,7);if(m)pm[m]=(pm[m]||0)+1;});
+      var ms=Object.keys(pm).sort().slice(-6);
+      renderChart('chart-ca-trend','line',ms,[{label:'Viagens/mês',data:ms.map(function(m){return pm[m]||0;}),borderColor:'#32ADE6',backgroundColor:'rgba(50,173,230,.1)',fill:true,tension:0.4}]);
+      var keys=dados.length?Object.keys(dados[0]).filter(function(k){return !/foto/i.test(k);}).slice(0,8):[];
+      var html='<table style="width:100%;border-collapse:collapse;font-size:11px">'
+        +'<tr style="background:#1e3a8a;color:#fff">'+keys.map(function(k){return '<th>'+k+'</th>';}).join('')+'</tr>';
+      dados.forEach(function(r,i){
+        var bg=i%2?'#eff6ff':'#fff';
+        html+='<tr style="background:'+bg+'">'+keys.map(function(k){return '<td style="font-size:10px">'+(r[k]||'—')+'</td>';}).join('')+'</tr>';
+      });
+      html+='</table>';
+      document.getElementById('ca-tabela').innerHTML=html;
+      document.getElementById('ca-preview').style.display='block';
+    }catch(e){toast('Erro carros: '+e,'err');}
+  };
+  xhr.onerror=xhr.ontimeout=function(){toast('Sem conexão','err');};
+  xhr.send();
+}
+function impCarros(){imprimir(cabRel('Relatório Carros de Apoio','')+document.getElementById('ca-tabela').innerHTML+rodapeRel(_caDados.length));}
+function csvCarros(){
+  if(!_caDados.length)return;
+  var keys=Object.keys(_caDados[0]).filter(function(k){return !/foto/i.test(k);});
+  var rows=_caDados.map(function(r){return keys.map(function(k){return r[k]||'';}).join(';');});
+  dlCSV(keys.join(';')+'
+'+rows.join('
+'),'carros_apoio.csv');
+}
+
+function dlCSV(csv,nome){
+  var a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);
+  a.download=nome;document.body.appendChild(a);a.click();
+  setTimeout(function(){document.body.removeChild(a);},300);
+}
+
 </script>
 
 <!-- ══ CHECKLIST SEGURANÇA MENSAL ══ -->
