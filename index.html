@@ -670,6 +670,8 @@ const MODULOS = [
   {id:'lavagem',          nome:'Lavagem',         desc:'Controle de lavagem da frota',        href:'lavagem.html',               icon:'💧', bg:'#06C8E0', perm:'controle_lavagem'},
   {id:'abastecimento',    nome:'Abastecimento',   desc:'Diesel, Arla 32 e consumo',           href:'abastecimento.html',         icon:'⛽', bg:'#FF9500', perm:'abastecimento'},
   {id:'jornada',          nome:'Jornada',         desc:'Início/fim de viagem e desempenho',   href:'jornada.html',               icon:'🚚', bg:'#64D2FF', perm:'jornada'},
+  {id:'documentos',       nome:'Documentação',    desc:'CRLV, CNH, CIV, CIPP e mais',         href:'documentos.html',            icon:'📁', bg:'#30D158', perm:'documentos'},
+  {id:'mapa',             nome:'Mapa',            desc:'Rota e localização da frota',         href:'mapa.html',                  icon:'🗺️', bg:'#0A84FF', perm:'mapa'},
   {id:'compras',          nome:'Compras',         desc:'Solicitações de compra',              href:'solicitacao_compras.html',   icon:'🛒', bg:'#AF52DE', perm:'solicitacao_compra', wide:true},
   {id:'relatorios',       nome:'Relatórios',      desc:'Análises e relatórios gerenciais',    href:'relatorios.html',            icon:'📊', bg:'#007AFF', perm:'relatorios'},
 ];
@@ -739,8 +741,6 @@ function doLogin(){
       // Garante que checklist_frota seja reconhecido independente do nome da coluna
       if(perm['CHECK_FROTA']||perm['check_frota']||perm['CHECK FROTA']) perm['checklist_frota']=true;
       if(perm['CHECK LIST FROTA']||perm['check_list_frota']) perm['checklist_frota']=true;
-      if(perm['compras']||perm['solicitacao_de_compra']||perm['SOLICITACAO DE COMPRA']) perm['solicitacao_compra']=true;
-      if(perm['COMPRAS MASTER']||perm['COMPRAS_MASTER']) perm['compras_master']=true;
       if(perm['SOLICITAÇÃO DE COMPRA']||perm['SOLICITACAO DE COMPRA']||perm['COMPRAS']) perm['solicitacao_compra']=true;
       if(perm['COMPRAS MASTER']||perm['COMPRAS_MASTER']) perm['compras_master']=true;
       u.permissoes = perm;
@@ -904,17 +904,15 @@ function carregarFrota(){
 
 function _processarFrota(dados){
   _frotaVmap={}; _frotaVlist=[];
-  var counts={'EM VIAGEM':0,'DESCARREGANDO':0,'RETORNO GARAGEM':0,'NA GARAGEM':0};
   for(var i=0;i<dados.length;i++){
     var cav=(dados[i][COL.CAVALO]||'').trim();
-    if(!cav) continue;
-    // Conta TODAS as viagens (mesmo caminhão pode ter múltiplas)
-    var st=normStatus((dados[i][COL.STATUS]||''));
-    if(counts[st]!==undefined) counts[st]++;
-    // Para o mapa/sidebar usa chave única por cavalo (última entrada vence)
-    _frotaVmap[cav]=dados[i];
-    if(_frotaVlist.indexOf(cav)<0) _frotaVlist.push(cav);
+    if(cav&&!_frotaVmap[cav]){_frotaVmap[cav]=dados[i];_frotaVlist.push(cav);}
   }
+  var counts={'EM VIAGEM':0,'DESCARREGANDO':0,'RETORNO GARAGEM':0,'NA GARAGEM':0};
+  _frotaVlist.forEach(function(cav){
+    var st=normStatus(_frotaVmap[cav][COL.STATUS]);
+    if(counts[st]!==undefined) counts[st]++;
+  });
   document.getElementById('s1').textContent=counts['EM VIAGEM']||0;
   document.getElementById('s2').textContent=counts['DESCARREGANDO']||0;
   document.getElementById('s3').textContent=counts['RETORNO GARAGEM']||0;
