@@ -290,6 +290,8 @@ body.light .kpi-card{box-shadow:0 3px 10px rgba(20,20,40,.05)}
   <div class="tab" onclick="goTab('compras',this)">🛒 Compras</div>
   <div class="tab" onclick="goTab('manutencao',this)">🔩 Manutenção</div>
   <div class="tab" onclick="goTab('seguranca',this)">🛡️ Seg. Mensal</div>
+  <div class="tab" onclick="goTab('checklist',this)">📋 Check List</div>
+  <div class="tab" onclick="goTab('frota',this)">🚛 Frota</div>
 </div>
 
 <!-- ══ DASHBOARD ══ -->
@@ -690,6 +692,8 @@ body.light .kpi-card{box-shadow:0 3px 10px rgba(20,20,40,.05)}
 <script>
 var SCRIPT = 'https://script.google.com/macros/s/AKfycbxyfJNP0d-F6Jtb1Bkpy9QTNv-c2EmT2kIjFOhgx2HRjpiFiZhdnijdnBqP0eoAxb5j/exec';
 var SCRIPT_COMPRAS = localStorage.getItem('twm_compras_script') || 'https://script.google.com/macros/s/AKfycbyEG37aoa1NuTtmyeXRNeNYa7-BvOiK5WwBdr2jsfdppoexxZ5yeFiULWORO47BCQPZ/exec';
+var SCRIPT_CL = 'https://script.google.com/macros/s/AKfycbwAGLjEDNVAJk9nGujpVd6hTl3QY9Ss9Wl0Sm14TqCHBhdAFEPglhcXSzoN7ktSQjoa/exec';
+var FROTA_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx62CxMqSchj3wdG83U48YiyM8eH9vIj8Jv7Gg1QVWm0Ow7abDlyYWtAEecM4iCPWTvH8e5Y84jJdf/pub?gid=644783428&single=true&output=csv';
 var SCRIPT_MANUT = (function(){try{var c=JSON.parse(localStorage.getItem('twm_config')||'{}');return c.scriptUrl||'https://script.google.com/macros/s/AKfycbz5Du0iSrnD8X37xCCAVwic_3yPHrLKbTKLcx60tCfoahKcb5-kP6Efns6LndNaZDI-aQ/exec';}catch(e){return 'https://script.google.com/macros/s/AKfycbz5Du0iSrnD8X37xCCAVwic_3yPHrLKbTKLcx60tCfoahKcb5-kP6Efns6LndNaZDI-aQ/exec';}})();
 var MESES  = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
@@ -734,7 +738,88 @@ function imprimir(html){
     '</style></head><body>'+
     html+
     '<script>window.onload=function(){setTimeout(function(){window.print();setTimeout(function(){window.close();},500);},300);}<\/script>'+
-    '</body></html>');
+    '
+<!-- ══ CHECKLIST FROTA ══════════════════════════════════════════ -->
+<div class="scr" id="scr-checklist">
+
+  <div class="chart-grid-2" style="margin-bottom:12px">
+    <div class="chart-box"><canvas id="chart-cl-result" height="160"></canvas></div>
+    <div class="chart-box"><canvas id="chart-cl-frota" height="160"></canvas></div>
+  </div>
+  <div class="chart-box" style="margin-bottom:12px">
+    <canvas id="chart-cl-trend" height="120"></canvas>
+  </div>
+
+  <div class="rel-section">
+    <div class="rel-section-title">🗓️ Período</div>
+    <div class="filtros-grid">
+      <div class="filtro-group"><label>De</label><input type="date" id="cl-de"></div>
+      <div class="filtro-group"><label>Até</label><input type="date" id="cl-ate"></div>
+    </div>
+  </div>
+
+  <div class="rel-section">
+    <div class="rel-section-title">🔍 Filtros</div>
+    <div class="filtros-grid">
+      <div class="filtro-group"><label>Frota</label><input type="text" id="cl-frota" placeholder="VP-183..."></div>
+      <div class="filtro-group"><label>Motorista</label><input type="text" id="cl-motorista" placeholder="Nome..."></div>
+    </div>
+    <div class="filtro-group" style="margin-top:6px">
+      <label>Resultado</label>
+      <select id="cl-resultado">
+        <option value="todos">Todos</option>
+        <option value="ok">Sem problemas</option>
+        <option value="nao">Com itens reprovados</option>
+        <option value="manut">Com solicitação de manutenção</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="btn-vis" onclick="gerarRelChecklist()">👁️ Visualizar</button>
+
+  <div id="cl-stats" style="display:none;margin:10px 0">
+    <div class="resumo-num"><div class="n" id="cl-n-total">0</div><div class="l">Checklists</div></div>
+    <div class="resumo-num"><div class="n" id="cl-n-ok">0</div><div class="l">OK</div></div>
+    <div class="resumo-num"><div class="n" id="cl-n-nao">0</div><div class="l">Com Reprov.</div></div>
+    <div class="resumo-num"><div class="n" id="cl-n-manut">0</div><div class="l">Com Manut.</div></div>
+  </div>
+
+  <div class="preview-box" id="cl-preview" style="display:none">
+    <div id="cl-tabela"></div>
+    <div class="preview-actions">
+      <button class="btn-pr btn-pr-az" onclick="impCL()">🖨️ Imprimir</button>
+      <button class="btn-pr btn-pr-gr" onclick="csvCL()">📊 CSV</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FROTA / STATUS LOGÍSTICO ═════════════════════════════════ -->
+<div class="scr" id="scr-frota">
+
+  <div class="chart-grid-2" style="margin-bottom:12px">
+    <div class="chart-box"><canvas id="chart-fr-status" height="180"></canvas></div>
+    <div class="chart-box"><canvas id="chart-fr-rota" height="180"></canvas></div>
+  </div>
+
+  <button class="btn-vis" onclick="gerarRelFrota()">🔄 Atualizar Dados</button>
+
+  <div id="fr-stats" style="display:none;margin:10px 0">
+    <div class="resumo-num"><div class="n" id="fr-total">0</div><div class="l">Viagens</div></div>
+    <div class="resumo-num"><div class="n" id="fr-viagem">0</div><div class="l">Em Viagem</div></div>
+    <div class="resumo-num"><div class="n" id="fr-desc">0</div><div class="l">Descarreg.</div></div>
+    <div class="resumo-num"><div class="n" id="fr-ret">0</div><div class="l">Retorno</div></div>
+  </div>
+
+  <div class="preview-box" id="fr-preview" style="display:none">
+    <div id="fr-tabela"></div>
+    <div class="preview-actions">
+      <button class="btn-pr btn-pr-az" onclick="impFrota()">🖨️ Imprimir</button>
+      <button class="btn-pr btn-pr-gr" onclick="csvFrota()">📊 CSV</button>
+    </div>
+  </div>
+</div>
+
+</body></html>');
   win.document.close();
 }
 
@@ -1355,7 +1440,7 @@ function goTab(id,el){
 }
 function goTabBtn(id){
   var tabs=document.querySelectorAll('.tab');
-  var mapa={dashboard:0,lavagem:1,abastecimento:2,pneus:3,estoque:4,compras:5,manutencao:6,seguranca:7};
+  var mapa={dashboard:0,lavagem:1,abastecimento:2,pneus:3,estoque:4,compras:5,manutencao:6,seguranca:7,checklist:8,frota:9};
   goTab(id,tabs[mapa[id]||0]);
 }
 
@@ -1839,6 +1924,87 @@ window.onload=function(){
     <div class="preview-actions" style="margin-top:10px">
       <button class="btn-pr btn-pr-az" onclick="imprimirSeg()">🖨️ Imprimir</button>
       <button class="btn-pr btn-pr-pd"  onclick="pdfSeg()">📥 PDF</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ CHECKLIST FROTA ══════════════════════════════════════════ -->
+<div class="scr" id="scr-checklist">
+
+  <div class="chart-grid-2" style="margin-bottom:12px">
+    <div class="chart-box"><canvas id="chart-cl-result" height="160"></canvas></div>
+    <div class="chart-box"><canvas id="chart-cl-frota" height="160"></canvas></div>
+  </div>
+  <div class="chart-box" style="margin-bottom:12px">
+    <canvas id="chart-cl-trend" height="120"></canvas>
+  </div>
+
+  <div class="rel-section">
+    <div class="rel-section-title">🗓️ Período</div>
+    <div class="filtros-grid">
+      <div class="filtro-group"><label>De</label><input type="date" id="cl-de"></div>
+      <div class="filtro-group"><label>Até</label><input type="date" id="cl-ate"></div>
+    </div>
+  </div>
+
+  <div class="rel-section">
+    <div class="rel-section-title">🔍 Filtros</div>
+    <div class="filtros-grid">
+      <div class="filtro-group"><label>Frota</label><input type="text" id="cl-frota" placeholder="VP-183..."></div>
+      <div class="filtro-group"><label>Motorista</label><input type="text" id="cl-motorista" placeholder="Nome..."></div>
+    </div>
+    <div class="filtro-group" style="margin-top:6px">
+      <label>Resultado</label>
+      <select id="cl-resultado">
+        <option value="todos">Todos</option>
+        <option value="ok">Sem problemas</option>
+        <option value="nao">Com itens reprovados</option>
+        <option value="manut">Com solicitação de manutenção</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="btn-vis" onclick="gerarRelChecklist()">👁️ Visualizar</button>
+
+  <div id="cl-stats" style="display:none;margin:10px 0">
+    <div class="resumo-num"><div class="n" id="cl-n-total">0</div><div class="l">Checklists</div></div>
+    <div class="resumo-num"><div class="n" id="cl-n-ok">0</div><div class="l">OK</div></div>
+    <div class="resumo-num"><div class="n" id="cl-n-nao">0</div><div class="l">Com Reprov.</div></div>
+    <div class="resumo-num"><div class="n" id="cl-n-manut">0</div><div class="l">Com Manut.</div></div>
+  </div>
+
+  <div class="preview-box" id="cl-preview" style="display:none">
+    <div id="cl-tabela"></div>
+    <div class="preview-actions">
+      <button class="btn-pr btn-pr-az" onclick="impCL()">🖨️ Imprimir</button>
+      <button class="btn-pr btn-pr-gr" onclick="csvCL()">📊 CSV</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FROTA / STATUS LOGÍSTICO ═════════════════════════════════ -->
+<div class="scr" id="scr-frota">
+
+  <div class="chart-grid-2" style="margin-bottom:12px">
+    <div class="chart-box"><canvas id="chart-fr-status" height="180"></canvas></div>
+    <div class="chart-box"><canvas id="chart-fr-rota" height="180"></canvas></div>
+  </div>
+
+  <button class="btn-vis" onclick="gerarRelFrota()">🔄 Atualizar Dados</button>
+
+  <div id="fr-stats" style="display:none;margin:10px 0">
+    <div class="resumo-num"><div class="n" id="fr-total">0</div><div class="l">Viagens</div></div>
+    <div class="resumo-num"><div class="n" id="fr-viagem">0</div><div class="l">Em Viagem</div></div>
+    <div class="resumo-num"><div class="n" id="fr-desc">0</div><div class="l">Descarreg.</div></div>
+    <div class="resumo-num"><div class="n" id="fr-ret">0</div><div class="l">Retorno</div></div>
+  </div>
+
+  <div class="preview-box" id="fr-preview" style="display:none">
+    <div id="fr-tabela"></div>
+    <div class="preview-actions">
+      <button class="btn-pr btn-pr-az" onclick="impFrota()">🖨️ Imprimir</button>
+      <button class="btn-pr btn-pr-gr" onclick="csvFrota()">📊 CSV</button>
     </div>
   </div>
 </div>
