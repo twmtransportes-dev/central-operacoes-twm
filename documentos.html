@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0A0A0F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>TWM — Documentação</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icone-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0A0A0F;--bg2:#0F0F18;--bg3:#13131E;--border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.14);--text:#F0EEF8;--muted:#7A7890;--green:#10B981;--red:#EF4444;--amber:#F59E0B;--doc:#30D158}
+body.light{--bg:#F4F3FF;--bg2:#FFFFFF;--bg3:#FAFAFA;--border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);--text:#1A1A2E;--muted:#6B6880}
+body.light .app-header{box-shadow:0 1px 8px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+.app-header{background:var(--bg2);border-bottom:2px solid var(--doc);padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-badge{width:34px;height:34px;background:linear-gradient(135deg,#7B3FE4,#A855F7);border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:900;color:#fff}
+.logo-title{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+.btn-back{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:4px}
+
+.nav-tabs{background:var(--bg2);border-bottom:1px solid var(--border2);display:flex;overflow-x:auto;scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:10px 14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.15s;display:flex;align-items:center;gap:5px}
+.nav-tab.on{color:var(--doc);border-bottom-color:var(--doc)}
+
+.page{display:none;padding:14px;max-width:600px;margin:0 auto;padding-bottom:40px}
+.page.on{display:block}
+
+.form-card{background:var(--bg3);border:1px solid var(--border2);border-radius:14px;padding:16px;margin-bottom:14px}
+.form-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--doc);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.field{margin-bottom:12px}
+.field label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);display:block;margin-bottom:5px}
+.field input,.field select{width:100%;background:var(--bg);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:11px 13px;outline:none;-webkit-appearance:none;appearance:none}
+.field input:focus,.field select:focus{border-color:var(--doc)}
+.radio-row{display:flex;gap:8px}
+.radio-opt{flex:1;text-align:center;padding:10px;border:1.5px solid var(--border2);border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);cursor:pointer}
+.radio-opt.on{border-color:var(--doc);color:var(--doc);background:rgba(48,209,88,.08)}
+
+.btn-reg{width:100%;padding:14px;background:linear-gradient(135deg,#0D9C4A,#30D158);border:none;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#03170A;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 20px rgba(48,209,88,.25)}
+.btn-ghost{padding:10px 16px;background:rgba(255,255,255,.05);border:1px solid var(--border2);border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);cursor:pointer;width:100%}
+
+.doc-card{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px}
+.doc-icon{width:40px;height:40px;border-radius:10px;background:rgba(48,209,88,.1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.doc-info{flex:1;min-width:0}
+.doc-tipo{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:var(--text)}
+.doc-vinculo{font-size:10px;color:var(--muted);margin-top:1px}
+.doc-validade{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:4px;display:inline-block;padding:2px 8px;border-radius:20px}
+.doc-validade.ok{background:rgba(16,185,129,.12);color:var(--green)}
+.doc-validade.venc{background:rgba(245,158,11,.12);color:var(--amber)}
+.doc-validade.vencido{background:rgba(239,68,68,.12);color:var(--red)}
+.doc-abrir{background:var(--doc);color:#03170A;border:none;border-radius:8px;padding:8px 14px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;text-decoration:none;white-space:nowrap}
+.doc-del{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:8px 10px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;cursor:pointer}
+
+.empty{text-align:center;padding:32px 16px;color:var(--muted);font-size:12px;line-height:1.6}
+.cfg-note{font-size:10px;color:var(--muted);line-height:1.6;margin-top:6px}
+
+.sync-bar{display:none;text-align:center;padding:6px 16px;font-size:11px;font-weight:600;letter-spacing:.5px;position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--bg2);border-top:1px solid var(--border2)}
+.sync-bar.on{display:block}
+.sync-bar.ok{color:var(--green)}.sync-bar.err{color:var(--red)}
+.toast{position:fixed;bottom:50px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:10px 20px;font-size:12px;font-weight:600;z-index:999;transition:.3s;white-space:nowrap;max-width:90vw;text-align:center}
+.toast.on{transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:rgba(16,185,129,.4);color:var(--green)}
+.toast.err{border-color:rgba(239,68,68,.4);color:var(--red)}
+</style>
+<script>
+(function() {
+  var pref = localStorage.getItem('twm_tema') || 'auto';
+  var claro;
+  if (pref === 'claro') claro = true;
+  else if (pref === 'escuro') claro = false;
+  else { var h = new Date().getHours(); claro = h >= 6 && h < 18; }
+  function aplicar() { if (claro) document.body.classList.add('light'); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', aplicar);
+  else aplicar();
+})();
+</script>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+<div class="sync-bar" id="syncBar"></div>
+
+<div class="app-header">
+  <div class="logo">
+    <div class="logo-badge">TWM</div>
+    <div class="logo-title">Documentação</div>
+  </div>
+  <a class="btn-back" href="index.html">← Central</a>
+</div>
+
+<div class="nav-tabs">
+  <div class="nav-tab on" id="tab-buscar" onclick="goTab('buscar',this)">🔍 Buscar</div>
+  <div class="nav-tab" id="tab-cadastrar" onclick="goTab('cadastrar',this)">➕ Cadastrar</div>
+  <div class="nav-tab" id="tab-gerenciar" onclick="goTab('gerenciar',this)">🗂️ Gerenciar</div>
+</div>
+
+<!-- ABA BUSCAR (todos) -->
+<div class="page on" id="page-buscar">
+  <div class="form-card">
+    <div class="form-title">🔍 Buscar Documentos</div>
+    <div class="field">
+      <label>Frota / Prefixo</label>
+      <input type="text" id="bs-frota" placeholder="Ex: VP-183" oninput="this.value=this.value.toUpperCase()">
+    </div>
+    <div class="field">
+      <label>Ou Motorista</label>
+      <input type="text" id="bs-motorista" placeholder="Nome do motorista" oninput="this.value=this.value.toUpperCase()">
+    </div>
+    <button class="btn-reg" onclick="buscarDocumentos()">🔍 Buscar</button>
+  </div>
+  <div id="lista-busca"></div>
+</div>
+
+<!-- ABA CADASTRAR (admin) -->
+<div class="page" id="page-cadastrar">
+  <div class="form-card">
+    <div class="form-title">➕ Novo Documento</div>
+    <div class="field">
+      <label>Tipo de Documento *</label>
+      <select id="cad-tipo">
+        <option value="CRLV">CRLV</option>
+        <option value="CIV">CIV</option>
+        <option value="CIPP">CIPP</option>
+        <option value="CNH">CNH</option>
+        <option value="CTE">CT-e</option>
+        <option value="NOTA_CARGA">Nota da Carga</option>
+        <option value="ROTOGRAMA">Rotograma</option>
+        <option value="OUTRO">Outro</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Vincular a</label>
+      <div class="radio-row">
+        <div class="radio-opt on" id="rd-frota" onclick="setVinculoTipo('FROTA')">🚚 Frota</div>
+        <div class="radio-opt" id="rd-motorista" onclick="setVinculoTipo('MOTORISTA')">👤 Motorista</div>
+      </div>
+    </div>
+    <div class="field">
+      <label id="cad-valor-label">Frota / Prefixo *</label>
+      <input type="text" id="cad-valor" placeholder="Ex: VP-183" oninput="this.value=this.value.toUpperCase()">
+    </div>
+    <div class="field">
+      <label>Validade (opcional)</label>
+      <input type="date" id="cad-validade">
+    </div>
+    <div class="field">
+      <label>Arquivo (PDF, foto) *</label>
+      <input type="file" id="cad-arquivo" accept="application/pdf,image/*">
+    </div>
+    <button class="btn-reg" onclick="cadastrarDocumento()">☁️ Enviar para o Drive</button>
+    <div class="cfg-note">O arquivo é salvo no Google Drive automaticamente, organizado por frota/motorista.</div>
+  </div>
+</div>
+
+<!-- ABA GERENCIAR (admin) -->
+<div class="page" id="page-gerenciar">
+  <div class="form-card" style="padding:12px 14px">
+    <div class="form-title" style="margin-bottom:4px">🗂️ Todos os Documentos</div>
+    <button class="btn-ghost" onclick="carregarTodos()" style="margin-top:6px">🔄 Atualizar lista</button>
+  </div>
+  <div id="lista-gerenciar"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONSTANTES
+// ═══════════════════════════════════════════════
+var SCRIPT_URL = 'COLE_AQUI_A_URL_DO_SCRIPT_DOCUMENTOS';
+var vinculoTipoAtual = 'FROTA';
+
+// ═══════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════
+function toast(msg, tipo) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast on' + (tipo ? ' ' + tipo : '');
+  setTimeout(function(){ el.className = 'toast'; }, 3500);
+}
+function setSyncBar(msg, tipo) {
+  var el = document.getElementById('syncBar');
+  el.textContent = msg;
+  el.className = 'sync-bar on' + (tipo ? ' ' + tipo : '');
+  if (tipo === 'ok') setTimeout(function(){ el.className = 'sync-bar'; }, 3000);
+}
+function _isAdminMaster(){
+  try{
+    var pStr = localStorage.getItem('twm_permissoes');
+    if(pStr){ var p2=JSON.parse(pStr); if(p2.admin_master) return true; }
+    var u=JSON.parse(localStorage.getItem('twm_user_cache')||'{}');
+    var p=u.permissoes||{};
+    return !!(p.admin_master||p.ADMIN_MASTER);
+  }catch(e){return false;}
+}
+
+var NOMES_TIPO = {CRLV:'CRLV',CIV:'CIV',CIPP:'CIPP',CNH:'CNH',CTE:'CT-e',NOTA_CARGA:'Nota da Carga',ROTOGRAMA:'Rotograma',OUTRO:'Outro'};
+var ICONE_TIPO = {CRLV:'🚚',CIV:'📋',CIPP:'📋',CNH:'🪪',CTE:'📄',NOTA_CARGA:'🧾',ROTOGRAMA:'🗺️',OUTRO:'📎'};
+
+// ═══════════════════════════════════════════════
+//  BUSCAR
+// ═══════════════════════════════════════════════
+function buscarDocumentos() {
+  var frota     = document.getElementById('bs-frota').value.trim();
+  var motorista = document.getElementById('bs-motorista').value.trim();
+  var el = document.getElementById('lista-busca');
+
+  if (!frota && !motorista) { toast('⚠️ Informe frota ou motorista', 'err'); return; }
+
+  el.innerHTML = '<div class="empty">Buscando...</div>';
+  var params = 'action=getDocumentos';
+  if (frota)     params += '&frota=' + encodeURIComponent(frota);
+  if (motorista) params += '&motorista=' + encodeURIComponent(motorista);
+
+  var xhr = new XMLHttpRequest();
+  xhr.timeout = 15000;
+  xhr.open('GET', SCRIPT_URL + '?' + params + '&_=' + Date.now(), true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    try {
+      var resp = JSON.parse(xhr.responseText);
+      renderLista(el, (resp.ok && resp.documentos) ? resp.documentos : [], false);
+    } catch(e) { el.innerHTML = '<div class="empty">Erro ao buscar documentos.</div>'; }
+  };
+  xhr.onerror = xhr.ontimeout = function() { el.innerHTML = '<div class="empty">📵 Sem conexão.</div>'; };
+  xhr.send();
+}
+
+function classeValidade(validade) {
+  if (!validade) return '';
+  var partes = validade.split('-');
+  if (partes.length !== 3) return '';
+  var d = new Date(partes[0], partes[1]-1, partes[2]);
+  var hoje = new Date();
+  var dias = Math.floor((d - hoje) / 86400000);
+  if (dias < 0) return 'vencido';
+  if (dias <= 30) return 'venc';
+  return 'ok';
+}
+
+function renderLista(el, docs, comExcluir) {
+  if (!docs.length) { el.innerHTML = '<div class="empty">Nenhum documento encontrado.</div>'; return; }
+  var html = '';
+  docs.forEach(function(d) {
+    var cv = classeValidade(d.validade);
+    html += '<div class="doc-card">' +
+      '<div class="doc-icon">' + (ICONE_TIPO[d.tipo]||'📎') + '</div>' +
+      '<div class="doc-info">' +
+        '<div class="doc-tipo">' + (NOMES_TIPO[d.tipo]||d.tipo) + '</div>' +
+        '<div class="doc-vinculo">' + (d.vinculoTipo==='FROTA'?'🚚 ':'👤 ') + d.vinculoValor + '</div>' +
+        (d.validade ? '<div class="doc-validade ' + cv + '">Validade: ' + d.validade + '</div>' : '') +
+      '</div>' +
+      '<a class="doc-abrir" href="' + d.url + '" target="_blank">Abrir</a>' +
+      (comExcluir ? '<button class="doc-del" onclick="excluirDocumento(\'' + d.id + '\')">🗑️</button>' : '') +
+    '</div>';
+  });
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════
+//  CADASTRAR (admin)
+// ═══════════════════════════════════════════════
+function setVinculoTipo(tipo) {
+  vinculoTipoAtual = tipo;
+  document.getElementById('rd-frota').className = 'radio-opt' + (tipo==='FROTA'?' on':'');
+  document.getElementById('rd-motorista').className = 'radio-opt' + (tipo==='MOTORISTA'?' on':'');
+  document.getElementById('cad-valor-label').textContent = tipo==='FROTA' ? 'Frota / Prefixo *' : 'Nome do Motorista *';
+  document.getElementById('cad-valor').placeholder = tipo==='FROTA' ? 'Ex: VP-183' : 'Nome completo';
+}
+
+function cadastrarDocumento() {
+  var tipo     = document.getElementById('cad-tipo').value;
+  var valor    = document.getElementById('cad-valor').value.trim();
+  var validade = document.getElementById('cad-validade').value;
+  var fileInput = document.getElementById('cad-arquivo');
+  var file = fileInput.files[0];
+
+  if (!valor) { toast('⚠️ Informe a frota ou o motorista', 'err'); return; }
+  if (!file)  { toast('⚠️ Selecione um arquivo', 'err'); return; }
+
+  setSyncBar('⏳ Enviando arquivo...', '');
+
+  var reader = new FileReader();
+  reader.onload = function() {
+    var base64 = reader.result.split(',')[1];
+    var payload = {
+      action: 'uploadDocumento',
+      tipo: tipo,
+      vinculoTipo: vinculoTipoAtual,
+      vinculoValor: valor,
+      validade: validade,
+      nomeArquivo: file.name,
+      mimeType: file.type || 'application/octet-stream',
+      base64: base64
+    };
+
+    var xhr = new XMLHttpRequest();
+    xhr.timeout = 60000;
+    xhr.open('POST', SCRIPT_URL, true);
+    xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState !== 4) return;
+      try {
+        var resp = JSON.parse(xhr.responseText);
+        if (resp.ok) {
+          setSyncBar('✅ Documento salvo!', 'ok');
+          toast('☁️ Documento enviado com sucesso!', 'ok');
+          document.getElementById('cad-valor').value = '';
+          document.getElementById('cad-validade').value = '';
+          fileInput.value = '';
+        } else {
+          setSyncBar('⚠️ ' + (resp.msg||'Erro'), 'err');
+          toast('⚠️ ' + (resp.msg||'Erro ao enviar'), 'err');
+        }
+      } catch(e) { setSyncBar('⚠️ Erro ao processar resposta', 'err'); }
+    };
+    xhr.onerror   = function() { setSyncBar('📵 Sem conexão', 'err'); };
+    xhr.ontimeout = function() { setSyncBar('⏱️ Timeout — arquivo grande demora mais', 'err'); };
+    xhr.send(JSON.stringify(payload));
+  };
+  reader.readAsDataURL(file);
+}
+
+// ═══════════════════════════════════════════════
+//  GERENCIAR (admin)
+// ═══════════════════════════════════════════════
+function carregarTodos() {
+  var el = document.getElementById('lista-gerenciar');
+  el.innerHTML = '<div class="empty">Carregando...</div>';
+
+  var xhr = new XMLHttpRequest();
+  xhr.timeout = 15000;
+  xhr.open('GET', SCRIPT_URL + '?action=getDocumentos&_=' + Date.now(), true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    try {
+      var resp = JSON.parse(xhr.responseText);
+      renderLista(el, (resp.ok && resp.documentos) ? resp.documentos : [], true);
+    } catch(e) { el.innerHTML = '<div class="empty">Erro ao carregar.</div>'; }
+  };
+  xhr.onerror = xhr.ontimeout = function() { el.innerHTML = '<div class="empty">📵 Sem conexão.</div>'; };
+  xhr.send();
+}
+
+function excluirDocumento(id) {
+  if (!confirm('Excluir este documento? Isso também remove o arquivo do Drive.')) return;
+  setSyncBar('⏳ Excluindo...', '');
+
+  var xhr = new XMLHttpRequest();
+  xhr.timeout = 15000;
+  xhr.open('POST', SCRIPT_URL, true);
+  xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    try {
+      var resp = JSON.parse(xhr.responseText);
+      if (resp.ok) { setSyncBar('✅ Excluído!', 'ok'); carregarTodos(); }
+      else { setSyncBar('⚠️ ' + (resp.msg||'Erro'), 'err'); }
+    } catch(e) { setSyncBar('⚠️ Erro ao excluir', 'err'); }
+  };
+  xhr.onerror = xhr.ontimeout = function() { setSyncBar('📵 Sem conexão', 'err'); };
+  xhr.send(JSON.stringify({ action: 'excluirDocumento', id: id }));
+}
+
+// ═══════════════════════════════════════════════
+//  NAVEGAÇÃO
+// ═══════════════════════════════════════════════
+function goTab(id, el) {
+  var pages = document.querySelectorAll('.page');
+  var tabs  = document.querySelectorAll('.nav-tab');
+  for (var i = 0; i < pages.length; i++) pages[i].className = 'page';
+  for (var i = 0; i < tabs.length;  i++) tabs[i].className  = 'nav-tab';
+  var pg = document.getElementById('page-' + id);
+  if (pg) pg.className = 'page on';
+  if (el) el.className = 'nav-tab on';
+  if (id === 'gerenciar') carregarTodos();
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+window.onload = function() {
+  var isM = _isAdminMaster();
+  var tabCad = document.getElementById('tab-cadastrar');
+  var tabGer = document.getElementById('tab-gerenciar');
+  if (tabCad) tabCad.style.display = isM ? '' : 'none';
+  if (tabGer) tabGer.style.display = isM ? '' : 'none';
+};
+</script>
+</body>
+</html>
