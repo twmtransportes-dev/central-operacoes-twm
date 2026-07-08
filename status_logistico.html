@@ -485,7 +485,7 @@ function parseCsv(txt) {
     }
     cols.push(cur.trim());
     if (li === 0) { headers = cols; continue; }
-    if (!cols[7] && !cols[11]) continue; // skip rows without cavalo or motorista
+    if (!cols[7] && !cols[11]) continue;
     var obj = {};
     headers.forEach(function(h, idx) { obj[h] = cols[idx] || ''; });
     rows.push(obj);
