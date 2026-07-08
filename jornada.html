@@ -228,6 +228,16 @@ function scriptAtivo() { var c = ler(CFG_KEY); return (c && c.scriptUrl) ? c.scr
 function salvar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} }
 function ler(k)       { try { return JSON.parse(localStorage.getItem(k)); } catch(e) { return null; } }
 
+function _isAdminMaster(){
+  try{
+    var pStr = localStorage.getItem('twm_permissoes');
+    if(pStr){ var p2=JSON.parse(pStr); if(p2.admin_master) return true; }
+    var u=JSON.parse(localStorage.getItem('twm_user_cache')||'{}');
+    var p=u.permissoes||{};
+    return !!(p.admin_master||p.ADMIN_MASTER);
+  }catch(e){return false;}
+}
+
 function toast(msg, tipo) {
   var el = document.getElementById('toast');
   el.textContent = msg;
@@ -529,6 +539,13 @@ function goTab(id, el) {
 // ═══════════════════════════════════════════════
 window.onload = function() {
   aplicarParametrosURL();
+
+  // Esconde as abas Histórico e Config para quem não é admin_master
+  var isM = _isAdminMaster();
+  var tabHist = document.getElementById('tab-historico');
+  var tabCfg  = document.getElementById('tab-config');
+  if (tabHist) tabHist.style.display = isM ? '' : 'none';
+  if (tabCfg)  tabCfg.style.display  = isM ? '' : 'none';
 };
 </script>
 </body>
