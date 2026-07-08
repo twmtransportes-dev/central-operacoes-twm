@@ -293,7 +293,7 @@ body.light .kpi-card{box-shadow:0 3px 10px rgba(20,20,40,.05)}
   <div class="tab" onclick="goTab('checklist',this)">📋 Check List</div>
   <div class="tab" onclick="goTab('frota',this)">🚛 Frota</div>
   <div class="tab" onclick="goTab('lvt',this)">📄 LVT</div>
-  <div class="tab" onclick="goTab('carros',this)">🚗 Carros Apoio</div>
+  <div class="tab" onclick="goTab('carros',this)">🚗 Carros</div>
 </div>
 
 <!-- ══ DASHBOARD ══ -->
@@ -344,19 +344,40 @@ body.light .kpi-card{box-shadow:0 3px 10px rgba(20,20,40,.05)}
       <div class="dc-label">Ordens de serviço</div>
       <div class="dc-sub"><span id="dash-manut-abertas" style="color:var(--red)">— em aberto</span><span class="dc-arrow">→</span></div>
     </div>
-    <div class="dash-card" style="border-top:3px solid #1e3a8a;grid-column:1/-1" onclick="goTabBtn('seguranca')">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="font-size:28px">🛡️</div>
-        <div>
-          <div class="dc-mod">Check List Seg. Mensal</div>
-          <div class="dc-num" style="color:#1e3a8a;font-size:22px" id="dash-seg-total">—</div>
-          <div class="dc-label">Registros arquivados na planilha</div>
-        </div>
-        <div style="margin-left:auto;text-align:right">
-          <div style="font-size:10px;color:var(--muted)">FQ-TWM-CO-19-01 Rev.06</div>
-          <div id="dash-seg-info" style="font-size:11px;color:#3b82f6;margin-top:2px">Buscar e imprimir →</div>
-        </div>
-      </div>
+    <div class="dash-card" style="border-top:3px solid #1e3a8a" onclick="goTabBtn('seguranca')">
+      <div class="dc-icon">🛡️</div>
+      <div class="dc-mod">Seg. Mensal</div>
+      <div class="dc-num" style="color:#1e3a8a" id="dash-seg-total">—</div>
+      <div class="dc-label">Registros arquivados</div>
+      <div class="dc-sub"><span id="dash-seg-info" style="color:#3b82f6">FQ-TWM-CO-19-01</span><span class="dc-arrow">→</span></div>
+    </div>
+    <div class="dash-card" style="border-top:3px solid #007AFF" onclick="goTabBtn('checklist')">
+      <div class="dc-icon">📋</div>
+      <div class="dc-mod">Check List Frota</div>
+      <div class="dc-num g">—</div>
+      <div class="dc-label">Inspeções diárias</div>
+      <div class="dc-sub"><span style="color:var(--blue)">Motoristas</span><span class="dc-arrow">→</span></div>
+    </div>
+    <div class="dash-card" style="border-top:3px solid #AF52DE" onclick="goTabBtn('frota')">
+      <div class="dc-icon">🚛</div>
+      <div class="dc-mod">Frota / Logístico</div>
+      <div class="dc-num" style="color:#AF52DE">—</div>
+      <div class="dc-label">Viagens no período</div>
+      <div class="dc-sub"><span style="color:#AF52DE">Status em tempo real</span><span class="dc-arrow">→</span></div>
+    </div>
+    <div class="dash-card" style="border-top:3px solid #34C759" onclick="goTabBtn('lvt')">
+      <div class="dc-icon">📄</div>
+      <div class="dc-mod">LVT Petrobras</div>
+      <div class="dc-num g">—</div>
+      <div class="dc-label">Verificações técnicas</div>
+      <div class="dc-sub"><span style="color:var(--green)">Lista de verificação</span><span class="dc-arrow">→</span></div>
+    </div>
+    <div class="dash-card" style="border-top:3px solid #32ADE6" onclick="goTabBtn('carros')">
+      <div class="dc-icon">🚗</div>
+      <div class="dc-mod">Carros de Apoio</div>
+      <div class="dc-num" style="color:#32ADE6">—</div>
+      <div class="dc-label">Saídas registradas</div>
+      <div class="dc-sub"><span style="color:#32ADE6">Histórico de viagens</span><span class="dc-arrow">→</span></div>
     </div>
   </div>
 
@@ -693,11 +714,16 @@ body.light .kpi-card{box-shadow:0 3px 10px rgba(20,20,40,.05)}
 
 <script>
 var SCRIPT = 'https://script.google.com/macros/s/AKfycbxyfJNP0d-F6Jtb1Bkpy9QTNv-c2EmT2kIjFOhgx2HRjpiFiZhdnijdnBqP0eoAxb5j/exec';
-var SCRIPT_COMPRAS = localStorage.getItem('twm_compras_script') || 'https://script.google.com/macros/s/AKfycbyEG37aoa1NuTtmyeXRNeNYa7-BvOiK5WwBdr2jsfdppoexxZ5yeFiULWORO47BCQPZ/exec';
+
 var SCRIPT_CL    = 'https://script.google.com/macros/s/AKfycbwAGLjEDNVAJk9nGujpVd6hTl3QY9Ss9Wl0Sm14TqCHBhdAFEPglhcXSzoN7ktSQjoa/exec';
 var SCRIPT_LVT   = 'https://script.google.com/macros/s/AKfycbx6FwKQbqU129E-JO5k32vdg3L3PifZwJ1gz5kuFt-9Pn4VFJtIGfCfQCDR8DngYP3_KA/exec';
 var SCRIPT_CARROS= 'https://script.google.com/macros/s/AKfycbzubtzuifnCgK_POE_fiLr0YKDQyl7dur1EzuX5nmlHTEl4f5UFST8V2t-mkQDeHAJdsg/exec';
-var FROTA_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx62CxMqSchj3wdG83U48YiyM8eH9vIj8Jv7Gg1QVWm0Ow7abDlyYWtAEecM4iCPWTvH8e5Y84jJdf/pub?gid=644783428&single=true&output=csv';
+var FROTA_CSV    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx62CxMqSchj3wdG83U48YiyM8eH9vIj8Jv7Gg1QVWm0Ow7abDlyYWtAEecM4iCPWTvH8e5Y84jJdf/pub?gid=644783428&single=true&output=csv';
+var SCRIPT_CL    = 'https://script.google.com/macros/s/AKfycbwAGLjEDNVAJk9nGujpVd6hTl3QY9Ss9Wl0Sm14TqCHBhdAFEPglhcXSzoN7ktSQjoa/exec';
+var SCRIPT_LVT   = 'https://script.google.com/macros/s/AKfycbx6FwKQbqU129E-JO5k32vdg3L3PifZwJ1gz5kuFt-9Pn4VFJtIGfCfQCDR8DngYP3_KA/exec';
+var SCRIPT_CARROS= 'https://script.google.com/macros/s/AKfycbzubtzuifnCgK_POE_fiLr0YKDQyl7dur1EzuX5nmlHTEl4f5UFST8V2t-mkQDeHAJdsg/exec';
+var FROTA_CSV    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx62CxMqSchj3wdG83U48YiyM8eH9vIj8Jv7Gg1QVWm0Ow7abDlyYWtAEecM4iCPWTvH8e5Y84jJdf/pub?gid=644783428&single=true&output=csv';
+var SCRIPT_COMPRAS = localStorage.getItem('twm_compras_script') || 'https://script.google.com/macros/s/AKfycbyEG37aoa1NuTtmyeXRNeNYa7-BvOiK5WwBdr2jsfdppoexxZ5yeFiULWORO47BCQPZ/exec';
 var SCRIPT_MANUT = (function(){try{var c=JSON.parse(localStorage.getItem('twm_config')||'{}');return c.scriptUrl||'https://script.google.com/macros/s/AKfycbz5Du0iSrnD8X37xCCAVwic_3yPHrLKbTKLcx60tCfoahKcb5-kP6Efns6LndNaZDI-aQ/exec';}catch(e){return 'https://script.google.com/macros/s/AKfycbz5Du0iSrnD8X37xCCAVwic_3yPHrLKbTKLcx60tCfoahKcb5-kP6Efns6LndNaZDI-aQ/exec';}})();
 var MESES  = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
@@ -742,169 +768,7 @@ function imprimir(html){
     '</style></head><body>'+
     html+
     '<script>window.onload=function(){setTimeout(function(){window.print();setTimeout(function(){window.close();},500);},300);}<\/script>'+
-    '
-<!-- ══ CHECKLIST FROTA ══════════════════════════════════════════ -->
-<div class="scr" id="scr-checklist">
-
-  <div class="chart-grid-2" style="margin-bottom:12px">
-    <div class="chart-box"><canvas id="chart-cl-result" height="160"></canvas></div>
-    <div class="chart-box"><canvas id="chart-cl-frota" height="160"></canvas></div>
-  </div>
-  <div class="chart-box" style="margin-bottom:12px">
-    <canvas id="chart-cl-trend" height="120"></canvas>
-  </div>
-
-  <div class="rel-section">
-    <div class="rel-section-title">🗓️ Período</div>
-    <div class="filtros-grid">
-      <div class="filtro-group"><label>De</label><input type="date" id="cl-de"></div>
-      <div class="filtro-group"><label>Até</label><input type="date" id="cl-ate"></div>
-    </div>
-  </div>
-
-  <div class="rel-section">
-    <div class="rel-section-title">🔍 Filtros</div>
-    <div class="filtros-grid">
-      <div class="filtro-group"><label>Frota</label><input type="text" id="cl-frota" placeholder="VP-183..."></div>
-      <div class="filtro-group"><label>Motorista</label><input type="text" id="cl-motorista" placeholder="Nome..."></div>
-    </div>
-    <div class="filtro-group" style="margin-top:6px">
-      <label>Resultado</label>
-      <select id="cl-resultado">
-        <option value="todos">Todos</option>
-        <option value="ok">Sem problemas</option>
-        <option value="nao">Com itens reprovados</option>
-        <option value="manut">Com solicitação de manutenção</option>
-      </select>
-    </div>
-  </div>
-
-  <button class="btn-vis" onclick="gerarRelChecklist()">👁️ Visualizar</button>
-
-  <div id="cl-stats" style="display:none;margin:10px 0">
-    <div class="resumo-num"><div class="n" id="cl-n-total">0</div><div class="l">Checklists</div></div>
-    <div class="resumo-num"><div class="n" id="cl-n-ok">0</div><div class="l">OK</div></div>
-    <div class="resumo-num"><div class="n" id="cl-n-nao">0</div><div class="l">Com Reprov.</div></div>
-    <div class="resumo-num"><div class="n" id="cl-n-manut">0</div><div class="l">Com Manut.</div></div>
-  </div>
-
-  <div class="preview-box" id="cl-preview" style="display:none">
-    <div id="cl-tabela"></div>
-    <div class="preview-actions">
-      <button class="btn-pr btn-pr-az" onclick="impCL()">🖨️ Imprimir</button>
-      <button class="btn-pr btn-pr-gr" onclick="csvCL()">📊 CSV</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══ FROTA / STATUS LOGÍSTICO ═════════════════════════════════ -->
-<div class="scr" id="scr-frota">
-
-  <div class="chart-grid-2" style="margin-bottom:12px">
-    <div class="chart-box"><canvas id="chart-fr-status" height="180"></canvas></div>
-    <div class="chart-box"><canvas id="chart-fr-rota" height="180"></canvas></div>
-  </div>
-
-  <button class="btn-vis" onclick="gerarRelFrota()">🔄 Atualizar Dados</button>
-
-  <div id="fr-stats" style="display:none;margin:10px 0">
-    <div class="resumo-num"><div class="n" id="fr-total">0</div><div class="l">Viagens</div></div>
-    <div class="resumo-num"><div class="n" id="fr-viagem">0</div><div class="l">Em Viagem</div></div>
-    <div class="resumo-num"><div class="n" id="fr-desc">0</div><div class="l">Descarreg.</div></div>
-    <div class="resumo-num"><div class="n" id="fr-ret">0</div><div class="l">Retorno</div></div>
-  </div>
-
-  <div class="preview-box" id="fr-preview" style="display:none">
-    <div id="fr-tabela"></div>
-    <div class="preview-actions">
-      <button class="btn-pr btn-pr-az" onclick="impFrota()">🖨️ Imprimir</button>
-      <button class="btn-pr btn-pr-gr" onclick="csvFrota()">📊 CSV</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- ══ LVT ═════════════════════════════════════════════════════ -->
-<div class="scr" id="scr-lvt">
-
-  <div class="chart-grid-2" style="margin-bottom:12px">
-    <div class="chart-box"><canvas id="chart-lvt-result" height="180"></canvas></div>
-    <div class="chart-box"><canvas id="chart-lvt-frota" height="180"></canvas></div>
-  </div>
-
-  <div class="rel-section">
-    <div class="rel-section-title">🗓️ Período</div>
-    <div class="filtros-grid">
-      <div class="filtro-group"><label>De</label><input type="date" id="lvt-de"></div>
-      <div class="filtro-group"><label>Até</label><input type="date" id="lvt-ate"></div>
-    </div>
-  </div>
-  <div class="rel-section">
-    <div class="rel-section-title">🔍 Filtros</div>
-    <div class="filtros-grid">
-      <div class="filtro-group"><label>Frota/Placa</label><input type="text" id="lvt-frota" placeholder="VP-183..."></div>
-      <div class="filtro-group"><label>Motorista</label><input type="text" id="lvt-motorista" placeholder="Nome..."></div>
-    </div>
-  </div>
-
-  <button class="btn-vis" onclick="gerarRelLVT()">👁️ Visualizar</button>
-
-  <div id="lvt-stats" style="display:none;margin:10px 0">
-    <div class="resumo-num"><div class="n" id="lvt-n-total">0</div><div class="l">Registros</div></div>
-    <div class="resumo-num"><div class="n" id="lvt-n-frotas">0</div><div class="l">Frotas</div></div>
-    <div class="resumo-num"><div class="n" id="lvt-n-mes">0</div><div class="l">Este Mês</div></div>
-  </div>
-
-  <div class="preview-box" id="lvt-preview" style="display:none">
-    <div id="lvt-tabela"></div>
-    <div class="preview-actions">
-      <button class="btn-pr btn-pr-az" onclick="impLVT()">🖨️ Imprimir</button>
-      <button class="btn-pr btn-pr-gr" onclick="csvLVT()">📊 CSV</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══ CARROS DE APOIO ══════════════════════════════════════════ -->
-<div class="scr" id="scr-carros">
-
-  <div class="chart-grid-2" style="margin-bottom:12px">
-    <div class="chart-box"><canvas id="chart-ca-carro" height="180"></canvas></div>
-    <div class="chart-box"><canvas id="chart-ca-trend" height="180"></canvas></div>
-  </div>
-
-  <div class="rel-section">
-    <div class="rel-section-title">🗓️ Período</div>
-    <div class="filtros-grid">
-      <div class="filtro-group"><label>De</label><input type="date" id="ca-de"></div>
-      <div class="filtro-group"><label>Até</label><input type="date" id="ca-ate"></div>
-    </div>
-  </div>
-  <div class="rel-section">
-    <div class="rel-section-title">🔍 Filtros</div>
-    <div class="filtros-grid">
-      <div class="filtro-group"><label>Carro</label><input type="text" id="ca-carro" placeholder="Nome do carro..."></div>
-      <div class="filtro-group"><label>Motorista</label><input type="text" id="ca-motorista" placeholder="Nome..."></div>
-    </div>
-  </div>
-
-  <button class="btn-vis" onclick="gerarRelCarros()">👁️ Visualizar</button>
-
-  <div id="ca-stats" style="display:none;margin:10px 0">
-    <div class="resumo-num"><div class="n" id="ca-n-total">0</div><div class="l">Viagens</div></div>
-    <div class="resumo-num"><div class="n" id="ca-n-carros">0</div><div class="l">Carros</div></div>
-    <div class="resumo-num"><div class="n" id="ca-n-mes">0</div><div class="l">Este Mês</div></div>
-  </div>
-
-  <div class="preview-box" id="ca-preview" style="display:none">
-    <div id="ca-tabela"></div>
-    <div class="preview-actions">
-      <button class="btn-pr btn-pr-az" onclick="impCarros()">🖨️ Imprimir</button>
-      <button class="btn-pr btn-pr-gr" onclick="csvCarros()">📊 CSV</button>
-    </div>
-  </div>
-</div>
-
-</body></html>');
+    '</body></html>');
   win.document.close();
 }
 
@@ -1963,196 +1827,7 @@ window.onload=function(){
 };
 
 
-// ══════════════════════════════════════════════════════════════════
-// LVT — Lista de Verificação Técnica (Petrobras)
-// ══════════════════════════════════════════════════════════════════
 
-var _lvtDados = [];
-
-function gerarRelLVT() {
-  var de    = document.getElementById('lvt-de').value;
-  var ate   = document.getElementById('lvt-ate').value;
-  var frota = (document.getElementById('lvt-frota').value||'').toUpperCase().trim();
-  var motor = (document.getElementById('lvt-motorista').value||'').toLowerCase().trim();
-
-  var url = SCRIPT_LVT + '?action=getLVT&_=' + Date.now();
-  if (frota) url += '&frota=' + encodeURIComponent(frota);
-
-  var xhr = new XMLHttpRequest(); xhr.timeout = 15000;
-  xhr.open('GET', url, true);
-  xhr.onload = function() {
-    try {
-      var res = JSON.parse(xhr.responseText);
-      if (!res.ok) { toast(res.msg||'Erro ao carregar LVT','err'); return; }
-      var src = res.registros || [];
-      var dados = src.filter(function(r) {
-        if (de  && (r.data||'') < de)  return false;
-        if (ate && (r.data||'') > ate) return false;
-        if (motor && !(r.motorista||'').toLowerCase().includes(motor)) return false;
-        return true;
-      });
-      if (!dados.length) { toast('Nenhum registro LVT no período','err'); return; }
-      _lvtDados = dados;
-
-      var total  = dados.length;
-      var frotas = new Set(dados.map(function(r){ return r.frota||'?'; })).size;
-      var ymNow  = new Date().toISOString().substring(0,7);
-      var doMes  = dados.filter(function(r){ return (r.data||'').substring(0,7)===ymNow; }).length;
-
-      document.getElementById('lvt-n-total').textContent  = total;
-      document.getElementById('lvt-n-frotas').textContent = frotas;
-      document.getElementById('lvt-n-mes').textContent    = doMes;
-      document.getElementById('lvt-stats').style.display  = 'flex';
-
-      // Gráfico por resultado
-      var comNao = dados.filter(function(r){ return r.liberado==='não'||r.liberado==='nao'; }).length;
-      renderChart('chart-lvt-result','doughnut',['✅ Liberado','❌ Não Liberado'],[{
-        data:[total-comNao, comNao], backgroundColor:['#34C759','#FF3B30']
-      }]);
-
-      // Gráfico por frota (top 8)
-      var pf={};
-      dados.forEach(function(r){ var f=r.frota||'?'; pf[f]=(pf[f]||0)+1; });
-      var top=Object.entries(pf).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
-      renderChart('chart-lvt-frota','bar',top.map(function(x){return x[0];}),[{
-        label:'LVTs', data:top.map(function(x){return x[1];}), backgroundColor:'#34C759', borderRadius:4
-      }]);
-
-      // Tabela
-      var html='<table style="width:100%;border-collapse:collapse;font-size:11px">'
-        +'<tr style="background:#1e3a8a;color:#fff"><th>Data</th><th>Hora</th><th>Frota</th><th>Motorista</th><th>Produto</th><th>Placa Cav.</th><th>Placa Car.</th><th>Liberado</th><th>Obs</th></tr>';
-      dados.forEach(function(r,i){
-        var bg=i%2?'#eff6ff':'#fff';
-        var lib=r.liberado==='sim'?'✅ Sim':'❌ Não';
-        html+='<tr style="background:'+bg+'">'
-          +'<td>'+(r.data||'—')+'</td><td>'+(r.hora||'—')+'</td>'
-          +'<td>'+(r.frota||'—')+'</td><td>'+(r.motorista||'—')+'</td>'
-          +'<td>'+(r.produto||'—')+'</td><td>'+(r.placa_cav||'—')+'</td>'
-          +'<td>'+(r.placa_car||'—')+'</td><td>'+lib+'</td>'
-          +'<td>'+((r.obs||'').substring(0,30))+'</td></tr>';
-      });
-      html+='</table>';
-      document.getElementById('lvt-tabela').innerHTML=html;
-      document.getElementById('lvt-preview').style.display='block';
-    } catch(e){ toast('Erro ao processar LVT: '+e,'err'); }
-  };
-  xhr.onerror=xhr.ontimeout=function(){ toast('Sem conexão','err'); };
-  xhr.send();
-}
-
-function impLVT(){
-  imprimir(cabRel('Relatório LVT — Lista de Verificação Técnica','')+document.getElementById('lvt-tabela').innerHTML+rodapeRel(_lvtDados.length));
-}
-
-function csvLVT(){
-  var rows=_lvtDados.map(function(r){
-    return [(r.data||r.dt||''),(r.frota||r.placa||r.veiculo||''),(r.motorista||r.condutor||''),(r.km||r.hodometro||''),(r.temNao||r.reprovado?'Reprovado':'OK'),(r.obs||'')].join(';');
-  });
-  var csv='Data;Frota/Placa;Motorista;KM;Resultado;Observação\n'+rows.join('\n');
-  var a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
-  a.download='lvt_'+Date.now()+'.csv';
-  document.body.appendChild(a);a.click();
-  setTimeout(function(){document.body.removeChild(a);},300);
-}
-
-// ══════════════════════════════════════════════════════════════════
-// CARROS DE APOIO
-// ══════════════════════════════════════════════════════════════════
-
-var _caDados = [];
-
-function gerarRelCarros() {
-  var de  = document.getElementById('ca-de').value;
-  var ate = document.getElementById('ca-ate').value;
-  var carro  = (document.getElementById('ca-carro').value||'').toLowerCase().trim();
-  var motor  = (document.getElementById('ca-motorista').value||'').toLowerCase().trim();
-
-  var xhr=new XMLHttpRequest(); xhr.timeout=15000;
-  xhr.open('GET', SCRIPT_CARROS+'?action=historico&_='+Date.now(), true);
-  xhr.onload=function(){
-    try {
-      var res=JSON.parse(xhr.responseText);
-      var src=res.registros||[];
-      var dados=src.filter(function(r){
-        var d=(r['DATA']||r['data']||'');
-        if(de  && d<de)  return false;
-        if(ate && d>ate+'z') return false;
-        if(carro && !(r['veiculo']||r['placa']||r['VEICULO']||'').toLowerCase().includes(carro)) return false;
-        if(motor && !(r['motorista']||'').toLowerCase().includes(motor)) return false;
-        return true;
-      });
-      _caDados=dados;
-      renderRelCarros(dados);
-    } catch(e){ toast('Erro ao carregar Carros de Apoio','err'); }
-  };
-  xhr.onerror=xhr.ontimeout=function(){ toast('Sem conexão','err'); };
-  xhr.send();
-}
-
-function renderRelCarros(dados) {
-  var total  = dados.length;
-  var carros = new Set(dados.map(function(r){ return r['veiculo']||r['placa']||'?'; })).size;
-  var ymNow  = new Date().toISOString().substring(0,7);
-  var doMes  = dados.filter(function(r){ return (r['data_hora']||r['DATA']||r['data']||'').substring(0,7)===ymNow; }).length;
-
-  document.getElementById('ca-n-total').textContent  = total;
-  document.getElementById('ca-n-carros').textContent = carros;
-  document.getElementById('ca-n-mes').textContent    = doMes;
-  document.getElementById('ca-stats').style.display  = 'flex';
-
-  // Gráfico por carro
-  var pc={};
-  dados.forEach(function(r){ var c=r['veiculo']||r['placa']||'?'; pc[c]=(pc[c]||0)+1; });
-  var topC=Object.entries(pc).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
-  renderChart('chart-ca-carro','bar',topC.map(function(x){return x[0];}),[{
-    label:'Viagens', data:topC.map(function(x){return x[1];}), backgroundColor:'#32ADE6', borderRadius:4
-  }]);
-
-  // Gráfico tendência mensal
-  var pm={};
-  dados.forEach(function(r){
-    var m=(r['DATA']||r['data']||'').substring(0,7);
-    if(m) pm[m]=(pm[m]||0)+1;
-  });
-  var meses=Object.keys(pm).sort().slice(-6);
-  renderChart('chart-ca-trend','line',meses,[{
-    label:'Viagens/mês', data:meses.map(function(m){return pm[m]||0;}),
-    borderColor:'#32ADE6', backgroundColor:'rgba(50,173,230,.1)', fill:true, tension:0.4
-  }]);
-
-  // Tabela
-  var keys=dados.length?Object.keys(dados[0]):[];
-  var html='<table style="width:100%;border-collapse:collapse;font-size:11px">'
-    +'<tr style="background:#1e3a8a;color:#fff">'
-    +keys.map(function(k){return '<th style="padding:4px 6px;text-align:left">'+k+'</th>';}).join('')
-    +'</tr>';
-  dados.forEach(function(r,i){
-    var bg=i%2?'#eff6ff':'#fff';
-    html+='<tr style="background:'+bg+'">'
-      +keys.map(function(k){return '<td style="padding:3px 5px;font-size:10px">'+String(r[k]||'')+'</td>';}).join('')
-      +'</tr>';
-  });
-  html+='</table>';
-  document.getElementById('ca-tabela').innerHTML=html;
-  document.getElementById('ca-preview').style.display='block';
-}
-
-function impCarros(){
-  imprimir(cabRel('Relatório Carros de Apoio','')+document.getElementById('ca-tabela').innerHTML+rodapeRel(_caDados.length));
-}
-
-function csvCarros(){
-  if(!_caDados.length) return;
-  var keys=Object.keys(_caDados[0]);
-  var rows=_caDados.map(function(r){ return keys.map(function(k){return r[k]||'';}).join(';'); });
-  var csv=keys.join(';')+'\n'+rows.join('\n');
-  var a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
-  a.download='carros_apoio_'+Date.now()+'.csv';
-  document.body.appendChild(a);a.click();
-  setTimeout(function(){document.body.removeChild(a);},300);
-}
 
 </script>
 
@@ -2209,15 +1884,11 @@ function csvCarros(){
 
 <!-- ══ CHECKLIST FROTA ══════════════════════════════════════════ -->
 <div class="scr" id="scr-checklist">
-
   <div class="chart-grid-2" style="margin-bottom:12px">
     <div class="chart-box"><canvas id="chart-cl-result" height="160"></canvas></div>
     <div class="chart-box"><canvas id="chart-cl-frota" height="160"></canvas></div>
   </div>
-  <div class="chart-box" style="margin-bottom:12px">
-    <canvas id="chart-cl-trend" height="120"></canvas>
-  </div>
-
+  <div class="chart-box" style="margin-bottom:12px"><canvas id="chart-cl-trend" height="120"></canvas></div>
   <div class="rel-section">
     <div class="rel-section-title">🗓️ Período</div>
     <div class="filtros-grid">
@@ -2225,33 +1896,23 @@ function csvCarros(){
       <div class="filtro-group"><label>Até</label><input type="date" id="cl-ate"></div>
     </div>
   </div>
-
   <div class="rel-section">
     <div class="rel-section-title">🔍 Filtros</div>
     <div class="filtros-grid">
       <div class="filtro-group"><label>Frota</label><input type="text" id="cl-frota" placeholder="VP-183..."></div>
       <div class="filtro-group"><label>Motorista</label><input type="text" id="cl-motorista" placeholder="Nome..."></div>
     </div>
-    <div class="filtro-group" style="margin-top:6px">
-      <label>Resultado</label>
-      <select id="cl-resultado">
-        <option value="todos">Todos</option>
-        <option value="ok">Sem problemas</option>
-        <option value="nao">Com itens reprovados</option>
-        <option value="manut">Com solicitação de manutenção</option>
-      </select>
+    <div class="filtro-group" style="margin-top:6px"><label>Resultado</label>
+      <select id="cl-resultado"><option value="todos">Todos</option><option value="ok">Sem problemas</option><option value="nao">Com itens reprovados</option><option value="manut">Com manutenção</option></select>
     </div>
   </div>
-
   <button class="btn-vis" onclick="gerarRelChecklist()">👁️ Visualizar</button>
-
   <div id="cl-stats" style="display:none;margin:10px 0">
     <div class="resumo-num"><div class="n" id="cl-n-total">0</div><div class="l">Checklists</div></div>
     <div class="resumo-num"><div class="n" id="cl-n-ok">0</div><div class="l">OK</div></div>
-    <div class="resumo-num"><div class="n" id="cl-n-nao">0</div><div class="l">Com Reprov.</div></div>
-    <div class="resumo-num"><div class="n" id="cl-n-manut">0</div><div class="l">Com Manut.</div></div>
+    <div class="resumo-num"><div class="n" id="cl-n-nao">0</div><div class="l">C/ Reprov.</div></div>
+    <div class="resumo-num"><div class="n" id="cl-n-manut">0</div><div class="l">C/ Manut.</div></div>
   </div>
-
   <div class="preview-box" id="cl-preview" style="display:none">
     <div id="cl-tabela"></div>
     <div class="preview-actions">
@@ -2263,21 +1924,17 @@ function csvCarros(){
 
 <!-- ══ FROTA / STATUS LOGÍSTICO ═════════════════════════════════ -->
 <div class="scr" id="scr-frota">
-
   <div class="chart-grid-2" style="margin-bottom:12px">
     <div class="chart-box"><canvas id="chart-fr-status" height="180"></canvas></div>
     <div class="chart-box"><canvas id="chart-fr-rota" height="180"></canvas></div>
   </div>
-
   <button class="btn-vis" onclick="gerarRelFrota()">🔄 Atualizar Dados</button>
-
   <div id="fr-stats" style="display:none;margin:10px 0">
     <div class="resumo-num"><div class="n" id="fr-total">0</div><div class="l">Viagens</div></div>
     <div class="resumo-num"><div class="n" id="fr-viagem">0</div><div class="l">Em Viagem</div></div>
     <div class="resumo-num"><div class="n" id="fr-desc">0</div><div class="l">Descarreg.</div></div>
     <div class="resumo-num"><div class="n" id="fr-ret">0</div><div class="l">Retorno</div></div>
   </div>
-
   <div class="preview-box" id="fr-preview" style="display:none">
     <div id="fr-tabela"></div>
     <div class="preview-actions">
@@ -2287,15 +1944,12 @@ function csvCarros(){
   </div>
 </div>
 
-
 <!-- ══ LVT ═════════════════════════════════════════════════════ -->
 <div class="scr" id="scr-lvt">
-
   <div class="chart-grid-2" style="margin-bottom:12px">
     <div class="chart-box"><canvas id="chart-lvt-result" height="180"></canvas></div>
     <div class="chart-box"><canvas id="chart-lvt-frota" height="180"></canvas></div>
   </div>
-
   <div class="rel-section">
     <div class="rel-section-title">🗓️ Período</div>
     <div class="filtros-grid">
@@ -2310,15 +1964,12 @@ function csvCarros(){
       <div class="filtro-group"><label>Motorista</label><input type="text" id="lvt-motorista" placeholder="Nome..."></div>
     </div>
   </div>
-
   <button class="btn-vis" onclick="gerarRelLVT()">👁️ Visualizar</button>
-
   <div id="lvt-stats" style="display:none;margin:10px 0">
     <div class="resumo-num"><div class="n" id="lvt-n-total">0</div><div class="l">Registros</div></div>
     <div class="resumo-num"><div class="n" id="lvt-n-frotas">0</div><div class="l">Frotas</div></div>
     <div class="resumo-num"><div class="n" id="lvt-n-mes">0</div><div class="l">Este Mês</div></div>
   </div>
-
   <div class="preview-box" id="lvt-preview" style="display:none">
     <div id="lvt-tabela"></div>
     <div class="preview-actions">
@@ -2330,12 +1981,10 @@ function csvCarros(){
 
 <!-- ══ CARROS DE APOIO ══════════════════════════════════════════ -->
 <div class="scr" id="scr-carros">
-
   <div class="chart-grid-2" style="margin-bottom:12px">
     <div class="chart-box"><canvas id="chart-ca-carro" height="180"></canvas></div>
     <div class="chart-box"><canvas id="chart-ca-trend" height="180"></canvas></div>
   </div>
-
   <div class="rel-section">
     <div class="rel-section-title">🗓️ Período</div>
     <div class="filtros-grid">
@@ -2350,15 +1999,12 @@ function csvCarros(){
       <div class="filtro-group"><label>Motorista</label><input type="text" id="ca-motorista" placeholder="Nome..."></div>
     </div>
   </div>
-
   <button class="btn-vis" onclick="gerarRelCarros()">👁️ Visualizar</button>
-
   <div id="ca-stats" style="display:none;margin:10px 0">
     <div class="resumo-num"><div class="n" id="ca-n-total">0</div><div class="l">Viagens</div></div>
     <div class="resumo-num"><div class="n" id="ca-n-carros">0</div><div class="l">Carros</div></div>
     <div class="resumo-num"><div class="n" id="ca-n-mes">0</div><div class="l">Este Mês</div></div>
   </div>
-
   <div class="preview-box" id="ca-preview" style="display:none">
     <div id="ca-tabela"></div>
     <div class="preview-actions">
