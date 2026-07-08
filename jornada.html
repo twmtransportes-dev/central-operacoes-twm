@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0A0A0F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>TWM — Jornada</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icone-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0A0A0F;--bg2:#0F0F18;--bg3:#13131E;--border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.14);--text:#F0EEF8;--muted:#7A7890;--diesel:#F59E0B;--arla:#06B6D4;--green:#10B981;--red:#EF4444;--accent:#7B3FE4;--accent2:#A855F7;--gold:#F59E0B;--rota:#64D2FF}
+body.light{--bg:#F4F3FF;--bg2:#FFFFFF;--bg3:#FAFAFA;--border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);--text:#1A1A2E;--muted:#6B6880}
+body.light .app-header{box-shadow:0 1px 8px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+.app-header{background:var(--bg2);border-bottom:2px solid var(--rota);padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-badge{width:34px;height:34px;background:linear-gradient(135deg,#7B3FE4,#A855F7);border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:900;color:#fff}
+.logo-title{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+.btn-back{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:4px}
+
+.nav-tabs{background:var(--bg2);border-bottom:1px solid var(--border2);display:flex;overflow-x:auto;scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:10px 14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.15s;display:flex;align-items:center;gap:5px}
+.nav-tab.on{color:var(--rota);border-bottom-color:var(--rota)}
+
+.page{display:none;padding:14px;max-width:600px;margin:0 auto;padding-bottom:40px}
+.page.on{display:block}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.scard{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;border-top:2px solid transparent}
+.scard.r{border-top-color:var(--rota)}.scard.d{border-top-color:var(--diesel)}.scard.g{border-top-color:var(--green)}.scard.t{border-top-color:var(--accent2)}
+.sn{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;line-height:1}
+.scard.r .sn{color:var(--rota)}.scard.d .sn{color:var(--diesel)}.scard.g .sn{color:var(--green)}.scard.t .sn{color:var(--accent2)}
+.sl{font-size:7px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:2px}
+
+/* BANNER VINDO DO CHECKLIST */
+.banner-check{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:12px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.banner-check .bi{font-size:20px}
+.banner-check .bt{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--green)}
+.banner-check .bs{font-size:10px;color:var(--muted);margin-top:1px}
+
+/* FORM */
+.form-card{background:var(--bg3);border:1px solid var(--border2);border-radius:14px;padding:16px;margin-bottom:14px}
+.form-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--rota);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.field{margin-bottom:12px}
+.field label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);display:block;margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;background:var(--bg);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:11px 13px;outline:none;transition:.15s;-webkit-appearance:none;appearance:none}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--rota)}
+
+/* BOTÃO */
+.btn-reg{width:100%;padding:14px;background:linear-gradient(135deg,#0EA5E9,#64D2FF);border:none;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#04202E;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 20px rgba(100,210,255,.25)}
+.btn-ghost{padding:10px 16px;background:rgba(255,255,255,.05);border:1px solid var(--border2);border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);cursor:pointer;width:100%}
+
+/* CARDS DE VIAGEM */
+.filter-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.fbtn{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:5px 12px;border-radius:20px;background:var(--bg3);border:1px solid var(--border2);color:var(--muted);cursor:pointer}
+.fbtn.on{background:var(--rota);border-color:var(--rota);color:#04202E}
+.filtros-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+
+.viagem-card{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+.vc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;gap:8px}
+.vc-frota{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;color:var(--rota)}
+.vc-mot{font-size:11px;color:var(--muted);margin-top:1px}
+.vc-status{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;padding:3px 9px;border-radius:20px}
+.vc-status.aberta{background:rgba(245,158,11,.12);color:var(--diesel);border:1px solid rgba(245,158,11,.25)}
+.vc-status.fechada{background:rgba(16,185,129,.12);color:var(--green);border:1px solid rgba(16,185,129,.25)}
+.vc-info{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:10px;color:var(--muted)}
+.vc-info b{color:var(--text);font-weight:700}
+.vc-kml{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;margin-top:8px}
+.vc-kml.bom{background:rgba(16,185,129,.12);color:var(--green);border:1px solid rgba(16,185,129,.25)}
+.vc-kml.medio{background:rgba(245,158,11,.12);color:var(--diesel);border:1px solid rgba(245,158,11,.25)}
+.vc-kml.ruim{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.25)}
+.vc-fin-row{display:flex;gap:8px;margin-top:10px}
+.vc-fin-row input{flex:1;background:var(--bg);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;padding:9px 11px;outline:none}
+.vc-fin-row input:focus{border-color:var(--rota)}
+.vc-fin-btn{background:linear-gradient(135deg,#10B981,#34D399);border:none;border-radius:8px;padding:0 16px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;text-transform:uppercase;color:#04220F;cursor:pointer;white-space:nowrap}
+
+/* CONFIG */
+.cfg-card{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:14px;margin-bottom:12px}
+.cfg-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px}
+.cfg-note{font-size:10px;color:var(--muted);line-height:1.6;margin-top:6px}
+
+/* SYNC / TOAST */
+.sync-bar{display:none;text-align:center;padding:6px 16px;font-size:11px;font-weight:600;letter-spacing:.5px;position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--bg2);border-top:1px solid var(--border2)}
+.sync-bar.on{display:block}
+.sync-bar.ok{color:var(--green)}.sync-bar.err{color:var(--red)}
+.toast{position:fixed;bottom:50px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:10px 20px;font-size:12px;font-weight:600;z-index:999;transition:.3s;white-space:nowrap;max-width:90vw;text-align:center}
+.toast.on{transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:rgba(16,185,129,.4);color:var(--green)}
+.toast.err{border-color:rgba(239,68,68,.4);color:var(--red)}
+
+.empty{text-align:center;padding:32px 16px;color:var(--muted);font-size:12px;line-height:1.6}
+</style>
+<script>
+(function() {
+  var pref = localStorage.getItem('twm_tema') || 'auto';
+  var claro;
+  if (pref === 'claro') claro = true;
+  else if (pref === 'escuro') claro = false;
+  else { var h = new Date().getHours(); claro = h >= 6 && h < 18; }
+  function aplicar() { if (claro) document.body.classList.add('light'); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', aplicar);
+  else aplicar();
+})();
+</script>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+<div class="sync-bar" id="syncBar"></div>
+
+<div class="app-header">
+  <div class="logo">
+    <div class="logo-badge">TWM</div>
+    <div class="logo-title">Jornada</div>
+  </div>
+  <a class="btn-back" href="index.html">← Central</a>
+</div>
+
+<div class="nav-tabs">
+  <div class="nav-tab on" id="tab-iniciar" onclick="goTab('iniciar',this)">🚚 Iniciar</div>
+  <div class="nav-tab" id="tab-finalizar" onclick="goTab('finalizar',this)">🏁 Finalizar</div>
+  <div class="nav-tab" id="tab-historico" onclick="goTab('historico',this)">📋 Histórico</div>
+  <div class="nav-tab" id="tab-config" onclick="goTab('config',this)">⚙️ Config</div>
+</div>
+
+<!-- ABA INICIAR -->
+<div class="page on" id="page-iniciar">
+  <div class="banner-check" id="banner-checklist" style="display:none">
+    <div class="bi">✅</div>
+    <div>
+      <div class="bt">Vindo do Checklist</div>
+      <div class="bs">KM preenchido automaticamente — confira e confirme</div>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-title">🚚 Iniciar Viagem</div>
+    <div class="field">
+      <label>Frota / Prefixo *</label>
+      <input type="text" id="ini-frota" placeholder="Ex: VP-183" autocomplete="off" autocapitalize="characters"
+             oninput="this.value=this.value.toUpperCase()">
+    </div>
+    <div class="field">
+      <label>Motorista *</label>
+      <input type="text" id="ini-motorista" placeholder="Nome completo do motorista" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>KM Inicial *</label>
+      <input type="number" id="ini-km" placeholder="Ex: 145230">
+    </div>
+    <div class="field">
+      <label>Rota / Destino</label>
+      <input type="text" id="ini-rota" placeholder="Ex: São Paulo → Curitiba" autocomplete="off">
+    </div>
+    <button class="btn-reg" onclick="iniciarViagem()">🚚 Iniciar Viagem</button>
+  </div>
+</div>
+
+<!-- ABA FINALIZAR -->
+<div class="page" id="page-finalizar">
+  <div class="form-card" style="padding:12px 14px">
+    <div class="form-title" style="margin-bottom:4px">🏁 Viagens em Aberto</div>
+    <div class="cfg-note" style="margin:0">Informe o KM final para encerrar e calcular o consumo.</div>
+  </div>
+  <div id="lista-abertas"></div>
+</div>
+
+<!-- ABA HISTÓRICO -->
+<div class="page" id="page-historico">
+  <div class="stats">
+    <div class="scard r"><div class="sn" id="st-viagens">0</div><div class="sl">Viagens</div></div>
+    <div class="scard t"><div class="sn" id="st-km">0</div><div class="sl">KM Rodado</div></div>
+    <div class="scard d"><div class="sn" id="st-litros">0</div><div class="sl">Litros</div></div>
+    <div class="scard g"><div class="sn" id="st-kml">0</div><div class="sl">Média Km/L</div></div>
+  </div>
+  <div class="filtros-grid">
+    <div class="field" style="margin:0"><label>Motorista</label><input type="text" id="hist-motorista" placeholder="Filtrar por motorista"></div>
+    <div class="field" style="margin:0"><label>Frota</label><input type="text" id="hist-frota" placeholder="Ex: VP-183"></div>
+  </div>
+  <div class="filter-row">
+    <div class="fbtn on" onclick="setFiltroHist('fechada',this)">Fechadas</div>
+    <div class="fbtn" onclick="setFiltroHist('aberta',this)">Abertas</div>
+    <div class="fbtn" onclick="setFiltroHist('todas',this)">Todas</div>
+    <div class="fbtn" onclick="carregarHistorico()">🔄 Atualizar</div>
+  </div>
+  <div id="lista-hist"></div>
+</div>
+
+<!-- ABA CONFIG -->
+<div class="page" id="page-config">
+  <div class="cfg-card">
+    <div class="cfg-title">Google Apps Script</div>
+    <div class="field">
+      <label>SCRIPT URL</label>
+      <input type="text" id="cfg-script" placeholder="https://script.google.com/...">
+    </div>
+    <button class="btn-ghost" onclick="salvarConfig()" style="margin-top:8px">💾 Salvar</button>
+    <div class="cfg-note">Script dedicado ao módulo Jornada (projeto separado do Abastecimento). Cole aqui a URL /exec depois de implantar o AppsScript_Jornada_Separado.gs.</div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONSTANTES
+// ═══════════════════════════════════════════════
+// ⚠️ Substitua pela URL /exec do projeto "Jornada" (separado do Abastecimento)
+// depois de implantar o AppsScript_Jornada_Separado.gs como Web App.
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx0wK7f3lJvahV8LvsKOwNN_iu9Txo7grisBi2SvLRdVzAIG4lVom_yxXw2rYhjZhEeTA/exec';
+var CFG_KEY    = 'twm_jornada_cfg';
+
+// ═══════════════════════════════════════════════
+//  ESTADO
+// ═══════════════════════════════════════════════
+var viagensAbertas   = [];
+var viagensHist      = [];
+var filtroHistStatus = 'fechada';
+
+// ═══════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════
+function scriptAtivo() { var c = ler(CFG_KEY); return (c && c.scriptUrl) ? c.scriptUrl : SCRIPT_URL; }
+function salvar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} }
+function ler(k)       { try { return JSON.parse(localStorage.getItem(k)); } catch(e) { return null; } }
+
+function toast(msg, tipo) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast on' + (tipo ? ' ' + tipo : '');
+  setTimeout(function(){ el.className = 'toast'; }, 3500);
+}
+function setSyncBar(msg, tipo) {
+  var el = document.getElementById('syncBar');
+  el.textContent = msg;
+  el.className = 'sync-bar on' + (tipo ? ' ' + tipo : '');
+  if (tipo === 'ok') setTimeout(function(){ el.className = 'sync-bar'; }, 3000);
+}
+
+// ═══════════════════════════════════════════════
+//  VINDO DO CHECKLIST (?novo=1&frota=&motorista=&km=)
+// ═══════════════════════════════════════════════
+function aplicarParametrosURL() {
+  var qs = new URLSearchParams(window.location.search);
+  if (qs.get('novo') !== '1') return;
+
+  var frota     = (qs.get('frota') || '').trim().toUpperCase();
+  var motorista = (qs.get('motorista') || '').trim();
+  var km        = (qs.get('km') || '').trim();
+
+  if (frota)     document.getElementById('ini-frota').value = frota;
+  if (motorista) document.getElementById('ini-motorista').value = motorista;
+  if (km)        document.getElementById('ini-km').value = km;
+
+  var banner = document.getElementById('banner-checklist');
+  if (banner) banner.style.display = 'flex';
+}
+
+// ═══════════════════════════════════════════════
+//  INICIAR VIAGEM
+// ═══════════════════════════════════════════════
+function iniciarViagem() {
+  var frota     = document.getElementById('ini-frota').value.trim().toUpperCase();
+  var motorista = document.getElementById('ini-motorista').value.trim();
+  var km        = document.getElementById('ini-km').value.trim();
+  var rota      = document.getElementById('ini-rota').value.trim();
+
+  if (!frota)     { toast('⚠️ Informe a frota', 'err'); return; }
+  if (!motorista) { toast('⚠️ Informe o motorista', 'err'); return; }
+  if (!km || parseFloat(km) <= 0) { toast('⚠️ Informe o KM inicial', 'err'); return; }
+
+  setSyncBar('⏳ Iniciando viagem...', '');
+
+  var params = 'action=iniciarViagem' +
+    '&frota='      + encodeURIComponent(frota) +
+    '&motorista='  + encodeURIComponent(motorista) +
+    '&km_inicial=' + encodeURIComponent(km) +
+    '&rota='       + encodeURIComponent(rota || '');
+
+  var xhr = new XMLHttpRequest();
+  xhr.timeout = 15000;
+  xhr.open('GET', scriptAtivo() + '?' + params, true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    try {
+      var resp = JSON.parse(xhr.responseText);
+      if (resp.ok) {
+        setSyncBar('✅ Viagem iniciada!', 'ok');
+        toast('🚚 Viagem de ' + frota + ' iniciada!', 'ok');
+        limparFormIniciar();
+      } else {
+        setSyncBar('⚠️ ' + (resp.msg || 'Erro ao iniciar'), 'err');
+        toast('⚠️ ' + (resp.msg || 'Erro ao iniciar viagem'), 'err');
+      }
+    } catch(e) {
+      setSyncBar('✅ Enviado!', 'ok');
+      toast('🚚 Viagem de ' + frota + ' iniciada!', 'ok');
+      limparFormIniciar();
+    }
+  };
+  xhr.onerror   = function() { setSyncBar('📵 Sem conexão', 'err'); toast('📵 Sem conexão — tente novamente', 'err'); };
+  xhr.ontimeout = function() { setSyncBar('⏱️ Timeout', 'err'); };
+  xhr.send();
+}
+
+function limparFormIniciar() {
+  document.getElementById('ini-frota').value = '';
+  document.getElementById('ini-motorista').value = '';
+  document.getElementById('ini-km').value = '';
+  document.getElementById('ini-rota').value = '';
+  var banner = document.getElementById('banner-checklist');
+  if (banner) banner.style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════
+//  FINALIZAR VIAGEM
+// ═══════════════════════════════════════════════
+function carregarViagensAbertas() {
+  var el = document.getElementById('lista-abertas');
+  el.innerHTML = '<div class="empty">Carregando viagens em aberto...</div>';
+
+  var xhr = new XMLHttpRequest();
+  xhr.timeout = 15000;
+  xhr.open('GET', scriptAtivo() + '?action=getViagens&status=ABERTA&_=' + Date.now(), true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    try {
+      var resp = JSON.parse(xhr.responseText);
+      viagensAbertas = (resp.ok && resp.viagens) ? resp.viagens : [];
+    } catch(e) { viagensAbertas = []; }
+    renderViagensAbertas();
+  };
+  xhr.onerror = xhr.ontimeout = function() {
+    el.innerHTML = '<div class="empty">📵 Sem conexão para buscar viagens em aberto.</div>';
+  };
+  xhr.send();
+}
+
+function renderViagensAbertas() {
+  var el = document.getElementById('lista-abertas');
+  if (!viagensAbertas.length) {
+    el.innerHTML = '<div class="empty">Nenhuma viagem em aberto no momento.</div>';
+    return;
+  }
+  var html = '';
+  viagensAbertas.forEach(function(v) {
+    html += '<div class="viagem-card">' +
+      '<div class="vc-top">' +
+        '<div><div class="vc-frota">' + v.frota + '</div><div class="vc-mot">' + v.motorista + (v.rota ? ' · ' + v.rota : '') + '</div></div>' +
+        '<div class="vc-status aberta">Aberta</div>' +
+      '</div>' +
+      '<div class="vc-info"><span>KM inicial: <b>' + Number(v.km_inicial).toLocaleString('pt-BR') + '</b></span></div>' +
+      '<div class="vc-fin-row">' +
+        '<input type="number" id="fin-km-' + v.frota + '" placeholder="KM final">' +
+        '<button class="vc-fin-btn" onclick="finalizarViagem(\'' + v.frota + '\')">🏁 Finalizar</button>' +
+      '</div>' +
+    '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function finalizarViagem(frota) {
+  var input  = document.getElementById('fin-km-' + frota);
+  var kmFinal = input ? input.value.trim() : '';
+  if (!kmFinal || parseFloat(kmFinal) <= 0) { toast('⚠️ Informe o KM final', 'err'); return; }
+
+  setSyncBar('⏳ Finalizando viagem...', '');
+
+  var params = 'action=finalizarViagem' +
+    '&frota='    + encodeURIComponent(frota) +
+    '&km_final=' + encodeURIComponent(kmFinal);
+
+  var xhr = new XMLHttpRequest();
+  xhr.timeout = 15000;
+  xhr.open('GET', scriptAtivo() + '?' + params, true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    try {
+      var resp = JSON.parse(xhr.responseText);
+      if (resp.ok) {
+        setSyncBar('✅ Viagem finalizada!', 'ok');
+        var kml = resp.km_l ? resp.km_l.toFixed(2) : '—';
+        toast('🏁 ' + frota + ' — ' + resp.km_rodado + ' km · ' + kml + ' km/L', 'ok');
+        carregarViagensAbertas();
+      } else {
+        setSyncBar('⚠️ ' + (resp.msg || 'Erro ao finalizar'), 'err');
+        toast('⚠️ ' + (resp.msg || 'Erro ao finalizar viagem'), 'err');
+      }
+    } catch(e) {
+      setSyncBar('✅ Enviado!', 'ok');
+      carregarViagensAbertas();
+    }
+  };
+  xhr.onerror   = function() { setSyncBar('📵 Sem conexão', 'err'); };
+  xhr.ontimeout = function() { setSyncBar('⏱️ Timeout', 'err'); };
+  xhr.send();
+}
+
+// ═══════════════════════════════════════════════
+//  HISTÓRICO / DESEMPENHO
+// ═══════════════════════════════════════════════
+function setFiltroHist(f, el) {
+  filtroHistStatus = f;
+  var btns = document.querySelectorAll('#page-historico .fbtn');
+  for (var i = 0; i < btns.length; i++) btns[i].className = 'fbtn';
+  if (el) el.className = 'fbtn on';
+  carregarHistorico();
+}
+
+function carregarHistorico() {
+  var el = document.getElementById('lista-hist');
+  el.innerHTML = '<div class="empty">Carregando histórico...</div>';
+
+  var motorista = document.getElementById('hist-motorista').value.trim();
+  var frota     = document.getElementById('hist-frota').value.trim();
+
+  var params = 'action=getViagens&_=' + Date.now();
+  if (filtroHistStatus !== 'todas') params += '&status=' + (filtroHistStatus === 'fechada' ? 'FECHADA' : 'ABERTA');
+  if (motorista) params += '&motorista=' + encodeURIComponent(motorista);
+  if (frota)     params += '&frota=' + encodeURIComponent(frota);
+
+  var xhr = new XMLHttpRequest();
+  xhr.timeout = 15000;
+  xhr.open('GET', scriptAtivo() + '?' + params, true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    try {
+      var resp = JSON.parse(xhr.responseText);
+      viagensHist = (resp.ok && resp.viagens) ? resp.viagens : [];
+    } catch(e) { viagensHist = []; }
+    renderStatsHist();
+    renderHistorico();
+  };
+  xhr.onerror = xhr.ontimeout = function() {
+    el.innerHTML = '<div class="empty">📵 Sem conexão para buscar o histórico.</div>';
+  };
+  xhr.send();
+}
+
+function renderStatsHist() {
+  var totalKm = 0, totalLitros = 0, n = 0;
+  viagensHist.forEach(function(v) {
+    if (v.status !== 'FECHADA') return;
+    totalKm += v.km_rodado || 0;
+    totalLitros += parseFloat(v.litros)||0;
+    n++;
+  });
+  var mediaKml = totalLitros > 0 ? (totalKm/totalLitros) : 0;
+  document.getElementById('st-viagens').textContent = viagensHist.length;
+  document.getElementById('st-km').textContent = totalKm.toLocaleString('pt-BR');
+  document.getElementById('st-litros').textContent = totalLitros.toFixed(0);
+  document.getElementById('st-kml').textContent = mediaKml ? mediaKml.toFixed(2) : '—';
+}
+
+function classeKml(kml) {
+  if (!kml) return '';
+  if (kml >= 2.2) return 'bom';
+  if (kml >= 1.5) return 'medio';
+  return 'ruim';
+}
+
+function renderHistorico() {
+  var el = document.getElementById('lista-hist');
+  if (!viagensHist.length) {
+    el.innerHTML = '<div class="empty">Nenhuma viagem encontrada para o filtro atual.</div>';
+    return;
+  }
+  var html = '';
+  viagensHist.forEach(function(v) {
+    var fechada = v.status === 'FECHADA';
+    var kml = fechada ? parseFloat(v.km_l)||0 : null;
+    html += '<div class="viagem-card">' +
+      '<div class="vc-top">' +
+        '<div><div class="vc-frota">' + v.frota + '</div><div class="vc-mot">' + v.motorista + (v.rota ? ' · ' + v.rota : '') + '</div></div>' +
+        '<div class="vc-status ' + (fechada?'fechada':'aberta') + '">' + (fechada?'Fechada':'Aberta') + '</div>' +
+      '</div>' +
+      '<div class="vc-info">' +
+        '<span>KM inicial: <b>' + Number(v.km_inicial).toLocaleString('pt-BR') + '</b></span>' +
+        (fechada ? '<span>KM final: <b>' + Number(v.km_final).toLocaleString('pt-BR') + '</b></span>' : '') +
+      '</div>' +
+      (fechada ?
+        ('<div class="vc-info"><span>Rodado: <b>' + Number(v.km_rodado).toLocaleString('pt-BR') + ' km</b></span><span>Diesel: <b>' + (parseFloat(v.litros)||0).toFixed(1) + ' L</b></span></div>' +
+         '<div class="vc-kml ' + classeKml(kml) + '">' + (kml ? kml.toFixed(2) + ' km/L' : 'Sem abastecimento no período') + '</div>')
+      : '') +
+    '</div>';
+  });
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════
+function salvarConfig() {
+  var scriptVal = document.getElementById('cfg-script').value.trim();
+  var cfg = ler(CFG_KEY) || {};
+  cfg.scriptUrl = scriptVal || SCRIPT_URL;
+  salvar(CFG_KEY, cfg);
+  toast('✅ Config salva!', 'ok');
+}
+function carregarConfig() {
+  var cfg = ler(CFG_KEY);
+  var el  = document.getElementById('cfg-script');
+  if (el) el.value = (cfg && cfg.scriptUrl) ? cfg.scriptUrl : SCRIPT_URL;
+}
+
+// ═══════════════════════════════════════════════
+//  NAVEGAÇÃO
+// ═══════════════════════════════════════════════
+function goTab(id, el) {
+  var pages = document.querySelectorAll('.page');
+  var tabs  = document.querySelectorAll('.nav-tab');
+  for (var i = 0; i < pages.length; i++) pages[i].className = 'page';
+  for (var i = 0; i < tabs.length;  i++) tabs[i].className  = 'nav-tab';
+  var pg = document.getElementById('page-' + id);
+  if (pg) pg.className = 'page on';
+  if (el) el.className = 'nav-tab on';
+
+  if (id === 'finalizar') carregarViagensAbertas();
+  if (id === 'historico') carregarHistorico();
+  if (id === 'config')    carregarConfig();
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+window.onload = function() {
+  aplicarParametrosURL();
+};
+</script>
+</body>
+</html>
