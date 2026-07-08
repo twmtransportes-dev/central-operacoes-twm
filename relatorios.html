@@ -694,7 +694,9 @@ body.light .kpi-card{box-shadow:0 3px 10px rgba(20,20,40,.05)}
 <script>
 var SCRIPT = 'https://script.google.com/macros/s/AKfycbxyfJNP0d-F6Jtb1Bkpy9QTNv-c2EmT2kIjFOhgx2HRjpiFiZhdnijdnBqP0eoAxb5j/exec';
 var SCRIPT_COMPRAS = localStorage.getItem('twm_compras_script') || 'https://script.google.com/macros/s/AKfycbyEG37aoa1NuTtmyeXRNeNYa7-BvOiK5WwBdr2jsfdppoexxZ5yeFiULWORO47BCQPZ/exec';
-var SCRIPT_CL = 'https://script.google.com/macros/s/AKfycbwAGLjEDNVAJk9nGujpVd6hTl3QY9Ss9Wl0Sm14TqCHBhdAFEPglhcXSzoN7ktSQjoa/exec';
+var SCRIPT_CL    = 'https://script.google.com/macros/s/AKfycbwAGLjEDNVAJk9nGujpVd6hTl3QY9Ss9Wl0Sm14TqCHBhdAFEPglhcXSzoN7ktSQjoa/exec';
+var SCRIPT_LVT   = 'https://script.google.com/macros/s/AKfycbx6FwKQbqU129E-JO5k32vdg3L3PifZwJ1gz5kuFt-9Pn4VFJtIGfCfQCDR8DngYP3_KA/exec';
+var SCRIPT_CARROS= 'https://script.google.com/macros/s/AKfycbzubtzuifnCgK_POE_fiLr0YKDQyl7dur1EzuX5nmlHTEl4f5UFST8V2t-mkQDeHAJdsg/exec';
 var FROTA_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx62CxMqSchj3wdG83U48YiyM8eH9vIj8Jv7Gg1QVWm0Ow7abDlyYWtAEecM4iCPWTvH8e5Y84jJdf/pub?gid=644783428&single=true&output=csv';
 var SCRIPT_MANUT = (function(){try{var c=JSON.parse(localStorage.getItem('twm_config')||'{}');return c.scriptUrl||'https://script.google.com/macros/s/AKfycbz5Du0iSrnD8X37xCCAVwic_3yPHrLKbTKLcx60tCfoahKcb5-kP6Efns6LndNaZDI-aQ/exec';}catch(e){return 'https://script.google.com/macros/s/AKfycbz5Du0iSrnD8X37xCCAVwic_3yPHrLKbTKLcx60tCfoahKcb5-kP6Efns6LndNaZDI-aQ/exec';}})();
 var MESES  = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -1968,69 +1970,74 @@ window.onload=function(){
 var _lvtDados = [];
 
 function gerarRelLVT() {
-  // LVT dados ficam no localStorage do módulo
-  var src = (function(){
-    try { return JSON.parse(localStorage.getItem('twm_lvt_reg')||'[]'); } catch(e){ return []; }
-  })();
+  var de    = document.getElementById('lvt-de').value;
+  var ate   = document.getElementById('lvt-ate').value;
+  var frota = (document.getElementById('lvt-frota').value||'').toUpperCase().trim();
+  var motor = (document.getElementById('lvt-motorista').value||'').toLowerCase().trim();
 
-  var de  = document.getElementById('lvt-de').value;
-  var ate = document.getElementById('lvt-ate').value;
-  var frota  = (document.getElementById('lvt-frota').value||'').toUpperCase().trim();
-  var motor  = (document.getElementById('lvt-motorista').value||'').toLowerCase().trim();
+  var url = SCRIPT_LVT + '?action=getLVT&_=' + Date.now();
+  if (frota) url += '&frota=' + encodeURIComponent(frota);
 
-  var dados = src.filter(function(r) {
-    var d = r.data || r.dataHora || r.dt || '';
-    if (de  && d < de)  return false;
-    if (ate && d > ate + 'z') return false;
-    if (frota && !(r.frota||r.placa||r.veiculo||'').toUpperCase().includes(frota)) return false;
-    if (motor && !(r.motorista||r.condutor||'').toLowerCase().includes(motor)) return false;
-    return true;
-  });
+  var xhr = new XMLHttpRequest(); xhr.timeout = 15000;
+  xhr.open('GET', url, true);
+  xhr.onload = function() {
+    try {
+      var res = JSON.parse(xhr.responseText);
+      if (!res.ok) { toast(res.msg||'Erro ao carregar LVT','err'); return; }
+      var src = res.registros || [];
+      var dados = src.filter(function(r) {
+        if (de  && (r.data||'') < de)  return false;
+        if (ate && (r.data||'') > ate) return false;
+        if (motor && !(r.motorista||'').toLowerCase().includes(motor)) return false;
+        return true;
+      });
+      if (!dados.length) { toast('Nenhum registro LVT no período','err'); return; }
+      _lvtDados = dados;
 
-  if (!dados.length && !src.length) {
-    toast('Nenhum registro LVT encontrado. Os dados são salvos no dispositivo onde o LVT foi preenchido.','err');
-    return;
-  }
+      var total  = dados.length;
+      var frotas = new Set(dados.map(function(r){ return r.frota||'?'; })).size;
+      var ymNow  = new Date().toISOString().substring(0,7);
+      var doMes  = dados.filter(function(r){ return (r.data||'').substring(0,7)===ymNow; }).length;
 
-  _lvtDados = dados;
+      document.getElementById('lvt-n-total').textContent  = total;
+      document.getElementById('lvt-n-frotas').textContent = frotas;
+      document.getElementById('lvt-n-mes').textContent    = doMes;
+      document.getElementById('lvt-stats').style.display  = 'flex';
 
-  var total  = dados.length;
-  var frotas = new Set(dados.map(function(r){ return r.frota||r.placa||r.veiculo||'?'; })).size;
-  var ymNow  = new Date().toISOString().substring(0,7);
-  var doMes  = dados.filter(function(r){ return (r.data||r.dt||'').substring(0,7)===ymNow; }).length;
+      // Gráfico por resultado
+      var comNao = dados.filter(function(r){ return r.liberado==='não'||r.liberado==='nao'; }).length;
+      renderChart('chart-lvt-result','doughnut',['✅ Liberado','❌ Não Liberado'],[{
+        data:[total-comNao, comNao], backgroundColor:['#34C759','#FF3B30']
+      }]);
 
-  document.getElementById('lvt-n-total').textContent  = total;
-  document.getElementById('lvt-n-frotas').textContent = frotas;
-  document.getElementById('lvt-n-mes').textContent    = doMes;
-  document.getElementById('lvt-stats').style.display  = 'flex';
+      // Gráfico por frota (top 8)
+      var pf={};
+      dados.forEach(function(r){ var f=r.frota||'?'; pf[f]=(pf[f]||0)+1; });
+      var top=Object.entries(pf).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+      renderChart('chart-lvt-frota','bar',top.map(function(x){return x[0];}),[{
+        label:'LVTs', data:top.map(function(x){return x[1];}), backgroundColor:'#34C759', borderRadius:4
+      }]);
 
-  // Gráfico por resultado (OK / Reprovado)
-  var comNao = dados.filter(function(r){ return r.temNao||r.reprovado; }).length;
-  renderChart('chart-lvt-result','doughnut',['✅ Aprovado','❌ C/ Reprov.'],[{
-    data:[total-comNao, comNao], backgroundColor:['#34C759','#FF3B30']
-  }]);
-
-  // Gráfico por frota (top 8)
-  var pf={};
-  dados.forEach(function(r){ var f=r.frota||r.placa||r.veiculo||'?'; pf[f]=(pf[f]||0)+1; });
-  var top=Object.entries(pf).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
-  renderChart('chart-lvt-frota','bar',top.map(function(x){return x[0];}),[{
-    label:'LVTs', data:top.map(function(x){return x[1];}), backgroundColor:'#34C759', borderRadius:4
-  }]);
-
-  // Tabela
-  var html='<table style="width:100%;border-collapse:collapse;font-size:11px">'
-    +'<tr style="background:#1e3a8a;color:#fff"><th>Data</th><th>Frota/Placa</th><th>Motorista</th><th>KM</th><th>Resultado</th><th>Obs</th></tr>';
-  dados.forEach(function(r,i){
-    var bg=i%2?'#eff6ff':'#fff';
-    var f=r.frota||r.placa||r.veiculo||'—';
-    var m=r.motorista||r.condutor||'—';
-    var res=(r.temNao||r.reprovado)?'❌ C/ Reprov.':'✅ OK';
-    html+='<tr style="background:'+bg+'"><td>'+(r.data||r.dt||'—')+'</td><td>'+f+'</td><td>'+m+'</td><td>'+(r.km||r.hodometro||'—')+'</td><td>'+res+'</td><td>'+((r.obs||r.observacao||'').substring(0,30))+'</td></tr>';
-  });
-  html+='</table>';
-  document.getElementById('lvt-tabela').innerHTML=html;
-  document.getElementById('lvt-preview').style.display='block';
+      // Tabela
+      var html='<table style="width:100%;border-collapse:collapse;font-size:11px">'
+        +'<tr style="background:#1e3a8a;color:#fff"><th>Data</th><th>Hora</th><th>Frota</th><th>Motorista</th><th>Produto</th><th>Placa Cav.</th><th>Placa Car.</th><th>Liberado</th><th>Obs</th></tr>';
+      dados.forEach(function(r,i){
+        var bg=i%2?'#eff6ff':'#fff';
+        var lib=r.liberado==='sim'?'✅ Sim':'❌ Não';
+        html+='<tr style="background:'+bg+'">'
+          +'<td>'+(r.data||'—')+'</td><td>'+(r.hora||'—')+'</td>'
+          +'<td>'+(r.frota||'—')+'</td><td>'+(r.motorista||'—')+'</td>'
+          +'<td>'+(r.produto||'—')+'</td><td>'+(r.placa_cav||'—')+'</td>'
+          +'<td>'+(r.placa_car||'—')+'</td><td>'+lib+'</td>'
+          +'<td>'+((r.obs||'').substring(0,30))+'</td></tr>';
+      });
+      html+='</table>';
+      document.getElementById('lvt-tabela').innerHTML=html;
+      document.getElementById('lvt-preview').style.display='block';
+    } catch(e){ toast('Erro ao processar LVT: '+e,'err'); }
+  };
+  xhr.onerror=xhr.ontimeout=function(){ toast('Sem conexão','err'); };
+  xhr.send();
 }
 
 function impLVT(){
@@ -2062,7 +2069,7 @@ function gerarRelCarros() {
   var motor  = (document.getElementById('ca-motorista').value||'').toLowerCase().trim();
 
   var xhr=new XMLHttpRequest(); xhr.timeout=15000;
-  xhr.open('GET', SCRIPT_CL+'?action=getViagensCarros&_='+Date.now(), true);
+  xhr.open('GET', SCRIPT_CARROS+'?action=historico&_='+Date.now(), true);
   xhr.onload=function(){
     try {
       var res=JSON.parse(xhr.responseText);
@@ -2071,8 +2078,8 @@ function gerarRelCarros() {
         var d=(r['DATA']||r['data']||'');
         if(de  && d<de)  return false;
         if(ate && d>ate+'z') return false;
-        if(carro && !(r['CARRO']||r['carro']||'').toLowerCase().includes(carro)) return false;
-        if(motor && !(r['MOTORISTA']||r['motorista']||'').toLowerCase().includes(motor)) return false;
+        if(carro && !(r['veiculo']||r['placa']||r['VEICULO']||'').toLowerCase().includes(carro)) return false;
+        if(motor && !(r['motorista']||'').toLowerCase().includes(motor)) return false;
         return true;
       });
       _caDados=dados;
@@ -2085,9 +2092,9 @@ function gerarRelCarros() {
 
 function renderRelCarros(dados) {
   var total  = dados.length;
-  var carros = new Set(dados.map(function(r){ return r['CARRO']||r['carro']||'?'; })).size;
+  var carros = new Set(dados.map(function(r){ return r['veiculo']||r['placa']||'?'; })).size;
   var ymNow  = new Date().toISOString().substring(0,7);
-  var doMes  = dados.filter(function(r){ return (r['DATA']||r['data']||'').substring(0,7)===ymNow; }).length;
+  var doMes  = dados.filter(function(r){ return (r['data_hora']||r['DATA']||r['data']||'').substring(0,7)===ymNow; }).length;
 
   document.getElementById('ca-n-total').textContent  = total;
   document.getElementById('ca-n-carros').textContent = carros;
@@ -2096,7 +2103,7 @@ function renderRelCarros(dados) {
 
   // Gráfico por carro
   var pc={};
-  dados.forEach(function(r){ var c=r['CARRO']||r['carro']||'?'; pc[c]=(pc[c]||0)+1; });
+  dados.forEach(function(r){ var c=r['veiculo']||r['placa']||'?'; pc[c]=(pc[c]||0)+1; });
   var topC=Object.entries(pc).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
   renderChart('chart-ca-carro','bar',topC.map(function(x){return x[0];}),[{
     label:'Viagens', data:topC.map(function(x){return x[1];}), backgroundColor:'#32ADE6', borderRadius:4
