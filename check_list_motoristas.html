@@ -293,119 +293,42 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwAGLjEDNVAJk9nGujpV
 // do Apps Script do Checklist, usado pelo módulo manutencao.html
 const SCRIPT_URL_MANUTENCAO = 'https://script.google.com/macros/s/AKfycbwAGLjEDNVAJk9nGujpVd6hTl3QY9Ss9Wl0Sm14TqCHBhdAFEPglhcXSzoN7ktSQjoa/exec';
 
-var FROTA = [
-  { vp:'VP-183', placa:'RML-0I14', carreta:'RB-175 / RB-176', marca:'M.Benz / Actros 2651 LS6x4', ano:'2020', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-184', placa:'QUN-8D89', carreta:'RB-165', marca:'Mercedes Benz Actros2546 6x2', ano:'2019', modelo:'VANDELÉIA - 6 EIXOS' },
-  { vp:'VPL-185', placa:'RVX-3D84', carreta:'RB-185', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'LS - 5/6 EIXOS' },
-  { vp:'VPL-186', placa:'RVX-3D88', carreta:'RB-171 / RB-172', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
-  { vp:'VPL-187', placa:'RVX-3D93', carreta:'RB-136 / RB-137', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
-  { vp:'VPL-188', placa:'RVX-3D99', carreta:'RB-88 / RB-89', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
-  { vp:'VPL-189', placa:'RVX-3E01', carreta:'RB-82 / RB-83', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
-  { vp:'VPL-190', placa:'RVX-3E09', carreta:'RB-167 / RB-168', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
-  { vp:'VPL-191', placa:'SHE-5C86', carreta:'RB-78 / RB-79', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
-  { vp:'VP-192', placa:'RIZ-9B67', carreta:'-', marca:'Mercedes Benz Atego 3030', ano:'2022', modelo:'BI-TRUCKS 4 EIXOS' },
-  { vp:'VP-193', placa:'SFT-7B99', carreta:'RB-109 / RB-110', marca:'M.Benz / Actros 2651S 6x4', ano:'2022', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-194', placa:'SUE-9J52', carreta:'RB-203', marca:'M.BENZ/ACTROS 2548S', ano:'2024', modelo:'TRUCADOS - 6 EIXOS' },
-  { vp:'VP-195', placa:'SUO-8G56', carreta:'RB-204', marca:'M.BENZ/ACTROS 2548S', ano:'2024', modelo:'TRUCADOS - 6 EIXOS' },
-  { vp:'VP-196', placa:'SVP-7J36', carreta:'RB-205', marca:'M.BENZ/ACTROS 2548S', ano:'2024', modelo:'TRUCADOS - 6 EIXOS' },
-  { vp:'VP-197', placa:'SWG-5I92', carreta:'RB-116', marca:'M.BENZ/ACTROS 2548S', ano:'2024', modelo:'TRUCADOS - 6 EIXOS' },
-  { vp:'VP-203', placa:'QNG-6D79', carreta:'-', marca:'Ford Cargo 2429', ano:'2016', modelo:'BI-TRUCKS 4 EIXOS' },
-  { vp:'VP-306', placa:'PZQ-7E06', carreta:'-', marca:'VW / 24.280 CRM', ano:'2017', modelo:'BI-TRUCKS 4 EIXOS' },
-  { vp:'VP-307', placa:'QGO-4J86', carreta:'RB-125', marca:'VW/19.360 CTC 4x2', ano:'2018', modelo:'LS - 5/6 EIXOS' },
-  { vp:'VP-308', placa:'QGP-4E15', carreta:'RB-126', marca:'VW/19.360 CTC 4x2', ano:'2018', modelo:'LS - 5/6 EIXOS' },
-  { vp:'VP-309', placa:'QGO-4J76', carreta:'RB-128', marca:'VW/19.360 CTC 4x2', ano:'2018', modelo:'LS - 5/6 EIXOS' },
-  { vp:'VPL-311', placa:'JBX-0A92', carreta:'RB-113', marca:'VW/25.460 CTM 6X2', ano:'2022', modelo:'TRUCADOS - 6 EIXOS' },
-  { vp:'VPL-312', placa:'JBS-7C51', carreta:'RB-121', marca:'VW/25.460 CTM 6X2', ano:'2022', modelo:'LS - 5/6 EIXOS' },
-  { vp:'VPL-313', placa:'JBT-8F33', carreta:'RB-122', marca:'VW/25.460 CTM 6X2', ano:'2022', modelo:'LS - 5/6 EIXOS' },
-  { vp:'VPL-314', placa:'RJA-8E59', carreta:'RB-153 / RB-154', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VPL-315', placa:'RJP-8J22', carreta:'RB-166', marca:'VW/25.460 CTM 6X2', ano:'2022', modelo:'VANDELÉIA - 6 EIXOS' },
-  { vp:'VPL-316', placa:'RJP-8J24', carreta:'RB-186', marca:'VW/25.460 CTM 6X2', ano:'2022', modelo:'LS - 5/6 EIXOS' },
-  { vp:'VPL-317', placa:'RKS-8B68', carreta:'RB-173 / RB-174', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
-  { vp:'VPL-318', placa:'RJW-7E18', carreta:'RB-80 / RB-81', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
-  { vp:'VPL-319', placa:'RJW-7E28', carreta:'RB-90 / RB-91', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
-  { vp:'VPL-320', placa:'RJX-7D93', carreta:'RB-86 / RB-87', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
-  { vp:'VPL-321', placa:'RJX-7E01', carreta:'RB-179 / RB-180', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
-  { vp:'VPL-322', placa:'RJY-7G85', carreta:'RB-187 / RB-188', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
-  { vp:'VPL-323', placa:'RJY-7G90', carreta:'RB-169 / RB-170', marca:'VW/29.520 METEOR 6X4', ano:'2022', modelo:'BITRENS 07 EIXOS' },
-  { vp:'VP-324', placa:'UAI-9D57', carreta:'-', marca:'VW/30.320 CRM 8X3', ano:'2024', modelo:'BI-TRUCKS 4 EIXOS' },
-  { vp:'VP-446', placa:'RMT-3B10', carreta:'-', marca:'Volvo VM 270', ano:'2021', modelo:'BI-TRUCKS 4 EIXOS' },
-  { vp:'VP-447', placa:'QQU-2D18', carreta:'RB-161 / RB-162', marca:'Volvo FH-540 6x4', ano:'2019', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-448', placa:'QUA-2F82', carreta:'RB-163 / RB-164', marca:'Volvo FH-540 6x4', ano:'2019', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-449', placa:'QQH-9D87', carreta:'RB-181 / RB-182', marca:'Volvo FH-540 6x4', ano:'2019', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-450', placa:'QUV-2E73', carreta:'RB-183 / RB-184', marca:'Volvo FH-540 6x4', ano:'2019', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-451', placa:'QXA-7A22', carreta:'RB-151 / RB-152', marca:'Volvo FH-540 6x4', ano:'2019', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-452', placa:'RFB-3B57', carreta:'RB-96 / RB-97', marca:'Volvo FH-540 6x4', ano:'2020', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-453', placa:'RFB-3B59', carreta:'RB-105 / RB-106', marca:'Volvo FH-540 6x4', ano:'2020', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-454', placa:'SSY-2B95', carreta:'RB-189 / RB-190', marca:'Volvo FH-540 6x4', ano:'2024', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-455', placa:'STA-6E27', carreta:'RB-107 / RB-108', marca:'Volvo FH-540 6x4', ano:'2024', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-456', placa:'TME-6D76', carreta:'RB-98 / RB-99', marca:'Volvo FH-540 6x4', ano:'2024', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-457', placa:'TMJ-0E32', carreta:'RB-100 / RB-101', marca:'Volvo FH-540 6x4', ano:'2024', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-458', placa:'TMC-5E59', carreta:'RB-193 / RB-194', marca:'Volvo FH-540 6x4', ano:'2024', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-459', placa:'TMA-6E86', carreta:'RB-195 / RB-196', marca:'Volvo FH-540 6x4', ano:'2024', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-460', placa:'TDN-5H27', carreta:'-', marca:'-', ano:'2024', modelo:'BI-TRUCKS 4 EIXOS' },
-  { vp:'VP-461', placa:'TDO-6G76', carreta:'-', marca:'-', ano:'2024', modelo:'BI-TRUCKS 4 EIXOS' },
-  { vp:'VP-462', placa:'GTN-4H15', carreta:'RBL-202', marca:'-', ano:'2024', modelo:'TRUCADOS 6 EIXOS' },
-  { vp:'VP-463', placa:'SYT-9D06', carreta:'RBL-201', marca:'-', ano:'2024', modelo:'TRUCADOS 6 EIXOS' },
-  { vp:'VP-464', placa:'SYT-9D14', carreta:'RB-191', marca:'-', ano:'2024', modelo:'TRUCADOS 6 EIXOS' },
-  { vp:'VP-465', placa:'SYT-9D19', carreta:'RB-192', marca:'-', ano:'2024', modelo:'TRUCADOS 6 EIXOS' },
-  { vp:'VP-517', placa:'RFL-4A57', carreta:'RB-143 / RB-144', marca:'-', ano:'2020', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-518', placa:'RFV-3C50', carreta:'RB-140 / RB-141', marca:'-', ano:'2020', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-519', placa:'RMP-1E90', carreta:'RB-145 / RB-146', marca:'-', ano:'2021', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-520', placa:'RMP-1E92', carreta:'RB-147 / RB-148', marca:'-', ano:'2021', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-521', placa:'QPH-2787', carreta:'RB-127', marca:'Iveco Stralis 360', ano:'2018', modelo:'LS - 5/6 EIXOS' },
-  { vp:'VP-522', placa:'RMS-9H94', carreta:'RB-94', marca:'Iveco Stralis 440', ano:'2021', modelo:'LS - 5/6 EIXOS' },
-  { vp:'VP-523', placa:'RMZ-9F14', carreta:'RB-149', marca:'Iveco Stralis 440', ano:'2021', modelo:'LS - 5/6 EIXOS' },
-  { vp:'VP-611', placa:'RMO-0H36', carreta:'RB-155 / RB-156', marca:'Scania/R540 A6X4', ano:'2021', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-612', placa:'RMO-0H52', carreta:'RB-157 / RB-158', marca:'Scania/R540 A6X4', ano:'2021', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-613', placa:'RMO-2J74', carreta:'RB-159 / RB-160', marca:'Scania/R540 A6X4', ano:'2021', modelo:'BITRENS 09 EIXOS' },
-  { vp:'VP-614', placa:'', carreta:'-', marca:'', ano:'', modelo:'' },
-  { vp:'VP-615', placa:'', carreta:'-', marca:'', ano:'', modelo:'' },
-  { vp:'VP-616', placa:'', carreta:'-', marca:'', ano:'', modelo:'' },
-  { vp:'VP-617', placa:'', carreta:'-', marca:'', ano:'', modelo:'' },
-  { vp:'RB-84', placa:'HKH-0B24', carreta:'RESERVA', marca:'Noma / Tanque Bitrem', ano:'2012', modelo:'Randon / Tanque Bitrem' },
-  { vp:'RB-85', placa:'HKH-0B25', carreta:'RESERVA', marca:'Noma / Tanque Bitrem', ano:'2012', modelo:'Randon / Tanque Bitrem' },
-  { vp:'RB-138', placa:'FUJ-9B62', carreta:'RESERVA', marca:'Randon / Tanque Bitrenzão', ano:'2020', modelo:'Rodotecnica / Tanque Bitrenzão 09 EIXOS' },
-  { vp:'RB-139', placa:'FUW-5G12', carreta:'RESERVA', marca:'Randon / Tanque Bitrenzão', ano:'2022', modelo:'Rodotecnica / Tanque Bitrenzão' },
-  { vp:'RB-177', placa:'AZO-7C88', carreta:'RESERVA', marca:'Randon / Tanque Bitrenzão', ano:'2019', modelo:'SR Facchini / Tanque Bitrenzão' },
-  { vp:'RB-178', placa:'AYO-7C88', carreta:'RESERVA', marca:'Randon / Tanque Bitrenzão', ano:'2019', modelo:'SR Facchini / Tanque Bitrenzão' },
-  { vp:'RB-52', placa:'HBG-7690', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2019', modelo:'Noma / Tanque Bitrenzão' },
-  { vp:'RB-53', placa:'HBG-7691', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2019', modelo:'Rodotecnica / Tanque Bitrenzão' },
-  { vp:'RB-57', placa:'HBG-7837', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2019', modelo:'Noma / Tanque Bitrenzão' },
-  { vp:'RB-58', placa:'HBG-7838', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2020', modelo:'Rodotecnica / Tanque Bitrenzão' },
-  { vp:'RB-69', placa:'HFD-4658', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2020', modelo:'Rodotecnica / Tanque Bitrenzão' },
-  { vp:'RB-70', placa:'HFD-4688', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2020', modelo:'Randon / Tanque Bitrenzão' },
-  { vp:'RB-71', placa:'HFD-4689', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2020', modelo:'Randon / Tanque Bitrenzão' },
-  { vp:'RB-103', placa:'OLC-1557', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2021', modelo:'Randon / Tanque Bitrenzão' },
-  { vp:'RB-111', placa:'out.-1217', carreta:'RESERVA', marca:'Tanesfil / Tanque (Vanderléia)', ano:'2021', modelo:'SR Facchini / Tanque Bitrenzão' },
-  { vp:'RB-117', placa:'OUZ-7889', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2021', modelo:'Randon / Tanque Bitrenzão' },
-  { vp:'RB-118', placa:'OUZ-8169', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2021', modelo:'SR Facchini / Tanque Bitrenzão' },
-  { vp:'RB-119', placa:'OUZ-9663', carreta:'RESERVA', marca:'Tanesfil / Tanque', ano:'2021', modelo:'SR Facchini / Tanque Bitrenzão' },
-  { vp:'RB-131', placa:'PJK-5125', carreta:'RESERVA', marca:'Tanesfil / Tanque (Vanderléia)', ano:'2012', modelo:'Rodotecnica / Tanque Bitrenzão 9 EIXOS' },
-];
+var FROTA = []; // Carregada 100% do servidor (planilha FROTA) — fonte única de verdade
 
 // ── Carrega frota do servidor e mescla com array local ──────────
 function carregarFrotaServidor() {
-  if (!SCRIPT_URL || !navigator.onLine) return;
+  if (!SCRIPT_URL) return;
   fetch(SCRIPT_URL + '?action=getFrotasChecklist&_=' + Date.now())
     .then(function(r){ return r.json(); })
     .then(function(resp) {
       if (!resp.ok || !resp.frotas || !resp.frotas.length) return;
-      // Cria mapa do array local para comparação
-      var mapaLocal = {};
-      FROTA.forEach(function(f){ mapaLocal[f.vp] = true; });
-      // Adiciona frotas do servidor que não estão no array local
+      // Substitui TODA a frota pelos dados do servidor (planilha = fonte única)
+      FROTA.length = 0;
       resp.frotas.forEach(function(f) {
-        if (!f.vp) return;
-        if (!mapaLocal[f.vp]) {
-          FROTA.push(f);
-        }
+        if (f.vp) FROTA.push(f);
       });
-      FROTA.sort(function(a,b){ return a.vp.localeCompare(b.vp); });
-      // Re-renderiza a lista de veículos se estiver visível
+      // Ordena numericamente por número de frota
+      FROTA.sort(function(a,b){
+        var na = parseInt((a.vp||'').replace(/\D/g,''),10) || 0;
+        var nb = parseInt((b.vp||'').replace(/\D/g,''),10) || 0;
+        if (na !== nb) return na - nb;
+        return (a.vp||'').localeCompare(b.vp||'');
+      });
+      // Salva cache para carregamento offline instantâneo
+      try { localStorage.setItem('twm_frota_checklist', JSON.stringify(FROTA)); } catch(e){}
+      // Re-renderiza
       if (document.getElementById('lista-veiculos')) renderLista();
     })
     .catch(function(){});
 }
+
+// Carrega cache local imediatamente (antes do servidor responder)
+(function(){
+  try {
+    var c = JSON.parse(localStorage.getItem('twm_frota_checklist')||'[]');
+    if (c.length) { FROTA.length = 0; c.forEach(function(f){ FROTA.push(f); }); }
+  } catch(e){}
+})();
 
 
 const CAMPOS = [
