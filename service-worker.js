@@ -1,83 +1,106 @@
-const CACHE_NAME = 'twm-datalink-v9';
-const ASSETS = [
-  './',
-  './index.html',
-  './solicitacao_compras.html',
-  './check_list_motoristas.html',
-  './checklist_lvt.html',
-  './checklist_seguranca_mensal.html',
-  './pneus.html',
-  './estoque.html',
-  './carros-apoio.html',
-  './lavagem.html',
-  './abastecimento.html',
-  './manutencao.html',
-  './relatorios.html',
-  './manifest.json',
-  './icone-192.png',
-  './icone-512.png',
-  './favicon.png'
-];
+// ══════════════════════════════════════════════════════════════════
+// TWM DataLink — Service Worker (versão consolidada)
+// HTML: Network-First com cache:no-store (SEMPRE versão nova do servidor)
+// Assets: Stale-While-Revalidate (rápido + atualiza em background)
+// Dados (Apps Script/Sheets): sempre rede, nunca cache
+// ══════════════════════════════════════════════════════════════════
 
-// Instalação: faz cache dos arquivos principais
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
-  );
-  self.skipWaiting();
+// ⚠️ IMPORTANTE: mude este número a cada deploy para forçar atualização
+const VERSION = 'v20260711-01';
+const CACHE_HTML   = 'twm-html-'   + VERSION;
+const CACHE_ASSETS = 'twm-assets-' + VERSION;
+
+// ── INSTALL ──────────────────────────────────────────────────────
+self.addEventListener('install', function(event) {
+  self.skipWaiting(); // ativa a nova versão imediatamente
 });
 
-// Ativação: remove caches antigos
-self.addEventListener('activate', event => {
+// ── ACTIVATE: apaga TODOS os caches antigos ──────────────────────
+self.addEventListener('activate', function(event) {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    caches.keys().then(function(keys) {
+      return Promise.all(
+        keys.filter(function(k){ return k !== CACHE_HTML && k !== CACHE_ASSETS; })
+            .map(function(k){ return caches.delete(k); })
+      );
+    }).then(function(){ return self.clients.claim(); })
   );
-  self.clients.claim();
 });
 
-// Fetch: network first para HTML, cache first para o resto
-self.addEventListener('fetch', event => {
-  const url = event.request.url;
+// ── FETCH ────────────────────────────────────────────────────────
+self.addEventListener('fetch', function(event) {
+  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  const isLocal = url.origin === location.origin;
 
-  // Apps Script sempre vai para a rede
-  if (url.includes('script.google.com') || url.includes('imgbb.com')) {
+  // 1. DADOS DINÂMICOS (Apps Script, Google Sheets, ImgBB) → SEMPRE rede
+  if (url.hostname.includes('script.google.com') ||
+      url.hostname.includes('googleusercontent.com') ||
+      url.hostname.includes('docs.google.com') ||
+      url.hostname.includes('sheets.google.com') ||
+      url.hostname.includes('imgbb.com')) {
     event.respondWith(
-      fetch(event.request).catch(() =>
-        new Response('{}', { headers: { 'Content-Type': 'application/json' } })
-      )
+      fetch(event.request).catch(function() {
+        return new Response('{}', { headers: { 'Content-Type': 'application/json' } });
+      })
     );
     return;
   }
 
-  // HTMLs: network first (garante sempre versão atualizada)
-  if (url.endsWith('.html') || url.endsWith('/')) {
+  // 2. RECURSOS EXTERNOS (Google Fonts, CDN) → Cache-First
+  if (!isLocal) {
     event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+      caches.match(event.request).then(function(cached) {
+        return cached || fetch(event.request).then(function(resp) {
+          if (resp.ok) {
+            const clone = resp.clone();
+            caches.open(CACHE_ASSETS).then(function(c){ c.put(event.request, clone); });
           }
-          return response;
-        })
-        .catch(() => caches.match(event.request).then(cached => cached || caches.match('./index.html')))
+          return resp;
+        });
+      })
     );
     return;
   }
 
-  // Demais assets (imagens, ícones): cache first
+  // 3. HTML LOCAL → Network-First com no-store (SEMPRE versão nova)
+  if (url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/')) {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' })
+        .then(function(resp) {
+          const clone = resp.clone();
+          caches.open(CACHE_HTML).then(function(c){ c.put(event.request, clone); });
+          return resp;
+        })
+        .catch(function() {
+          // Offline → usa cache como fallback
+          return caches.match(event.request).then(function(cached) {
+            return cached || caches.match('./index.html');
+          });
+        })
+    );
+    return;
+  }
+
+  // 4. ASSETS LOCAIS (js, css, imagens) → Stale-While-Revalidate
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        if (response && response.status === 200 && response.type === 'basic') {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
-        return response;
-      }).catch(() => caches.match('./index.html'));
+    caches.open(CACHE_ASSETS).then(function(cache) {
+      return cache.match(event.request).then(function(cached) {
+        const networkFetch = fetch(event.request, { cache: 'no-store' })
+          .then(function(resp) {
+            if (resp.ok) cache.put(event.request, resp.clone());
+            return resp;
+          })
+          .catch(function(){ return cached; });
+        return cached || networkFetch;
+      });
     })
   );
+});
+
+// ── MENSAGEM: força ativação ─────────────────────────────────────
+self.addEventListener('message', function(event) {
+  if (event.data === 'SKIP_WAITING' || event.data === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });
