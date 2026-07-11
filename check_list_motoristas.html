@@ -316,7 +316,8 @@ function carregarFrotaServidor() {
       });
       // Salva cache para carregamento offline instantâneo
       try { localStorage.setItem('twm_frota_checklist', JSON.stringify(FROTA)); } catch(e){}
-      // Re-renderiza
+      // Recalcula a lista filtrada e re-renderiza
+      recalcularFrotaFiltrada();
       if (document.getElementById('lista-veiculos')) renderLista();
     })
     .catch(function(){});
@@ -326,7 +327,10 @@ function carregarFrotaServidor() {
 (function(){
   try {
     var c = JSON.parse(localStorage.getItem('twm_frota_checklist')||'[]');
-    if (c.length) { FROTA.length = 0; c.forEach(function(f){ FROTA.push(f); }); }
+    if (c.length) {
+      FROTA.length = 0;
+      c.forEach(function(f){ FROTA.push(f); });
+    }
   } catch(e){}
 })();
 
@@ -389,15 +393,18 @@ let formDados = {};
   CAMPOS.filter(f => f.tipo === 'simnao').forEach(f => { formDados[f.id] = 'Sim'; });
 let checklists = JSON.parse(localStorage.getItem('twm_checklists') || '[]');
 let filaOffline = JSON.parse(localStorage.getItem('twm_fila') || '[]');
-let frotaFiltrada = (function(){
+let frotaFiltrada = [];
+function recalcularFrotaFiltrada(){
   try {
     var cfg = JSON.parse(localStorage.getItem('twm_cl_frota_cfg')||'{}');
     var extra = cfg.extra||[], removidos = cfg.removidos||[], editados = cfg.editados||{};
     var base = FROTA.filter(function(f){ return removidos.indexOf(f.vp)<0; })
                     .map(function(f){ return editados[f.vp] ? Object.assign({},f,editados[f.vp]) : f; });
-    return base.concat(extra);
-  } catch(e) { return [...FROTA]; }
-})();
+    frotaFiltrada = base.concat(extra);
+  } catch(e) { frotaFiltrada = FROTA.slice(); }
+  return frotaFiltrada;
+}
+recalcularFrotaFiltrada();
 
 window.addEventListener('online', () => {
   enviarFilaOffline();
