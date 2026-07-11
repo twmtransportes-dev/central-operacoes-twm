@@ -862,5 +862,47 @@ window.addEventListener('popstate', function(e) {
 history.replaceState({tela:'lista'}, '');
 init();
 </script>
+<script>
+// ══ SERVICE WORKER + AUTO-ATUALIZAÇÃO SILENCIOSA ══
+// Garante que o usuário SEMPRE tenha a versão mais recente,
+// sem precisar limpar cache ou fechar o app.
+if ('serviceWorker' in navigator) {
+  var _swReloaded = false;
+
+  // Quando um novo SW assume o controle, recarrega 1x automaticamente
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    if (_swReloaded) return;
+    _swReloaded = true;
+    window.location.reload();
+  });
+
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('service-worker.js').then(function(reg) {
+      // Força verificação de atualização toda vez que abre
+      reg.update();
+
+      // Se já existe um SW esperando, ativa na hora
+      if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+
+      // Detecta quando uma nova versão termina de baixar
+      reg.addEventListener('updatefound', function() {
+        var nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', function() {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            nw.postMessage('SKIP_WAITING'); // ativa → dispara controllerchange → reload
+          }
+        });
+      });
+
+      // Verifica atualização também quando o app volta ao foco
+      document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) reg.update();
+      });
+    }).catch(function(){});
+  });
+}
+</script>
+
 </body>
 </html>
