@@ -208,6 +208,20 @@ body{
 }
 #modal-overlay.open #modal-box{transform:none}
 #modal-content{padding:16px}
+
+/* ── ALERTA DE VALIDAÇÃO ─── */
+#valida-overlay{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:24px}
+#valida-overlay.show{display:flex}
+#valida-box{background:var(--ios-bg2);border-radius:20px;max-width:340px;width:100%;padding:24px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);animation:valida-pop .25s cubic-bezier(.32,1.4,.5,1)}
+@keyframes valida-pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+#valida-icon{font-size:52px;margin-bottom:12px;line-height:1}
+#valida-titulo{font-size:19px;font-weight:800;color:var(--ios-label);margin-bottom:8px}
+#valida-lista{font-size:15px;color:var(--ios-label2);line-height:1.6;margin-bottom:20px;text-align:left}
+#valida-lista .item{display:flex;align-items:center;gap:8px;padding:6px 0}
+#valida-lista .item span{color:var(--ios-red);font-size:18px}
+#valida-btn{width:100%;padding:14px;background:var(--ios-blue);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
+#valida-btn:active{opacity:.85}
+
 </style>
 </head>
 <body>
@@ -654,6 +668,18 @@ function fecharForm() {
 // ═══════════════════════════════════════════════════════════
 let _salvandoChecklist = false;
 
+
+function mostrarValida(itens){
+  var lista = document.getElementById('valida-lista');
+  lista.innerHTML = itens.map(function(t){
+    return '<div class="item"><span>●</span> ' + t + '</div>';
+  }).join('');
+  document.getElementById('valida-overlay').classList.add('show');
+}
+function fecharValida(){
+  document.getElementById('valida-overlay').classList.remove('show');
+}
+
 async function salvarChecklist() {
   if (_salvandoChecklist) return;
   _salvandoChecklist = true;
@@ -663,18 +689,23 @@ async function salvarChecklist() {
 
   try {
     const campos_required = CAMPOS.filter(f => f.required && f.id);
+    var faltando = [];
     for (const c of campos_required) {
       if (c.tipo === 'simnao') {
-        if (!formDados[c.id]) { showToast('Responda: ' + c.label); throw new Error('validacao'); }
+        if (!formDados[c.id]) faltando.push(c.label);
       } else if (c.tipo === 'foto') {
-        if (!formDados['foto_auto_avaliacao']) { showToast('Adicione a foto de auto avaliação'); throw new Error('validacao'); }
+        if (!formDados['foto_auto_avaliacao']) faltando.push('Foto de auto avaliação (selfie)');
       } else if (c.tipo === 'select-veiculo' || c.tipo === 'datetime' || c.tipo === 'carreta-reserva') {
-        // automáticos — não bloqueiam o salvamento
+        // automáticos — não bloqueiam
       } else {
         const elHifen = document.getElementById('f-' + c.id);
         const valor = (formDados[c.id] && String(formDados[c.id]).trim()) || (elHifen && elHifen.value && elHifen.value.trim());
-        if (!valor) { showToast('Preencha: ' + c.label); throw new Error('validacao'); }
+        if (!valor) faltando.push(c.label);
       }
+    }
+    if (faltando.length) {
+      mostrarValida(faltando);
+      throw new Error('validacao');
     }
 
     const veiculo = caminhaoAtual ? caminhaoAtual.vp : '';
@@ -1372,6 +1403,16 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+
+
+<div id="valida-overlay" onclick="if(event.target===this)fecharValida()">
+  <div id="valida-box">
+    <div id="valida-icon">⚠️</div>
+    <div id="valida-titulo">Faltam informações</div>
+    <div id="valida-lista"></div>
+    <button id="valida-btn" onclick="fecharValida()">Entendi, vou preencher</button>
+  </div>
+</div>
 
 </body>
 </html>
