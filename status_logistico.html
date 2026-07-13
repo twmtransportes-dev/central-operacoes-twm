@@ -357,9 +357,78 @@
   .alert-badge-click { cursor: pointer; }
   .alert-badge-click:active { opacity: 0.7; transform: scale(0.95); }
 
+
+  /* ══ BARRA DE FILTROS ══════════════════════════════════ */
+  .filtros { padding: 0 16px 12px; }
+  .f-busca {
+    width: 100%; padding: 10px 12px; margin-bottom: 8px;
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 12px; color: var(--text); font-size: 13px;
+    font-family: inherit; outline: none; -webkit-appearance: none;
+  }
+  .f-busca:focus { border-color: var(--purple-lt); }
+  .f-linha { display: flex; gap: 8px; align-items: stretch; }
+  .f-select {
+    flex: 1; padding: 9px 10px;
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 12px; color: var(--text); font-size: 12px;
+    font-family: inherit; outline: none; -webkit-appearance: none; cursor: pointer;
+  }
+  .f-chip {
+    display: flex; align-items: center; white-space: nowrap;
+    padding: 9px 12px; border-radius: 12px; cursor: pointer;
+    background: var(--surface); border: 1.5px solid var(--border);
+    color: var(--muted); font-size: 12px; font-weight: 600; transition: all .15s;
+  }
+  .f-chip.on { background: rgba(239,68,68,.15); border-color: #ef4444; color: #ef4444; }
+  .f-ativo {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-top: 8px; padding: 7px 12px;
+    background: rgba(175,82,222,.12); border: 1px solid rgba(175,82,222,.3);
+    border-radius: 10px; font-size: 11px; color: var(--purple-lt); font-weight: 600;
+  }
+  .f-ativo button {
+    background: none; border: none; color: var(--purple-lt);
+    font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; padding: 2px 4px;
+  }
+
+  /* KPI clicável funciona como filtro de status */
+  .kpi-card { cursor: pointer; transition: all .15s; }
+  .kpi-card.filtro-on { box-shadow: 0 0 0 2px currentColor inset; transform: translateY(-2px); }
+
+  /* Data/hora de carregamento no card */
+  .truck-driver { font-size: 9.5px; }
+  .truck-load {
+    font-size: 9px; color: var(--muted); margin-top: 3px;
+    letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .truck-load.urgente { color: #f59e0b; font-weight: 700; }
 </style>
 </head>
 <body>
+<script>
+// ══ ABERTURA DO APP SEMPRE NA CENTRAL ══════════════════════════
+// O PWA restaura a última página aberta. Se o app foi iniciado
+// direto neste módulo (sem ter vindo da Central), volta para ela.
+// Navegação normal (clique na Central) e reload do Service Worker
+// não são afetados.
+(function(){
+  try {
+    var standalone = window.matchMedia('(display-mode: standalone)').matches
+                  || window.navigator.standalone === true;
+    if (!standalone) return;                       // no navegador, link direto é válido
+
+    var nav  = (performance.getEntriesByType('navigation') || [])[0];
+    var tipo = nav ? nav.type : 'navigate';
+    if (tipo === 'reload' || tipo === 'back_forward') return;   // recarregou/voltou: fica
+
+    var veioDeDentro = document.referrer &&
+                       document.referrer.indexOf(location.origin) === 0;
+    if (!veioDeDentro) location.replace('index.html');
+  } catch(e){}
+})();
+</script>
+
 
 <!-- HEADER -->
 <div class="header">
@@ -382,21 +451,43 @@
 
 <!-- KPIs -->
 <div class="kpi-grid" id="kpiGrid" style="display:none">
-  <div class="kpi-card kpi-viagem">
+  <div class="kpi-card kpi-viagem" data-fstatus="viagem" onclick="toggleStatus('viagem')">
     <div class="kpi-number" id="kpiViagem">0</div>
     <div class="kpi-label">Em Viagem</div>
   </div>
-  <div class="kpi-card kpi-desc">
+  <div class="kpi-card kpi-desc" data-fstatus="desc" onclick="toggleStatus('desc')">
     <div class="kpi-number" id="kpiDesc">0</div>
     <div class="kpi-label">Descarregando</div>
   </div>
-  <div class="kpi-card kpi-retorno">
+  <div class="kpi-card kpi-retorno" data-fstatus="retorno" onclick="toggleStatus('retorno')">
     <div class="kpi-number" id="kpiRetorno">0</div>
     <div class="kpi-label">Retorno</div>
   </div>
-  <div class="kpi-card kpi-garagem">
+  <div class="kpi-card kpi-garagem" data-fstatus="garagem" onclick="toggleStatus('garagem')">
     <div class="kpi-number" id="kpiGaragem">0</div>
     <div class="kpi-label">Na Garagem</div>
+  </div>
+</div>
+
+<!-- BARRA DE FILTROS -->
+<div class="filtros" id="filtros" style="display:none">
+  <input id="busca" class="f-busca" type="search" placeholder="🔍 Buscar frota, placa, motorista, rota, cliente…" oninput="renderDashboard()">
+
+  <div class="f-linha">
+    <select id="ordem" class="f-select" onchange="salvarPrefs();renderDashboard()">
+      <option value="carregamento">⏱️ Ordenar: Carregamento</option>
+      <option value="frota">🚛 Ordenar: Nº de frota</option>
+      <option value="manutencao">🔧 Ordenar: Manutenção</option>
+      <option value="rota">🗺️ Ordenar: Rota</option>
+      <option value="cliente">🏭 Ordenar: Cliente</option>
+      <option value="motorista">👤 Ordenar: Motorista</option>
+    </select>
+    <div class="f-chip" id="chipManut" onclick="toggleManut()">🔧 Só c/ manutenção</div>
+  </div>
+
+  <div class="f-ativo" id="filtroAtivo" style="display:none">
+    <span id="filtroAtivoTxt"></span>
+    <button onclick="limparFiltros()">✕ Limpar</button>
   </div>
 </div>
 
@@ -468,6 +559,7 @@ var manutOS     = {};   // { frota: [os, ...] }
 var pendencias  = {};   // { frota: [pend, ...] }
 var placaParaVP = {};   // { 'RML0I14': 'VP183' }  → normalizado, p/ cruzar alertas
 var placaParaVPLabel = {}; // { 'RML0I14': 'VP-183' } → formatado, p/ exibir no card
+var vpCarretas = {};       // { 'V183': ['RB-175','RB-176'] } carretas do conjunto
 
 // ── STATUS RESOLVER ────────────────────────────────────────────
 function resolveStatus(raw) {
@@ -484,6 +576,66 @@ function shortName(full) {
   if (!full) return '—';
   const parts = full.trim().split(/[/,\s]+/);
   return parts[0] || full;
+}
+
+// ── DATA/HORA DE CARREGAMENTO ─────────────────────────────────
+// A planilha traz "02/06/2026 01:00". Se a coluna CARREGAMENTO
+// estiver vazia, cai para AGENDAMENTO (o horário agendado p/ carregar).
+function parseDataHora(s) {
+  if (!s) return 0;
+  var t = String(s).trim();
+  var m = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:[\s,]+(\d{1,2}):(\d{2}))?/);
+  if (m) {
+    var ano = m[3].length === 2 ? 2000 + parseInt(m[3],10) : parseInt(m[3],10);
+    return new Date(ano, parseInt(m[2],10)-1, parseInt(m[1],10),
+                    parseInt(m[4]||'0',10), parseInt(m[5]||'0',10)).getTime();
+  }
+  var d = Date.parse(t);
+  return isNaN(d) ? 0 : d;
+}
+
+// Compacto p/ caber no card: "02/06 · 01:00"
+function fmtCarregamento(s) {
+  var t = parseDataHora(s);
+  if (!t) return '';
+  var d = new Date(t);
+  function z(n){ return (n < 10 ? '0' : '') + n; }
+  return z(d.getDate()) + '/' + z(d.getMonth()+1) + ' · ' + z(d.getHours()) + ':' + z(d.getMinutes());
+}
+
+// ── ESTADO DOS FILTROS ────────────────────────────────────────
+var filtroStatus = '';     // '' = todos | viagem | desc | retorno | garagem
+var filtroManut  = false;  // mostrar só quem tem OS/pendência
+
+function toggleStatus(st) {
+  filtroStatus = (filtroStatus === st) ? '' : st;
+  salvarPrefs(); renderDashboard();
+}
+function toggleManut() {
+  filtroManut = !filtroManut;
+  salvarPrefs(); renderDashboard();
+}
+function limparFiltros() {
+  filtroStatus = ''; filtroManut = false;
+  var b = document.getElementById('busca'); if (b) b.value = '';
+  salvarPrefs(); renderDashboard();
+}
+function salvarPrefs() {
+  try {
+    localStorage.setItem('twm_sl_prefs', JSON.stringify({
+      st: filtroStatus, mn: filtroManut,
+      ord: (document.getElementById('ordem') || {}).value || 'carregamento'
+    }));
+  } catch(e){}
+}
+function carregarPrefs() {
+  try {
+    var p = JSON.parse(localStorage.getItem('twm_sl_prefs') || '{}');
+    filtroStatus = p.st || '';
+    filtroManut  = !!p.mn;
+    var sel = document.getElementById('ordem');
+    if (sel && p.ord) sel.value = p.ord;
+  } catch(e){}
 }
 
 // ── CSV PARSER ─────────────────────────────────────────────────
@@ -513,9 +665,43 @@ function parseCsv(txt) {
 // URL base do Apps Script (checklist/manutenção/pendências)
 var SCRIPT_BASE = 'https://script.google.com/macros/s/AKfycbwAGLjEDNVAJk9nGujpVd6hTl3QY9Ss9Wl0Sm14TqCHBhdAFEPglhcXSzoN7ktSQjoa/exec';
 
+// Escapa HTML (descrições vêm da planilha, podem ter < > &)
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, function(c) {
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c];
+  });
+}
+
 // Normaliza chave de frota: "VP-183" / "vp 183" / "VP183" → "VP183"
 function chaveFrota(v) {
   return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+// ── CHAVE FLEXÍVEL DE VEÍCULO ─────────────────────────────────
+// Identificadores da TWM:
+//   Cavalos  → VP (próprio) · VPL (alugado) · VA (terceirizado)
+//   Carretas → RB (própria) · RBL (alugada) · RA (terceirizada)
+// O NÚMERO é o que identifica o veículo de verdade; o prefixo varia
+// conforme quem cadastra (o encarregado costuma abrir a OS como
+// "VP-313" mesmo quando na planilha está "VPL-313" — é o mesmo caminhão).
+// Por isso a chave de cruzamento é TIPO (V=cavalo / R=carreta) + NÚMERO.
+//   VP-313 · VPL-313 · VA-313  → "V313"
+//   RB-175 · RBL-175 · RA-175  → "R175"
+function chaveFlex(v) {
+  var s = chaveFrota(v);                  // VPL313
+  var m = s.match(/^([A-Z]+)0*(\d+)$/);   // prefixo + número (sem zeros à esquerda)
+  if (!m) return s;
+  var p = m[1].charAt(0);
+  var tipo = (p === 'R') ? 'R' : (p === 'V' ? 'V' : p);
+  return tipo + m[2];
+}
+
+// Separa "RB-175 / RB-176" em ['RB-175','RB-176']
+function listaCarretas(txt) {
+  return String(txt || '')
+    .split(/[\/,;+]/)
+    .map(function(s){ return s.trim(); })
+    .filter(function(s){ return s.length > 0; });
 }
 
 // Uma OS conta como "aberta" se NÃO estiver concluída/cancelada.
@@ -531,20 +717,25 @@ function osEstaAberta(st) {
   return true;
 }
 
-// ── CARREGAR MAPEAMENTO PLACA → FROTA ─────────────────────────
+// ── CARREGAR MAPEAMENTO PLACA → FROTA + CARRETAS ──────────────
 function carregarMapeamentoFrota() {
   return fetch(SCRIPT_BASE + '?action=getFrotasChecklist&_=' + Date.now())
     .then(function(r){ return r.json(); })
     .then(function(res) {
       placaParaVP = {};
       placaParaVPLabel = {};
+      vpCarretas = {};
       if (res.ok && Array.isArray(res.frotas)) {
         res.frotas.forEach(function(f) {
-          if (f.placa && f.vp) {
+          if (!f.vp) return;
+          if (f.placa) {
             var kp = chaveFrota(f.placa);
-            placaParaVP[kp]      = chaveFrota(f.vp);   // VP183  → busca de alertas
-            placaParaVPLabel[kp] = String(f.vp).trim(); // VP-183 → exibição no card
+            placaParaVP[kp]      = chaveFlex(f.vp);     // V183  → cruzar alertas
+            placaParaVPLabel[kp] = String(f.vp).trim(); // VP-183 → exibir no card
           }
+          // Carretas acopladas a este cavalo (coluna F da aba FROTA)
+          var cs = listaCarretas(f.carreta);
+          if (cs.length) vpCarretas[chaveFlex(f.vp)] = cs;
         });
       }
     }).catch(function(){});
@@ -565,7 +756,7 @@ function carregarManutencao() {
       if (res.ok && Array.isArray(res.ordens)) {
         res.ordens.forEach(function(os) {
           if (!osEstaAberta(os.status)) return;
-          var k = chaveFrota(os.frota);
+          var k = chaveFlex(os.frota);   // aceita VP-313 e VPL-313 como o mesmo
           if (!k) return;
           if (!manutOS[k]) manutOS[k] = [];
           manutOS[k].push(os);
@@ -582,7 +773,7 @@ function carregarPendencias() {
       pendencias = {};
       if (res.ok && Array.isArray(res.pendencias)) {
         res.pendencias.forEach(function(p) {
-          var k = chaveFrota(p.frota);
+          var k = chaveFlex(p.frota);
           if (!k) return;
           if (!pendencias[k]) pendencias[k] = [];
           pendencias[k].push(p);
@@ -591,18 +782,53 @@ function carregarPendencias() {
     }).catch(function(){});
 }
 
-// ── VERIFICAR ALERTAS ──────────────────────────────────────────
-// O card mostra a PLACA (ex: RML-0I14) mas as OS/pendências são
-// cadastradas pelo Nº DE FROTA (ex: VP-183). Converte antes de buscar.
-function getAlertas(cavalo) {
-  var kPlaca = chaveFrota(cavalo);          // RML0I14
-  var kVP    = placaParaVP[kPlaca] || '';   // VP183
+// ── VERIFICAR ALERTAS (cavalo + carretas) ─────────────────────
+// O card mostra a PLACA, mas as OS são cadastradas pelo Nº DE FROTA.
+// Um conjunto tem cavalo (VP/VPL/VA) e carreta(s) (RB/RBL/RA) — a OS
+// pode estar em qualquer um deles, então checa todos e marca a origem.
+function getAlertas(v) {
+  var placa = (typeof v === 'string') ? v : (v && v.cavalo) || '';
+  var vpLabel = placaParaVPLabel[chaveFrota(placa)] || '';
 
-  // Busca pelo VP e, como fallback, pela própria placa
-  var os    = (kVP && manutOS[kVP])    || manutOS[kPlaca]    || [];
-  var pends = (kVP && pendencias[kVP]) || pendencias[kPlaca] || [];
+  // Monta a lista de veículos do conjunto
+  var alvos = [];
+  function addAlvo(label, tipo) {
+    if (!label) return;
+    var ch = chaveFlex(label);
+    if (!ch) return;
+    for (var i = 0; i < alvos.length; i++) if (alvos[i].chave === ch) return; // já existe
+    alvos.push({ label: String(label).trim(), chave: ch, tipo: tipo });
+  }
 
-  return { os: os, pends: pends };
+  addAlvo(vpLabel, 'cavalo');
+
+  // Carretas do cadastro (aba FROTA, coluna CARRETA)
+  if (vpLabel) {
+    (vpCarretas[chaveFlex(vpLabel)] || []).forEach(function(c){ addAlvo(c, 'carreta'); });
+  }
+  // Carretas informadas na própria planilha logística
+  if (typeof v === 'object' && v) {
+    listaCarretas(v.carreta1).forEach(function(c){ addAlvo(c, 'carreta'); });
+    listaCarretas(v.carreta2).forEach(function(c){ addAlvo(c, 'carreta'); });
+  }
+
+  var os = [], pends = [];
+  alvos.forEach(function(a) {
+    (manutOS[a.chave] || []).forEach(function(o) {
+      var copia = {};
+      for (var kk in o) copia[kk] = o[kk];
+      copia._orig = a.label; copia._tipo = a.tipo;
+      os.push(copia);
+    });
+    (pendencias[a.chave] || []).forEach(function(p) {
+      var copia = {};
+      for (var kk in p) copia[kk] = p[kk];
+      copia._orig = a.label; copia._tipo = a.tipo;
+      pends.push(copia);
+    });
+  });
+
+  return { os: os, pends: pends, alvos: alvos };
 }
 
 // ── CARREGAR FROTA (CSV da planilha logística) ────────────────
@@ -626,7 +852,10 @@ function carregarFrota() {
           material:  String(r['DESC. MATERIAL'] || '').trim(),
           qt:        r['QT DA ORDEM'] || '',
           carreta1:  String(r['CARRETA 1'] || '').trim(),
+          carreta2:  String(r['CARRETA 2'] || '').trim(),
           agend:     r['AGENDAMENTO'] || '',
+          // Carregamento: usa a coluna própria; se vazia, cai p/ agendamento
+          carreg:    r['CARREGAMENTO'] || r['AGENDAMENTO'] || '',
           raw:       r,
         };
       });
@@ -658,37 +887,118 @@ function carregarTudo() {
 
 // ── RENDER ──────────────────────────────────────────────────────
 function renderDashboard() {
-  _alertasCache = []; // reset
-  const groups = { viagem: [], desc: [], retorno: [], garagem: [] };
-  fleetData.forEach(function(v) { groups[v.status].push(v); });
+  _alertasCache = [];
 
-  // KPIs
-  document.getElementById('kpiGrid').style.display = 'grid';
-  document.getElementById('kpiViagem').textContent  = groups.viagem.length;
-  document.getElementById('kpiDesc').textContent    = groups.desc.length;
-  document.getElementById('kpiRetorno').textContent = groups.retorno.length;
-  document.getElementById('kpiGaragem').textContent = groups.garagem.length;
+  var busca = ((document.getElementById('busca') || {}).value || '')
+                .trim().toLowerCase();
+  var ordem = (document.getElementById('ordem') || {}).value || 'carregamento';
 
-  // Sections
-  const sections = document.getElementById('sections');
+  // Alertas calculados uma vez por viagem (usado no filtro e na ordenação)
+  var itens = fleetData.map(function(v) {
+    var a = getAlertas(v);
+    return { v: v, alertas: a, nAlertas: a.os.length + a.pends.length };
+  });
+
+  // KPIs sempre mostram o total geral (panorama da operação)
+  var totais = { viagem:0, desc:0, retorno:0, garagem:0 };
+  itens.forEach(function(it){ totais[it.v.status]++; });
+  document.getElementById('kpiGrid').style.display  = 'grid';
+  document.getElementById('filtros').style.display  = 'block';
+  document.getElementById('kpiViagem').textContent  = totais.viagem;
+  document.getElementById('kpiDesc').textContent    = totais.desc;
+  document.getElementById('kpiRetorno').textContent = totais.retorno;
+  document.getElementById('kpiGaragem').textContent = totais.garagem;
+
+  // Destaque do KPI usado como filtro
+  document.querySelectorAll('.kpi-card').forEach(function(el) {
+    el.classList.toggle('filtro-on', el.getAttribute('data-fstatus') === filtroStatus);
+  });
+  var chip = document.getElementById('chipManut');
+  if (chip) chip.classList.toggle('on', filtroManut);
+
+  // ── FILTRAR ──
+  var vis = itens.filter(function(it) {
+    if (filtroStatus && it.v.status !== filtroStatus) return false;
+    if (filtroManut  && !it.nAlertas) return false;
+    if (busca) {
+      var alvo = [
+        frotaLabel(it.v.cavalo), it.v.cavalo, it.v.motorista,
+        it.v.rota, it.v.cliente, it.v.material, it.v.carreta1, it.v.carreta2
+      ].join(' ').toLowerCase();
+      if (alvo.indexOf(busca) < 0) return false;
+    }
+    return true;
+  });
+
+  // ── ORDENAR ──
+  function txt(s){ return String(s || '').toLowerCase(); }
+  function numFrota(v){
+    var m = chaveFlex(frotaLabel(v.cavalo)).match(/\d+/);
+    return m ? parseInt(m[0],10) : 999999;
+  }
+  var sorters = {
+    // Mais próximo de carregar primeiro (sem data vai pro fim)
+    carregamento: function(a,b){
+      var ta = parseDataHora(a.v.carreg) || Infinity;
+      var tb = parseDataHora(b.v.carreg) || Infinity;
+      return ta - tb;
+    },
+    frota:      function(a,b){ return numFrota(a.v) - numFrota(b.v); },
+    manutencao: function(a,b){ return b.nAlertas - a.nAlertas; }, // com alerta primeiro
+    rota:       function(a,b){ return txt(a.v.rota).localeCompare(txt(b.v.rota)); },
+    cliente:    function(a,b){ return txt(a.v.cliente).localeCompare(txt(b.v.cliente)); },
+    motorista:  function(a,b){ return txt(a.v.motorista).localeCompare(txt(b.v.motorista)); },
+  };
+  vis.sort(sorters[ordem] || sorters.carregamento);
+
+  // ── AVISO DE FILTRO ATIVO ──
+  var fa = document.getElementById('filtroAtivo');
+  var desc = [];
+  if (filtroStatus) desc.push(STATUS_META[filtroStatus].label);
+  if (filtroManut)  desc.push('com manutenção');
+  if (busca)        desc.push('"' + busca + '"');
+  if (desc.length) {
+    fa.style.display = 'flex';
+    document.getElementById('filtroAtivoTxt').textContent =
+      'Filtrando: ' + desc.join(' · ') + ' — ' + vis.length + ' de ' + itens.length;
+  } else {
+    fa.style.display = 'none';
+  }
+
+  // ── AGRUPAR POR STATUS (mantendo a ordem escolhida dentro do grupo) ──
+  var groups = { viagem: [], desc: [], retorno: [], garagem: [] };
+  vis.forEach(function(it){ groups[it.v.status].push(it); });
+
+  var sections = document.getElementById('sections');
   sections.innerHTML = '';
 
-  const order = ['viagem','desc','retorno','garagem'];
-  order.forEach(function(key) {
-    const list = groups[key];
-    if (!list.length) return;
-    const meta = STATUS_META[key];
+  if (!vis.length) {
+    sections.innerHTML = '<div class="empty-state"><div class="big-icon">🔍</div>'
+      + '<h3>Nenhum caminhão encontrado</h3><p>Ajuste os filtros para ver mais resultados.</p></div>';
+    document.getElementById('timestamp').textContent =
+      'Última atualização: ' + new Date().toLocaleString('pt-BR');
+    return;
+  }
 
-    const sec = document.createElement('div');
+  ['viagem','desc','retorno','garagem'].forEach(function(key) {
+    var list = groups[key];
+    if (!list.length) return;
+    var meta = STATUS_META[key];
+
+    var sec = document.createElement('div');
     sec.className = 'section';
-    sec.innerHTML = '<div class="section-header"><div class="section-label"><span class="section-dot ' + meta.dotClass + '"></span>' + meta.label + '</div><span class="section-count">' + list.length + '</span></div><div class="truck-grid" id="grid-' + key + '"></div>';
+    sec.innerHTML = '<div class="section-header"><div class="section-label">'
+      + '<span class="section-dot ' + meta.dotClass + '"></span>' + meta.label
+      + '</div><span class="section-count">' + list.length + '</span></div>'
+      + '<div class="truck-grid" id="grid-' + key + '"></div>';
     sections.appendChild(sec);
 
-    const grid = sec.querySelector('#grid-' + key);
-    list.forEach(function(v) {
-      var alertas = getAlertas(v.cavalo);
+    var grid = sec.querySelector('#grid-' + key);
+    list.forEach(function(it) {
+      var v = it.v, alertas = it.alertas;
       var _idx = _alertasCache.length;
       _alertasCache.push(alertas);
+
       var alertHtml = '';
       if (alertas.os.length) {
         alertHtml += '<span class="alert-badge alert-os alert-badge-click" onclick="event.stopPropagation();abrirAlertaOS(' + _idx + ')" style="cursor:pointer">🔧 ' + alertas.os.length + ' OS</span>';
@@ -697,20 +1007,25 @@ function renderDashboard() {
         alertHtml += '<span class="alert-badge alert-pend alert-badge-click" onclick="event.stopPropagation();abrirAlertaPend(' + _idx + ')" style="cursor:pointer">⚠️ ' + alertas.pends.length + ' Pend.</span>';
       }
 
-      const card = document.createElement('div');
-      card.className = 'truck-card';
+      // Carregamento: destaca em laranja se for nas próximas 6h
+      var carreg = fmtCarregamento(v.carreg);
+      var tC = parseDataHora(v.carreg);
+      var urgente = tC && (tC - Date.now()) > 0 && (tC - Date.now()) < 6*3600*1000;
+
+      var card = document.createElement('div');
+      card.className = 'truck-card card-' + key;
       card.onclick = function() { openModal(v); };
       card.innerHTML = '<div class="truck-icon-wrap ' + meta.iconClass + '">' + meta.icon + '</div>'
-        + '<div class="truck-plate">' + frotaLabel(v.cavalo) + '</div>'
-        + '<div class="truck-driver">' + shortName(v.motorista) + '</div>'
+        + '<div class="truck-plate">' + esc(frotaLabel(v.cavalo)) + '</div>'
+        + '<div class="truck-driver">' + esc(shortName(v.motorista)) + '</div>'
+        + (carreg ? '<div class="truck-load' + (urgente ? ' urgente' : '') + '">🕐 ' + carreg + '</div>' : '')
         + (alertHtml ? '<div class="truck-alerts">' + alertHtml + '</div>' : '');
       grid.appendChild(card);
     });
   });
 
-  // Timestamp
-  const now = new Date();
-  document.getElementById('timestamp').textContent = 'Última atualização: ' + now.toLocaleString('pt-BR');
+  document.getElementById('timestamp').textContent =
+    'Última atualização: ' + new Date().toLocaleString('pt-BR');
 }
 
 // ── MODAL ───────────────────────────────────────────────────────
@@ -723,22 +1038,69 @@ function openModal(v) {
 
   document.getElementById('modalBadge').innerHTML = '<div class="modal-status-badge ' + meta.badgeClass + '"><span>⬤</span> ' + meta.label + '</div>';
 
-  var alertas = getAlertas(v.cavalo);
+  var alertas = getAlertas(v);
   var alertSection = '';
   if (alertas.os.length || alertas.pends.length) {
-    alertSection = '<div style="margin:12px 0;padding:12px;background:rgba(239,68,68,.1);border-radius:10px;border:1px solid rgba(239,68,68,.2)">';
-    if (alertas.os.length) {
-      alertSection += '<div style="font-weight:700;color:#ef4444;margin-bottom:6px">🔧 OS em aberto (' + alertas.os.length + ')</div>';
-      alertas.os.forEach(function(os) {
-        alertSection += '<div style="font-size:12px;color:var(--text);margin-bottom:2px">• ' + (os.id || '') + ': ' + ((os.servicos||[])[0]||{}).descricao + '</div>';
-      });
+
+    // Agrupa por veículo de origem (VP-306, RB-125...) — a OS pode ser
+    // do cavalo ou de uma das carretas do conjunto.
+    var grupos = [];
+    function grupo(label, tipo) {
+      for (var i = 0; i < grupos.length; i++) if (grupos[i].label === label) return grupos[i];
+      var g = { label: label, tipo: tipo, os: [], pends: [] };
+      grupos.push(g);
+      return g;
     }
-    if (alertas.pends.length) {
-      alertSection += '<div style="font-weight:700;color:#f59e0b;margin-top:8px;margin-bottom:6px">⚠️ Pendências (' + alertas.pends.length + ')</div>';
-      alertas.pends.forEach(function(p) {
-        alertSection += '<div style="font-size:12px;color:var(--text);margin-bottom:2px">• ' + (p.descricao || p.tipo || '') + '</div>';
+    alertas.os.forEach(function(o){ grupo(o._orig, o._tipo).os.push(o); });
+    alertas.pends.forEach(function(p){ grupo(p._orig, p._tipo).pends.push(p); });
+    // Cavalo primeiro, carretas depois
+    grupos.sort(function(a,b){ return (a.tipo === 'cavalo' ? 0 : 1) - (b.tipo === 'cavalo' ? 0 : 1); });
+
+    alertSection = '<div style="margin:12px 0;padding:12px;background:rgba(239,68,68,.08);border-radius:12px;border:1px solid rgba(239,68,68,.2)">';
+    alertSection += '<div style="font-weight:800;color:#ef4444;margin-bottom:10px;font-size:14px">'
+      + '⚠️ Manutenção — ' + alertas.os.length + ' OS · ' + alertas.pends.length + ' pendência(s)</div>';
+
+    grupos.forEach(function(g, gi) {
+      var ehCavalo = g.tipo === 'cavalo';
+      var cor  = ehCavalo ? '#AF52DE' : '#32ADE6';
+      var tag  = ehCavalo ? 'CAVALO'  : 'CARRETA';
+
+      alertSection += '<div style="' + (gi ? 'margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);' : '') + '">';
+      alertSection += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
+        + '<span style="font-weight:800;font-size:13px;color:' + cor + '">' + esc(g.label) + '</span>'
+        + '<span style="font-size:9px;font-weight:700;letter-spacing:.5px;color:' + cor + ';background:' + cor + '22;padding:2px 6px;border-radius:6px">' + tag + '</span>'
+        + '</div>';
+
+      // OS — cada uma com TODOS os seus serviços
+      g.os.forEach(function(os) {
+        alertSection += '<div style="margin-bottom:8px">'
+          + '<div style="font-size:11px;color:#ef4444;font-weight:700">🔧 ' + esc(os.id || 'OS')
+          + (os.status ? ' <span style="color:var(--muted);font-weight:500">· ' + esc(os.status) + '</span>' : '')
+          + '</div>';
+        var svs = os.servicos || [];
+        if (svs.length) {
+          svs.forEach(function(sv) {
+            var txt = sv.descricao || sv.tipo || '';
+            if (!txt) return;
+            alertSection += '<div style="font-size:12px;color:var(--text);padding-left:14px;margin-top:2px">• ' + esc(txt) + '</div>';
+          });
+        } else {
+          alertSection += '<div style="font-size:12px;color:var(--muted);padding-left:14px">• (sem serviços detalhados)</div>';
+        }
+        alertSection += '</div>';
       });
-    }
+
+      // Pendências do mesmo veículo
+      g.pends.forEach(function(p) {
+        alertSection += '<div style="font-size:12px;color:var(--text);margin-bottom:3px">'
+          + '<span style="color:#f59e0b;font-weight:700">⚠️</span> ' + esc(p.descricao || p.tipo || 'Pendência')
+          + (p.pend_nota || p.motivo ? '<span style="color:var(--muted)"> — ' + esc(p.pend_nota || p.motivo) + '</span>' : '')
+          + '</div>';
+      });
+
+      alertSection += '</div>';
+    });
+
     alertSection += '</div>';
   }
 
@@ -753,7 +1115,8 @@ function openModal(v) {
     ['Cliente',     v.cliente  || '—'],
     ['Material',    v.material || '—'],
     ['Quantidade',  v.qt ? Number(String(v.qt).replace(/[^\d.]/g,'')).toLocaleString('pt-BR') + ' L' : '—'],
-    ['Carreta',     v.carreta1 || '—'],
+    ['Carreta',     [v.carreta1, v.carreta2].filter(Boolean).join(' / ') || '—'],
+    ['Carregamento',fmtCarregamento(v.carreg) || '—'],
     ['Agendamento', fmtDate(v.agend)],
   ];
 
@@ -778,59 +1141,82 @@ var _alertasCache = [];
 function abrirAlertaOS(idx) {
   var alertas = _alertasCache[idx];
   if (!alertas || !alertas.os.length) return;
-  document.getElementById('alertModalTitle').textContent = '🔧 Ordens de Serviço em Aberto';
+  document.getElementById('alertModalTitle').textContent =
+    '🔧 Ordens de Serviço em Aberto (' + alertas.os.length + ')';
   var html = '';
   alertas.os.forEach(function(os) {
-    html += '<div class="alert-item">';
-    html += '<div class="alert-item-title" style="color:#ef4444">' + (os.id||'OS') + ' — ' + (os.frota||'') + '</div>';
-    var itens = [
-      ['Status',    os.statusRaw || os.status || '—'],
-      ['Prioridade',os.prioridade || '—'],
-      ['Motorista', os.motorista  || '—'],
-      ['Abertura',  os.data       || '—'],
-    ];
-    itens.forEach(function(r) {
-      html += '<div class="alert-item-row"><span class="alert-item-label">' + r[0] + '</span><span class="alert-item-value">' + (r[1]||'—') + '</span></div>';
+    var ehCavalo = os._tipo === 'cavalo';
+    var cor = ehCavalo ? '#AF52DE' : '#32ADE6';
+    var tag = ehCavalo ? 'CAVALO' : 'CARRETA';
+    var alvo = os._orig || os.frota || '';
+
+    html += '<div class="alert-item" style="border-left:3px solid ' + cor + '">';
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
+      + '<span style="font-weight:800;font-size:14px;color:' + cor + '">' + esc(alvo) + '</span>'
+      + '<span style="font-size:9px;font-weight:700;letter-spacing:.5px;color:' + cor + ';background:' + cor + '22;padding:2px 6px;border-radius:6px">' + tag + '</span>'
+      + '</div>';
+    html += '<div class="alert-item-title" style="color:#ef4444">' + esc(os.id || 'OS') + '</div>';
+
+    [['Status', os.status || '—'],
+     ['Prioridade', os.prioridade || '—'],
+     ['Motorista', os.motorista || '—'],
+     ['Abertura', os.data || '—']
+    ].forEach(function(r) {
+      html += '<div class="alert-item-row"><span class="alert-item-label">' + r[0]
+        + '</span><span class="alert-item-value">' + esc(r[1] || '—') + '</span></div>';
     });
-    if (os.servicos && os.servicos.length) {
-      html += '<div class="alert-item-row" style="flex-direction:column;gap:4px"><span class="alert-item-label" style="margin-bottom:4px">Serviços</span>';
-      os.servicos.forEach(function(sv) {
-        html += '<span style="font-size:12px;background:rgba(239,68,68,.1);padding:3px 8px;border-radius:6px;color:#ef4444">• ' + (sv.descricao||sv.tipo||'') + '</span>';
+
+    // TODOS os serviços da OS (antes só o primeiro aparecia)
+    var svs = os.servicos || [];
+    html += '<div class="alert-item-row" style="flex-direction:column;align-items:flex-start;gap:4px">'
+      + '<span class="alert-item-label" style="margin-bottom:4px">Serviços (' + svs.length + ')</span>';
+    if (svs.length) {
+      svs.forEach(function(sv) {
+        var txt = sv.descricao || sv.tipo || '';
+        if (!txt) return;
+        html += '<span style="font-size:12px;background:rgba(239,68,68,.1);padding:4px 8px;border-radius:6px;color:#ef4444;display:block;width:100%">• ' + esc(txt) + '</span>';
       });
-      html += '</div>';
+    } else {
+      html += '<span style="font-size:12px;color:var(--muted)">(sem serviços detalhados)</span>';
     }
-    html += '</div>';
+    html += '</div></div>';
   });
   document.getElementById('alertModalBody').innerHTML = html;
-  var m = document.getElementById('alertModal');
-  m.style.display = 'flex';
-  setTimeout(function(){ m.querySelector('.modal').style.transform = 'none'; }, 10);
+  document.getElementById('alertModal').style.display = 'flex';
 }
 
 function abrirAlertaPend(idx) {
   var alertas = _alertasCache[idx];
   if (!alertas || !alertas.pends.length) return;
-  document.getElementById('alertModalTitle').textContent = '⚠️ Pendências de Manutenção';
+  document.getElementById('alertModalTitle').textContent =
+    '⚠️ Pendências de Manutenção (' + alertas.pends.length + ')';
   var html = '';
   alertas.pends.forEach(function(p) {
-    html += '<div class="alert-item">';
-    html += '<div class="alert-item-title" style="color:#f59e0b">' + (p.tipo || p.servico || 'Pendência') + '</div>';
-    var itens = [
-      ['Frota',     p.frota     || '—'],
-      ['Descrição', p.descricao || '—'],
-      ['Motivo',    p.pend_nota || p.motivo || '—'],
-      ['Mecânico',  p.mecanico  || '—'],
-      ['Data',      p.data_pend || p.data   || '—'],
-    ];
-    itens.forEach(function(r) {
+    var ehCavalo = p._tipo === 'cavalo';
+    var cor = ehCavalo ? '#AF52DE' : '#32ADE6';
+    var tag = ehCavalo ? 'CAVALO' : 'CARRETA';
+    var alvo = p._orig || p.frota || '';
+
+    html += '<div class="alert-item" style="border-left:3px solid ' + cor + '">';
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
+      + '<span style="font-weight:800;font-size:14px;color:' + cor + '">' + esc(alvo) + '</span>'
+      + '<span style="font-size:9px;font-weight:700;letter-spacing:.5px;color:' + cor + ';background:' + cor + '22;padding:2px 6px;border-radius:6px">' + tag + '</span>'
+      + '</div>';
+    html += '<div class="alert-item-title" style="color:#f59e0b">' + esc(p.tipo || p.servico || 'Pendência') + '</div>';
+
+    [['Descrição', p.descricao || '—'],
+     ['Motivo',    p.pend_nota || p.motivo || '—'],
+     ['Mecânico',  p.mecanico  || '—'],
+     ['Data',      p.data_pend || p.data || '—']
+    ].forEach(function(r) {
       if (!r[1] || r[1] === '—') return;
-      html += '<div class="alert-item-row"><span class="alert-item-label">' + r[0] + '</span><span class="alert-item-value">' + r[1] + '</span></div>';
+      html += '<div class="alert-item-row"><span class="alert-item-label">' + r[0]
+        + '</span><span class="alert-item-value">' + esc(r[1]) + '</span></div>';
     });
     html += '</div>';
   });
   document.getElementById('alertModalBody').innerHTML = html;
-  var m = document.getElementById('alertModal');
-  m.style.display = 'flex';
+  document.getElementById('alertModal').style.display = 'flex';
 }
 
 function fecharAlertaModal(e) {
@@ -840,6 +1226,7 @@ function fecharAlertaModal(e) {
 }
 
 // ── INIT & AUTO-REFRESH ────────────────────────────────────────
+carregarPrefs();   // restaura filtro/ordenação escolhidos antes
 carregarTudo();
 setInterval(carregarTudo, 120000);
 
