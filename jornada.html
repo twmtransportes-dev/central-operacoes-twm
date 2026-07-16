@@ -75,6 +75,14 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .vc-kml.bom{background:rgba(16,185,129,.12);color:var(--green);border:1px solid rgba(16,185,129,.25)}
 .vc-kml.medio{background:rgba(245,158,11,.12);color:var(--diesel);border:1px solid rgba(245,158,11,.25)}
 .vc-kml.ruim{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.25)}
+
+/* LOCALIZAÇÃO */
+.vc-local{margin-top:10px;padding:8px 10px;background:rgba(123,63,228,.1);border:1px solid rgba(123,63,228,.3);border-radius:8px}
+.vc-local-label{font-size:9px;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.5px}
+.vc-local-value{font-size:12px;color:var(--text);font-weight:600;margin-top:2px}
+.local-select{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:inherit;font-size:12px;padding:6px 8px;outline:none;margin-top:4px}
+.btn-atualizar-local{padding:6px 10px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:10px;font-weight:700;cursor:pointer;text-transform:uppercase;margin-top:4px;width:100%}
+
 .vc-fin-row{display:flex;gap:8px;margin-top:10px}
 .vc-fin-row input{flex:1;background:var(--bg);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;padding:9px 11px;outline:none}
 .vc-fin-row input:focus{border-color:var(--rota)}
@@ -143,31 +151,26 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
     <div class="form-title">🚚 Iniciar Viagem</div>
     <div class="field">
       <label>Frota / Prefixo *</label>
-      <input type="text" id="ini-frota" placeholder="Ex: VP-183" autocomplete="off" autocapitalize="characters"
-             oninput="this.value=this.value.toUpperCase()">
+      <input id="inp-frota" type="text" placeholder="VP-100" required>
     </div>
     <div class="field">
       <label>Motorista *</label>
-      <input type="text" id="ini-motorista" placeholder="Nome completo do motorista" autocomplete="off">
+      <input id="inp-motorista" type="text" placeholder="João Silva" required>
     </div>
     <div class="field">
       <label>KM Inicial *</label>
-      <input type="number" id="ini-km" placeholder="Ex: 145230">
+      <input id="inp-km-ini" type="number" placeholder="0" required>
     </div>
     <div class="field">
-      <label>Rota / Destino</label>
-      <input type="text" id="ini-rota" placeholder="Ex: São Paulo → Curitiba" autocomplete="off">
+      <label>Rota (opcional)</label>
+      <input id="inp-rota" type="text" placeholder="Belo Horizonte - São Paulo">
     </div>
-    <button class="btn-reg" onclick="iniciarViagem()">🚚 Iniciar Viagem</button>
+    <button class="btn-reg" onclick="iniciarViagemClick()">✈️ Iniciar Viagem</button>
   </div>
 </div>
 
 <!-- ABA FINALIZAR -->
 <div class="page" id="page-finalizar">
-  <div class="form-card" style="padding:12px 14px">
-    <div class="form-title" style="margin-bottom:4px">🏁 Viagens em Aberto</div>
-    <div class="cfg-note" style="margin:0">Informe o KM final para encerrar e calcular o consumo.</div>
-  </div>
   <div id="lista-abertas"></div>
 </div>
 
@@ -175,19 +178,14 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 <div class="page" id="page-historico">
   <div class="stats">
     <div class="scard r"><div class="sn" id="st-viagens">0</div><div class="sl">Viagens</div></div>
-    <div class="scard t"><div class="sn" id="st-km">0</div><div class="sl">KM Rodado</div></div>
+    <div class="scard d"><div class="sn" id="st-km">0</div><div class="sl">KM</div></div>
     <div class="scard d"><div class="sn" id="st-litros">0</div><div class="sl">Litros</div></div>
-    <div class="scard g"><div class="sn" id="st-kml">0</div><div class="sl">Média Km/L</div></div>
-  </div>
-  <div class="filtros-grid">
-    <div class="field" style="margin:0"><label>Motorista</label><input type="text" id="hist-motorista" placeholder="Filtrar por motorista"></div>
-    <div class="field" style="margin:0"><label>Frota</label><input type="text" id="hist-frota" placeholder="Ex: VP-183"></div>
+    <div class="scard t"><div class="sn" id="st-kml">0</div><div class="sl">KM/L</div></div>
   </div>
   <div class="filter-row">
-    <div class="fbtn on" onclick="setFiltroHist('fechada',this)">Fechadas</div>
-    <div class="fbtn" onclick="setFiltroHist('aberta',this)">Abertas</div>
-    <div class="fbtn" onclick="setFiltroHist('todas',this)">Todas</div>
-    <div class="fbtn" onclick="carregarHistorico()">🔄 Atualizar</div>
+    <button class="fbtn on" id="fbtn-todas" onclick="filtrarHistorico('todas',this)">Todas</button>
+    <button class="fbtn" id="fbtn-abertas" onclick="filtrarHistorico('ABERTA',this)">Abertas</button>
+    <button class="fbtn" id="fbtn-fechadas" onclick="filtrarHistorico('FECHADA',this)">Fechadas</button>
   </div>
   <div id="lista-hist"></div>
 </div>
@@ -195,165 +193,94 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 <!-- ABA CONFIG -->
 <div class="page" id="page-config">
   <div class="cfg-card">
-    <div class="cfg-title">Google Apps Script</div>
+    <div class="cfg-title">⚙️ Configuração do Script</div>
     <div class="field">
-      <label>SCRIPT URL</label>
-      <input type="text" id="cfg-script" placeholder="https://script.google.com/...">
+      <label>Script URL (Apps Script)</label>
+      <input id="cfg-script" type="text">
     </div>
-    <button class="btn-ghost" onclick="salvarConfig()" style="margin-top:8px">💾 Salvar</button>
-    <div class="cfg-note">Script dedicado ao módulo Jornada (projeto separado do Abastecimento). Cole aqui a URL /exec depois de implantar o AppsScript_Jornada_Separado.gs.</div>
+    <button class="btn-reg" onclick="salvarConfig()" style="background:linear-gradient(135deg,#7B3FE4,#A855F7)">💾 Salvar</button>
+  </div>
+  <div class="cfg-card">
+    <div class="cfg-title">ℹ️ Informações</div>
+    <div class="cfg-note">
+      <strong>Como usar:</strong><br>
+      1. Preencha Frota, Motorista e KM inicial<br>
+      2. Clique em "Iniciar Viagem"<br>
+      3. Quando chegar ao destino, finalize com o KM final<br>
+      4. Atualizar Localização permite rastrear o veículo em tempo real
+    </div>
   </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════
-//  CONSTANTES
-// ═══════════════════════════════════════════════
-// ⚠️ Substitua pela URL /exec do projeto "Jornada" (separado do Abastecimento)
-// depois de implantar o AppsScript_Jornada_Separado.gs como Web App.
-var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx0wK7f3lJvahV8LvsKOwNN_iu9Txo7grisBi2SvLRdVzAIG4lVom_yxXw2rYhjZhEeTA/exec';
-var CFG_KEY    = 'twm_jornada_cfg';
+var SCRIPT_URL = 'https://script.google.com/macros/d/AKfycbw4BZz60sy9BsFACdqKktKpzJOfP8mj0U6s1G7Em5pwhaC_kQHCk-GPbLNZOlwjvrOwsw/userweb';
+var CFG_KEY = 'twm_jornada_cfg';
+var viagensAbertas = [];
+var viagensHist = [];
+var filtroHist = 'todas';
 
-// ═══════════════════════════════════════════════
-//  ESTADO
-// ═══════════════════════════════════════════════
-var viagensAbertas   = [];
-var viagensHist      = [];
-var filtroHistStatus = 'fechada';
-
-// ═══════════════════════════════════════════════
-//  UTILS
-// ═══════════════════════════════════════════════
-function scriptAtivo() { var c = ler(CFG_KEY); return (c && c.scriptUrl) ? c.scriptUrl : SCRIPT_URL; }
-function salvar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} }
-function ler(k)       { try { return JSON.parse(localStorage.getItem(k)); } catch(e) { return null; } }
-
-function _isAdminMaster(){
-  try{
-    var pStr = localStorage.getItem('twm_permissoes');
-    if(pStr){ var p2=JSON.parse(pStr); if(p2.admin_master) return true; }
-    var u=JSON.parse(localStorage.getItem('twm_user_cache')||'{}');
-    var p=u.permissoes||{};
-    return !!(p.admin_master||p.ADMIN_MASTER);
-  }catch(e){return false;}
-}
-
+function salvar(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+function ler(k) { var v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }
 function toast(msg, tipo) {
   var el = document.getElementById('toast');
   el.textContent = msg;
-  el.className = 'toast on' + (tipo ? ' ' + tipo : '');
-  setTimeout(function(){ el.className = 'toast'; }, 3500);
+  el.className = 'toast on ' + (tipo||'');
+  setTimeout(() => { el.className = 'toast'; }, 2500);
 }
-function setSyncBar(msg, tipo) {
-  var el = document.getElementById('syncBar');
-  el.textContent = msg;
-  el.className = 'sync-bar on' + (tipo ? ' ' + tipo : '');
-  if (tipo === 'ok') setTimeout(function(){ el.className = 'sync-bar'; }, 3000);
-}
-
-// ═══════════════════════════════════════════════
-//  VINDO DO CHECKLIST (?novo=1&frota=&motorista=&km=)
-// ═══════════════════════════════════════════════
-function aplicarParametrosURL() {
-  var qs = new URLSearchParams(window.location.search);
-  if (qs.get('novo') !== '1') return;
-
-  var frota     = (qs.get('frota') || '').trim().toUpperCase();
-  var motorista = (qs.get('motorista') || '').trim();
-  var km        = (qs.get('km') || '').trim();
-
-  if (frota)     document.getElementById('ini-frota').value = frota;
-  if (motorista) document.getElementById('ini-motorista').value = motorista;
-  if (km)        document.getElementById('ini-km').value = km;
-
-  var banner = document.getElementById('banner-checklist');
-  if (banner) banner.style.display = 'flex';
+function sync(msg, ok) {
+  var bar = document.getElementById('syncBar');
+  bar.textContent = msg;
+  bar.className = 'sync-bar on ' + (ok ? 'ok' : 'err');
+  setTimeout(() => { bar.className = 'sync-bar'; }, 1500);
 }
 
-// ═══════════════════════════════════════════════
-//  INICIAR VIAGEM
-// ═══════════════════════════════════════════════
-function iniciarViagem() {
-  var frota     = document.getElementById('ini-frota').value.trim().toUpperCase();
-  var motorista = document.getElementById('ini-motorista').value.trim();
-  var km        = document.getElementById('ini-km').value.trim();
-  var rota      = document.getElementById('ini-rota').value.trim();
+function iniciarViagemClick() {
+  var frota = document.getElementById('inp-frota').value.trim().toUpperCase();
+  var motorista = document.getElementById('inp-motorista').value.trim();
+  var kmIni = parseFloat(document.getElementById('inp-km-ini').value || 0);
+  var rota = document.getElementById('inp-rota').value.trim();
 
-  if (!frota)     { toast('⚠️ Informe a frota', 'err'); return; }
-  if (!motorista) { toast('⚠️ Informe o motorista', 'err'); return; }
-  if (!km || parseFloat(km) <= 0) { toast('⚠️ Informe o KM inicial', 'err'); return; }
+  if (!frota || !motorista || !kmIni) {
+    toast('Preencha Frota, Motorista e KM inicial', 'err');
+    return;
+  }
 
-  setSyncBar('⏳ Iniciando viagem...', '');
+  var cfg = ler(CFG_KEY) || {};
+  var url = (cfg.scriptUrl || SCRIPT_URL) + '?action=iniciarViagem&frota=' + encodeURIComponent(frota) + 
+            '&motorista=' + encodeURIComponent(motorista) + '&km_inicial=' + kmIni + 
+            '&rota=' + encodeURIComponent(rota);
 
-  var params = 'action=iniciarViagem' +
-    '&frota='      + encodeURIComponent(frota) +
-    '&motorista='  + encodeURIComponent(motorista) +
-    '&km_inicial=' + encodeURIComponent(km) +
-    '&rota='       + encodeURIComponent(rota || '');
-
-  var xhr = new XMLHttpRequest();
-  xhr.timeout = 15000;
-  xhr.open('GET', scriptAtivo() + '?' + params, true);
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState !== 4) return;
-    try {
-      var resp = JSON.parse(xhr.responseText);
-      if (resp.ok) {
-        setSyncBar('✅ Viagem iniciada!', 'ok');
-        toast('🚚 Viagem de ' + frota + ' iniciada!', 'ok');
-        limparFormIniciar();
-      } else {
-        setSyncBar('⚠️ ' + (resp.msg || 'Erro ao iniciar'), 'err');
-        toast('⚠️ ' + (resp.msg || 'Erro ao iniciar viagem'), 'err');
-      }
-    } catch(e) {
-      setSyncBar('✅ Enviado!', 'ok');
-      toast('🚚 Viagem de ' + frota + ' iniciada!', 'ok');
-      limparFormIniciar();
+  fetch(url).then(r => r.json()).then(d => {
+    if (d.ok) {
+      toast('✅ Viagem iniciada para ' + frota, 'ok');
+      document.getElementById('inp-frota').value = '';
+      document.getElementById('inp-motorista').value = '';
+      document.getElementById('inp-km-ini').value = '';
+      document.getElementById('inp-rota').value = '';
+    } else {
+      toast('❌ ' + d.msg, 'err');
     }
-  };
-  xhr.onerror   = function() { setSyncBar('📵 Sem conexão', 'err'); toast('📵 Sem conexão — tente novamente', 'err'); };
-  xhr.ontimeout = function() { setSyncBar('⏱️ Timeout', 'err'); };
-  xhr.send();
+  }).catch(err => {
+    toast('Erro ao conectar com servidor', 'err');
+  });
 }
 
-function limparFormIniciar() {
-  document.getElementById('ini-frota').value = '';
-  document.getElementById('ini-motorista').value = '';
-  document.getElementById('ini-km').value = '';
-  document.getElementById('ini-rota').value = '';
-  var banner = document.getElementById('banner-checklist');
-  if (banner) banner.style.display = 'none';
-}
-
-// ═══════════════════════════════════════════════
-//  FINALIZAR VIAGEM
-// ═══════════════════════════════════════════════
 function carregarViagensAbertas() {
-  var el = document.getElementById('lista-abertas');
-  el.innerHTML = '<div class="empty">Carregando viagens em aberto...</div>';
+  var cfg = ler(CFG_KEY) || {};
+  var url = (cfg.scriptUrl || SCRIPT_URL) + '?action=getViagens&status=ABERTA';
 
-  var xhr = new XMLHttpRequest();
-  xhr.timeout = 15000;
-  xhr.open('GET', scriptAtivo() + '?action=getViagens&status=ABERTA&_=' + Date.now(), true);
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState !== 4) return;
-    try {
-      var resp = JSON.parse(xhr.responseText);
-      viagensAbertas = (resp.ok && resp.viagens) ? resp.viagens : [];
-    } catch(e) { viagensAbertas = []; }
-    renderViagensAbertas();
-  };
-  xhr.onerror = xhr.ontimeout = function() {
-    el.innerHTML = '<div class="empty">📵 Sem conexão para buscar viagens em aberto.</div>';
-  };
-  xhr.send();
+  fetch(url).then(r => r.json()).then(d => {
+    if (d.ok) {
+      viagensAbertas = d.viagens || [];
+      renderViagensAbertas();
+    }
+  }).catch(() => {});
 }
 
 function renderViagensAbertas() {
   var el = document.getElementById('lista-abertas');
   if (!viagensAbertas.length) {
-    el.innerHTML = '<div class="empty">Nenhuma viagem em aberto no momento.</div>';
+    el.innerHTML = '<div class="empty">Nenhuma viagem em aberto.</div>';
     return;
   }
   var html = '';
@@ -363,92 +290,96 @@ function renderViagensAbertas() {
         '<div><div class="vc-frota">' + v.frota + '</div><div class="vc-mot">' + v.motorista + (v.rota ? ' · ' + v.rota : '') + '</div></div>' +
         '<div class="vc-status aberta">Aberta</div>' +
       '</div>' +
-      '<div class="vc-info"><span>KM inicial: <b>' + Number(v.km_inicial).toLocaleString('pt-BR') + '</b></span></div>' +
+      '<div class="vc-info">' +
+        '<span>KM inicial: <b>' + Number(v.km_inicial).toLocaleString('pt-BR') + '</b></span>' +
+      '</div>' +
+      '<div class="vc-local">' +
+        '<div class="vc-local-label">📍 Localização Atual:</div>' +
+        '<div class="vc-local-value">' + (v.local || 'Garagem') + '</div>' +
+        '<select class="local-select" id="local-sel-' + v.frota + '">' +
+          '<option value="Garagem">🏢 Garagem</option>' +
+          '<option value="Indo Entregar">🚚 Indo Entregar</option>' +
+          '<option value="Descarregando">📦 Descarregando</option>' +
+          '<option value="Voltando">↩️ Voltando</option>' +
+        '</select>' +
+        '<button class="btn-atualizar-local" onclick="atualizarLocalizacao(\'' + v.frota + '\')">Atualizar Local</button>' +
+      '</div>' +
       '<div class="vc-fin-row">' +
-        '<input type="number" id="fin-km-' + v.frota + '" placeholder="KM final">' +
-        '<button class="vc-fin-btn" onclick="finalizarViagem(\'' + v.frota + '\')">🏁 Finalizar</button>' +
+        '<input id="km-fin-' + v.frota + '" type="number" placeholder="KM final" min="' + v.km_inicial + '">' +
+        '<button class="vc-fin-btn" onclick="finalizarViagemClick(\'' + v.frota + '\')">Finalizar</button>' +
       '</div>' +
     '</div>';
   });
   el.innerHTML = html;
 }
 
-function finalizarViagem(frota) {
-  var input  = document.getElementById('fin-km-' + frota);
-  var kmFinal = input ? input.value.trim() : '';
-  if (!kmFinal || parseFloat(kmFinal) <= 0) { toast('⚠️ Informe o KM final', 'err'); return; }
+function atualizarLocalizacao(frota) {
+  var sel = document.getElementById('local-sel-' + frota);
+  var local = sel ? sel.value : '';
+  
+  if (!local) {
+    toast('Selecione uma localização', 'err');
+    return;
+  }
 
-  setSyncBar('⏳ Finalizando viagem...', '');
+  var cfg = ler(CFG_KEY) || {};
+  var url = (cfg.scriptUrl || SCRIPT_URL) + '?action=atualizarLocal&frota=' + encodeURIComponent(frota) + 
+            '&local=' + encodeURIComponent(local);
 
-  var params = 'action=finalizarViagem' +
-    '&frota='    + encodeURIComponent(frota) +
-    '&km_final=' + encodeURIComponent(kmFinal);
-
-  var xhr = new XMLHttpRequest();
-  xhr.timeout = 15000;
-  xhr.open('GET', scriptAtivo() + '?' + params, true);
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState !== 4) return;
-    try {
-      var resp = JSON.parse(xhr.responseText);
-      if (resp.ok) {
-        setSyncBar('✅ Viagem finalizada!', 'ok');
-        var kml = resp.km_l ? resp.km_l.toFixed(2) : '—';
-        toast('🏁 ' + frota + ' — ' + resp.km_rodado + ' km · ' + kml + ' km/L', 'ok');
-        carregarViagensAbertas();
-      } else {
-        setSyncBar('⚠️ ' + (resp.msg || 'Erro ao finalizar'), 'err');
-        toast('⚠️ ' + (resp.msg || 'Erro ao finalizar viagem'), 'err');
-      }
-    } catch(e) {
-      setSyncBar('✅ Enviado!', 'ok');
+  fetch(url).then(r => r.json()).then(d => {
+    if (d.ok) {
+      toast('✅ ' + d.msg, 'ok');
       carregarViagensAbertas();
+    } else {
+      toast('❌ ' + d.msg, 'err');
     }
-  };
-  xhr.onerror   = function() { setSyncBar('📵 Sem conexão', 'err'); };
-  xhr.ontimeout = function() { setSyncBar('⏱️ Timeout', 'err'); };
-  xhr.send();
+  }).catch(err => {
+    toast('Erro ao atualizar localização', 'err');
+  });
 }
 
-// ═══════════════════════════════════════════════
-//  HISTÓRICO / DESEMPENHO
-// ═══════════════════════════════════════════════
-function setFiltroHist(f, el) {
-  filtroHistStatus = f;
-  var btns = document.querySelectorAll('#page-historico .fbtn');
-  for (var i = 0; i < btns.length; i++) btns[i].className = 'fbtn';
-  if (el) el.className = 'fbtn on';
-  carregarHistorico();
+function finalizarViagemClick(frota) {
+  var kmFinal = parseFloat(document.getElementById('km-fin-' + frota).value || 0);
+  
+  if (!kmFinal) {
+    toast('Preencha o KM final', 'err');
+    return;
+  }
+
+  var cfg = ler(CFG_KEY) || {};
+  var url = (cfg.scriptUrl || SCRIPT_URL) + '?action=finalizarViagem&frota=' + encodeURIComponent(frota) + '&km_final=' + kmFinal;
+
+  fetch(url).then(r => r.json()).then(d => {
+    if (d.ok) {
+      toast('✅ Viagem finalizada! KM rodado: ' + d.km_rodado + ' km', 'ok');
+      carregarViagensAbertas();
+    } else {
+      toast('❌ ' + d.msg, 'err');
+    }
+  }).catch(err => {
+    toast('Erro ao finalizar viagem', 'err');
+  });
 }
 
 function carregarHistorico() {
-  var el = document.getElementById('lista-hist');
-  el.innerHTML = '<div class="empty">Carregando histórico...</div>';
+  var cfg = ler(CFG_KEY) || {};
+  var url = (cfg.scriptUrl || SCRIPT_URL) + '?action=getViagens';
 
-  var motorista = document.getElementById('hist-motorista').value.trim();
-  var frota     = document.getElementById('hist-frota').value.trim();
+  fetch(url).then(r => r.json()).then(d => {
+    if (d.ok) {
+      viagensHist = d.viagens || [];
+      renderStatsHist();
+      renderHistorico();
+    }
+  }).catch(() => {});
+}
 
-  var params = 'action=getViagens&_=' + Date.now();
-  if (filtroHistStatus !== 'todas') params += '&status=' + (filtroHistStatus === 'fechada' ? 'FECHADA' : 'ABERTA');
-  if (motorista) params += '&motorista=' + encodeURIComponent(motorista);
-  if (frota)     params += '&frota=' + encodeURIComponent(frota);
-
-  var xhr = new XMLHttpRequest();
-  xhr.timeout = 15000;
-  xhr.open('GET', scriptAtivo() + '?' + params, true);
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState !== 4) return;
-    try {
-      var resp = JSON.parse(xhr.responseText);
-      viagensHist = (resp.ok && resp.viagens) ? resp.viagens : [];
-    } catch(e) { viagensHist = []; }
-    renderStatsHist();
-    renderHistorico();
-  };
-  xhr.onerror = xhr.ontimeout = function() {
-    el.innerHTML = '<div class="empty">📵 Sem conexão para buscar o histórico.</div>';
-  };
-  xhr.send();
+function filtrarHistorico(status, el) {
+  filtroHist = status;
+  var btns = document.querySelectorAll('.fbtn');
+  for (var i = 0; i < btns.length; i++) btns[i].className = 'fbtn';
+  if (el) el.className = 'fbtn on';
+  renderHistorico();
 }
 
 function renderStatsHist() {
@@ -475,12 +406,19 @@ function classeKml(kml) {
 
 function renderHistorico() {
   var el = document.getElementById('lista-hist');
-  if (!viagensHist.length) {
+  var filtradas = viagensHist;
+  
+  if (filtroHist !== 'todas') {
+    filtradas = viagensHist.filter(v => v.status === filtroHist);
+  }
+  
+  if (!filtradas.length) {
     el.innerHTML = '<div class="empty">Nenhuma viagem encontrada para o filtro atual.</div>';
     return;
   }
+  
   var html = '';
-  viagensHist.forEach(function(v) {
+  filtradas.forEach(function(v) {
     var fechada = v.status === 'FECHADA';
     var kml = fechada ? parseFloat(v.km_l)||0 : null;
     html += '<div class="viagem-card">' +
@@ -501,9 +439,6 @@ function renderHistorico() {
   el.innerHTML = html;
 }
 
-// ═══════════════════════════════════════════════
-//  CONFIG
-// ═══════════════════════════════════════════════
 function salvarConfig() {
   var scriptVal = document.getElementById('cfg-script').value.trim();
   var cfg = ler(CFG_KEY) || {};
@@ -511,15 +446,13 @@ function salvarConfig() {
   salvar(CFG_KEY, cfg);
   toast('✅ Config salva!', 'ok');
 }
+
 function carregarConfig() {
   var cfg = ler(CFG_KEY);
   var el  = document.getElementById('cfg-script');
   if (el) el.value = (cfg && cfg.scriptUrl) ? cfg.scriptUrl : SCRIPT_URL;
 }
 
-// ═══════════════════════════════════════════════
-//  NAVEGAÇÃO
-// ═══════════════════════════════════════════════
 function goTab(id, el) {
   var pages = document.querySelectorAll('.page');
   var tabs  = document.querySelectorAll('.nav-tab');
@@ -534,28 +467,15 @@ function goTab(id, el) {
   if (id === 'config')    carregarConfig();
 }
 
-// ═══════════════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════════════
 window.onload = function() {
-  aplicarParametrosURL();
-
-  // Esconde as abas Histórico e Config para quem não é admin_master
-  var isM = _isAdminMaster();
-  var tabHist = document.getElementById('tab-historico');
-  var tabCfg  = document.getElementById('tab-config');
-  if (tabHist) tabHist.style.display = isM ? '' : 'none';
-  if (tabCfg)  tabCfg.style.display  = isM ? '' : 'none';
+  // Esconde as abas Histórico e Config se necessário
+  carregarConfig();
 };
 </script>
 <script>
 // ══ SERVICE WORKER + AUTO-ATUALIZAÇÃO SILENCIOSA ══
-// Garante que o usuário SEMPRE tenha a versão mais recente,
-// sem precisar limpar cache ou fechar o app.
 if ('serviceWorker' in navigator) {
   var _swReloaded = false;
-
-  // Quando um novo SW assume o controle, recarrega 1x automaticamente
   navigator.serviceWorker.addEventListener('controllerchange', function() {
     if (_swReloaded) return;
     _swReloaded = true;
@@ -564,24 +484,17 @@ if ('serviceWorker' in navigator) {
 
   window.addEventListener('load', function() {
     navigator.serviceWorker.register('service-worker.js').then(function(reg) {
-      // Força verificação de atualização toda vez que abre
       reg.update();
-
-      // Se já existe um SW esperando, ativa na hora
       if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
-
-      // Detecta quando uma nova versão termina de baixar
       reg.addEventListener('updatefound', function() {
         var nw = reg.installing;
         if (!nw) return;
         nw.addEventListener('statechange', function() {
           if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-            nw.postMessage('SKIP_WAITING'); // ativa → dispara controllerchange → reload
+            nw.postMessage('SKIP_WAITING');
           }
         });
       });
-
-      // Verifica atualização também quando o app volta ao foco
       document.addEventListener('visibilitychange', function() {
         if (!document.hidden) reg.update();
       });
