@@ -1938,6 +1938,7 @@ function renderRelatorioBody(manterSelecao){
                     'data-desc="'+String(sv.descricao||'').replace(/"/g,'&quot;')+'" ' +
                     'data-local="'+String(local).replace(/"/g,'&quot;')+'" ' +
                     'data-ext="'+(ext?'1':'0')+'" ' +
+                    'data-resp="'+ofNome.replace(/"/g,'&quot;')+'" ' +
                     'onchange="atualizaContador()"'+checked+'>' +
                   '<span class="rel-svc-desc">'+(sv.descricao||'(sem descrição)') +
                     (ofNome ? ' <span class="rel-svc-ofnome">🏭 '+ofNome+'</span>' : '') +
@@ -1976,26 +1977,29 @@ function gerarRelatorio(){
   marcados.forEach(function(cb){
     itens.push({
       frota: cb.getAttribute('data-frota') || '',
-      desc:  cb.getAttribute('data-desc')  || '',
+      // Remove a etiqueta [VP-456]/[RB-98] do início — a coluna VP/RB já mostra o conjunto
+      desc:  (cb.getAttribute('data-desc')  || '').replace(/^\s*\[[^\]]*\]\s*/, ''),
       local: cb.getAttribute('data-local') || '',
-      ext:   cb.getAttribute('data-ext') === '1'
+      ext:   cb.getAttribute('data-ext') === '1',
+      resp:  cb.getAttribute('data-resp') || ''
     });
   });
 
   // Agrupa por frota: uma linha por VP/RB, serviços juntos por vírgula.
   // Mantém a ordem em que as frotas apareceram.
-  var grupos = [];       // [{frota, servicos:[], local, temInt, temExt}]
+  var grupos = [];       // [{frota, servicos:[], local, temInt, temExt, resps:[]}]
   var idxFrota = {};     // frota -> posição em grupos
   itens.forEach(function(it){
     var chave = it.frota.toUpperCase();
     if(idxFrota[chave] === undefined){
       idxFrota[chave] = grupos.length;
-      grupos.push({ frota: it.frota, servicos: [], local: it.local, temInt: false, temExt: false });
+      grupos.push({ frota: it.frota, servicos: [], local: it.local, temInt: false, temExt: false, resps: [] });
     }
     var g = grupos[idxFrota[chave]];
     if(it.desc && g.servicos.indexOf(it.desc) < 0) g.servicos.push(it.desc);
     if(it.ext) g.temExt = true; else g.temInt = true;
     if(!g.local && it.local) g.local = it.local; // pega a localização se ainda não tiver
+    if(it.resp && g.resps.indexOf(it.resp) < 0) g.resps.push(it.resp); // nomes de oficina
   });
 
   var hoje = new Date();
@@ -2010,7 +2014,7 @@ function gerarRelatorio(){
       '<td class="c-ent">'+dia+'</td>' +
       '<td class="c-serv">'+esc(g.servicos.join(', '))+'</td>' +
       '<td class="c-prev"></td>' +
-      '<td class="c-resp"></td>' +
+      '<td class="c-resp">'+esc(g.resps.join(', '))+'</td>' +
       '<td class="c-loc">'+esc(g.local)+'</td>' +
     '</tr>';
   }).join('');
