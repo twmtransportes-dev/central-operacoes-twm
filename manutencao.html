@@ -713,12 +713,14 @@ function carregarDoServidor(){
     .then(function(r){return r.json();})
     .then(function(resp){
       if(!resp.ok) return;
+      // O Apps Script retorna a lista em resp.os (algumas versões usam resp.ordens)
+      var listaServidor = resp.os || resp.ordens || [];
       var local  = lerOS();
       var apag   = []; try{apag=JSON.parse(localStorage.getItem(APAG_KEY)||'[]');}catch(e){}
       var mudou  = false;
 
       // IDs que existem no servidor (exceto os apagados localmente)
-      var idsServidor = (resp.ordens||[])
+      var idsServidor = listaServidor
         .filter(function(o){ return apag.indexOf(o.id)<0; })
         .map(function(o){ return o.id; });
 
@@ -735,7 +737,7 @@ function carregarDoServidor(){
 
       // Adiciona/atualiza do servidor
       var idsLocal = localFiltrado.map(function(o){ return o.id; });
-      (resp.ordens||[]).forEach(function(o){
+      listaServidor.forEach(function(o){
         if(apag.indexOf(o.id)>=0) return;
         if(idsLocal.indexOf(o.id)<0){
           o.ts=o.ts||Date.now(); localFiltrado.unshift(o); mudou=true;
