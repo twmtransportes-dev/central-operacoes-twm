@@ -602,7 +602,7 @@ html,body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);mi
 // ════════════════════════════════════════
 //  CONFIG
 // ════════════════════════════════════════
-var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwAGLjEDNVAJk9nGujpVd6hTl3QY9Ss9Wl0Sm14TqCHBhdAFEPglhcXSzoN7ktSQjoa/exec';
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz5Du0iSrnD8X37xCCAVwic_3yPHrLKbTKLcx60tCfoahKcb5-kP6Efns6LndNaZDI-aQ/exec';
 try { var _c=JSON.parse(localStorage.getItem('twm_config')||'{}'); if(_c.scriptUrl) SCRIPT_URL=_c.scriptUrl; } catch(e){}
 
 var OS_KEY     = 'twm_manutencao_os';
@@ -674,8 +674,14 @@ document.querySelectorAll('.overlay').forEach(function(el){
 // Sync servidor
 function sync(os){
   if(!SCRIPT_URL||!navigator.onLine) return;
+  // Fornecedor = nome da oficina externa (se houver serviço externo nesta OS)
+  var fornecedor='';
+  (os.servicos||[]).forEach(function(s){
+    if(s.status==='externa' && s.oficina_nome && !fornecedor) fornecedor=s.oficina_nome;
+  });
   var p=new URLSearchParams({action:'salvarManutencao',id_os:os.id,frota:os.frota,
     prioridade:os.prioridade,status:os.status,origem:os.origem||'manual',
+    fornecedor:fornecedor,
     motorista:os.motorista||'',data_aber:os.data_aber,servicos:JSON.stringify(os.servicos||[])});
   fetch(SCRIPT_URL+'?'+p.toString()).catch(function(){});
 }
@@ -1365,12 +1371,58 @@ function confirmarExt(){
   var os=ordens.find(function(o){return o.id===_ctxOS;});
   var sv=os&&os.servicos.find(function(s){return s.id===_ctxSV;});
   if(!sv) return;
+
+  // Preenche os dados de oficina externa no serviço
   sv.status='externa';sv.oficina_nome=nome;sv.oficina_obs=obs;
   if(prev){var p=prev.split('-');sv.oficina_prev=p[2]+'/'+p[1]+'/'+p[0];}
-  os.status='externa';
-  addHistorico(os,'Enviado para oficina: '+nome);
-  sync(os); salvarOS(); fM('m-ext'); render();
-  toast('🏭 Enviado para '+nome,'ok');
+
+  // Quantos serviços "ativos" (não concluídos/pendência) a OS tem além deste?
+  var outrosAtivos=(os.servicos||[]).filter(function(s){
+    return s.id!==sv.id && s.status!=='concl' && s.status!=='pend';
+  });
+
+  if(outrosAtivos.length===0){
+    // OS só tem este serviço ativo → vai inteira para externa (comportamento simples)
+    atualizarStatusOS(os);
+    addHistorico(os,'Enviado para oficina: '+nome);
+    sync(os); salvarOS(); fM('m-ext'); render();
+    toast('🏭 Enviado para '+nome,'ok');
+    if(_fcOsId===_ctxOS) abrirFC(_ctxOS);
+    return;
+  }
+
+  // DESMEMBRA: cria uma NOVA OS só com o serviço externo.
+  // O cabeçalho da nova OS = unidade da etiqueta [..] do serviço (ex: [RB-185]),
+  // ou a frota original se o serviço não tiver etiqueta.
+  var mUnid=String(sv.descricao||'').match(/^\s*\[([^\]]+)\]/);
+  var frotaNova=mUnid ? normalizaCod(mUnid[1].trim()) : os.frota;
+
+  var novaOS={
+    id:'OS-'+uid(),
+    frota:frotaNova,
+    prioridade:sv.prioridade||os.prioridade||'normal',
+    status:'externa',
+    origem:os.origem||'manual',
+    motorista:os.motorista||'',
+    data_aber:os.data_aber||hoje(),
+    ts:Date.now(),
+    data_prev:sv.oficina_prev||'',
+    servicos:[sv],
+    historico:[{txt:'Desmembrado de '+os.id+' → enviado para oficina: '+nome,ts:Date.now()}],
+    comentarios:[]
+  };
+
+  // Remove o serviço da OS original e recalcula o status dela
+  os.servicos=os.servicos.filter(function(s){return s.id!==sv.id;});
+  addHistorico(os,'Serviço "'+String(sv.descricao||'').slice(0,40)+'" movido p/ oficina externa (OS '+novaOS.id+')');
+  atualizarStatusOS(os);
+
+  ordens.push(novaOS);
+  salvarOS();
+  sync(os);       // atualiza a OS original (sem o serviço)
+  sync(novaOS);   // grava a nova OS externa
+  fM('m-ext'); render();
+  toast('🏭 '+frotaNova+' enviado para '+nome,'ok');
   if(_fcOsId===_ctxOS) abrirFC(_ctxOS);
 }
 
@@ -1845,6 +1897,16 @@ try { var _cj = JSON.parse(localStorage.getItem('twm_config')||'{}'); if(_cj.jor
 
 var _relLocais = {};   // { "VP-307": "Indo Entregar", ... }
 
+// Normaliza código: VPL→VP e RBL→RB (a "L" de alugado é ignorada).
+// NÃO mistura prefixos diferentes: VP-185 e RB-185 continuam distintos.
+// Funciona no conjunto inteiro: "VPL-456 RBL-98/99" → "VP-456 RB-98/99".
+function normalizaCod(cod){
+  return String(cod||'')
+    .replace(/VPL-/gi, 'VP-').replace(/RBL-/gi, 'RB-')
+    .replace(/\bVPL\b/gi, 'VP').replace(/\bRBL\b/gi, 'RB')
+    .trim();
+}
+
 // Decide se o serviço vai para OFICINA EXTERNA.
 // Táticas:
 //   (1) status 'externa'  OU  (2) tem nome de oficina preenchido.
@@ -1920,7 +1982,7 @@ function renderRelatorioBody(manterSelecao){
     var local  = _relLocais[frotaU] || '';
     html += '<div class="rel-oscard st-'+os.status+'">';
     html +=   '<div class="rel-osh">' +
-                '<span class="rel-osfrota">'+(os.frota||'—')+'</span>' +
+                '<span class="rel-osfrota">'+(normalizaCod(os.frota)||'—')+'</span>' +
                 '<span class="rel-osbadge st-'+os.status+'">'+(COLS_LBL[os.status]||os.status)+'</span>' +
                 (local ? '<span class="rel-osloc">📍 '+local+'</span>' : '') +
               '</div>';
@@ -1932,15 +1994,16 @@ function renderRelatorioBody(manterSelecao){
         var checked = selAntes[val] ? ' checked' : '';
         var ext = ehExterno(sv);
         var ofNome = ext ? String(sv.oficina_nome||'').trim() : '';
+        var descNorm = normalizaCod(String(sv.descricao||''));
         html += '<label class="rel-svc">' +
                   '<input type="checkbox" value="'+val+'" ' +
-                    'data-frota="'+(os.frota||'').replace(/"/g,'&quot;')+'" ' +
-                    'data-desc="'+String(sv.descricao||'').replace(/"/g,'&quot;')+'" ' +
+                    'data-frota="'+normalizaCod(os.frota||'').replace(/"/g,'&quot;')+'" ' +
+                    'data-desc="'+descNorm.replace(/"/g,'&quot;')+'" ' +
                     'data-local="'+String(local).replace(/"/g,'&quot;')+'" ' +
                     'data-ext="'+(ext?'1':'0')+'" ' +
                     'data-resp="'+ofNome.replace(/"/g,'&quot;')+'" ' +
                     'onchange="atualizaContador()"'+checked+'>' +
-                  '<span class="rel-svc-desc">'+(sv.descricao||'(sem descrição)') +
+                  '<span class="rel-svc-desc">'+(descNorm||'(sem descrição)') +
                     (ofNome ? ' <span class="rel-svc-ofnome">🏭 '+ofNome+'</span>' : '') +
                   '</span>' +
                   '<span class="rel-svc-of '+(ext?'ext':'int')+'">'+(ext?'EXT':'INT')+'</span>' +
@@ -1987,13 +2050,15 @@ function gerarRelatorio(){
 
   // Agrupa por frota: uma linha por VP/RB, serviços juntos por vírgula.
   // Mantém a ordem em que as frotas apareceram.
+  // Normaliza VPL→VP / RBL→RB antes de agrupar (função global normalizaCod)
   var grupos = [];       // [{frota, servicos:[], local, temInt, temExt, resps:[]}]
-  var idxFrota = {};     // frota -> posição em grupos
+  var idxFrota = {};     // frota normalizada -> posição em grupos
   itens.forEach(function(it){
-    var chave = it.frota.toUpperCase();
+    var frotaNorm = normalizaCod(it.frota);
+    var chave = frotaNorm.toUpperCase();
     if(idxFrota[chave] === undefined){
       idxFrota[chave] = grupos.length;
-      grupos.push({ frota: it.frota, servicos: [], local: it.local, temInt: false, temExt: false, resps: [] });
+      grupos.push({ frota: frotaNorm, servicos: [], local: it.local, temInt: false, temExt: false, resps: [] });
     }
     var g = grupos[idxFrota[chave]];
     if(it.desc && g.servicos.indexOf(it.desc) < 0) g.servicos.push(it.desc);
@@ -2004,6 +2069,24 @@ function gerarRelatorio(){
 
   var hoje = new Date();
   var dia = ('0'+hoje.getDate()).slice(-2)+'/'+('0'+(hoje.getMonth()+1)).slice(-2)+'/'+hoje.getFullYear();
+
+  // Ordena para a diretoria:
+  //   1) VP/VPL (cavalos)  2) RB/RBL sozinhos  3) VA  4) RA
+  //   dentro de cada grupo, ordem crescente pelo número.
+  // O conjunto "VP-456 RB-98/99" classifica pelo 1º token (o cavalo).
+  function chaveOrdem(frotaCod){
+    var token = String(frotaCod||'').trim().split(/\s+/)[0]; // primeiro código
+    var m = token.match(/^([A-Za-z]+)[-\s]*(\d+)/);
+    var pref = m ? m[1].toUpperCase() : 'ZZZ';
+    var num  = m ? parseInt(m[2],10) : 999999;
+    // VPL conta como VP; RBL conta como RB (a "L" é só "alugado")
+    if(pref === 'VPL') pref = 'VP';
+    if(pref === 'RBL') pref = 'RB';
+    var ordemGrupo = { VP:1, RB:2, VA:3, RA:4 };
+    var g = ordemGrupo[pref] || 9; // prefixos desconhecidos vão pro fim
+    return g * 1000000 + num;
+  }
+  grupos.sort(function(a,b){ return chaveOrdem(a.frota) - chaveOrdem(b.frota); });
 
   var linhas = grupos.map(function(g, i){
     return '<tr>' +
