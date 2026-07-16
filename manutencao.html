@@ -319,6 +319,57 @@ html,body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);mi
 .pend-stat-n{font-size:22px;font-weight:800;line-height:1}
 .pend-stat-l{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-top:2px}
 
+/* ── RELATÓRIO DIÁRIO ─────────────────────────────── */
+.rel-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;padding:16px;align-items:center;justify-content:center}
+.rel-overlay.on{display:flex}
+.rel-modal{background:var(--bg2);border-radius:16px;width:100%;max-width:640px;max-height:88vh;display:flex;flex-direction:column;box-shadow:var(--shadow-xl);overflow:hidden}
+.rel-head{padding:16px;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.rel-head h2{font-size:16px;font-weight:700;color:var(--tx);margin:0}
+.rel-head .rel-x{background:none;border:none;font-size:20px;cursor:pointer;color:var(--tx3);width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:var(--r3)}
+.rel-head .rel-x:hover{background:var(--bg3);color:var(--tx)}
+.rel-body{flex:1;overflow-y:auto;padding:12px 16px}
+.rel-intro{font-size:12px;color:var(--tx2);margin-bottom:12px;padding:9px 12px;background:var(--ac-bg);border-radius:var(--r2);border-left:3px solid var(--ac)}
+.rel-tools{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.rel-tool-btn{font-size:11px;font-weight:600;padding:5px 12px;border-radius:var(--r2);border:1.5px solid var(--brd2);background:var(--bg);color:var(--tx2);cursor:pointer}
+.rel-tool-btn:hover{border-color:var(--ac);color:var(--ac)}
+.rel-oscard{background:var(--bg3);border:1px solid var(--brd);border-radius:var(--r2);padding:11px 12px;margin-bottom:9px;border-left:4px solid var(--ac)}
+.rel-oscard.st-aberta{border-left-color:var(--red)}
+.rel-oscard.st-andando{border-left-color:var(--amber)}
+.rel-oscard.st-agpeca{border-left-color:var(--cyan)}
+.rel-oscard.st-externa{border-left-color:var(--violet)}
+.rel-osh{display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap}
+.rel-osfrota{font-size:15px;font-weight:800;color:var(--tx)}
+.rel-osbadge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 8px;border-radius:10px}
+.rel-osbadge.st-aberta{background:var(--red-bg);color:var(--red)}
+.rel-osbadge.st-andando{background:var(--amber-bg);color:var(--amber)}
+.rel-osbadge.st-agpeca{background:var(--cyan-bg);color:var(--cyan)}
+.rel-osbadge.st-externa{background:var(--violet-bg);color:var(--violet)}
+.rel-osloc{font-size:10px;font-weight:600;color:var(--ac);margin-left:auto;display:flex;align-items:center;gap:3px}
+.rel-svc{display:flex;align-items:center;gap:9px;padding:7px 6px;border-radius:var(--r3);cursor:pointer;transition:background .12s}
+.rel-svc:hover{background:var(--bg)}
+.rel-svc input{width:18px;height:18px;cursor:pointer;accent-color:var(--ac);flex-shrink:0}
+.rel-svc-desc{font-size:12.5px;color:var(--tx);flex:1}
+.rel-svc-ofnome{font-size:10px;color:var(--violet);font-weight:600;white-space:nowrap}
+.rel-svc-of{font-size:9px;font-weight:800;letter-spacing:.4px;padding:2px 6px;border-radius:8px;flex-shrink:0}
+.rel-svc-of.int{background:var(--amber-bg);color:var(--amber)}
+.rel-svc-of.ext{background:var(--violet-bg);color:var(--violet)}
+.rel-svc-tipo{font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.3px}
+.rel-nosvc{font-size:11px;color:var(--tx3);font-style:italic;padding:4px 6px}
+.rel-empty{text-align:center;padding:40px 20px;color:var(--tx3);font-size:13px;line-height:1.7}
+.rel-foot{padding:12px 16px;border-top:1px solid var(--brd);display:flex;gap:8px;justify-content:space-between;align-items:center;flex-shrink:0}
+.rel-count{font-size:12px;color:var(--tx2);font-weight:600}
+.rel-foot-btns{display:flex;gap:8px}
+.rel-btn{padding:9px 18px;border-radius:var(--r2);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;border:none;font-family:inherit;transition:.15s}
+.rel-btn.cancel{background:var(--bg3);color:var(--tx2);border:1px solid var(--brd)}
+.rel-btn.cancel:hover{background:var(--brd)}
+.rel-btn.gerar{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff}
+.rel-btn.gerar:hover{opacity:.9}
+.rel-btn.print{background:#c00;color:#fff}
+.rel-btn.print:hover{opacity:.9}
+.prev-modal{max-width:900px}
+.prev-body{flex:1;overflow:hidden;background:#e5e5e5;padding:0}
+#prev-frame{width:100%;height:60vh;border:none;display:block;background:#e5e5e5}
+
 </style>
 </head>
 <body>
@@ -342,6 +393,45 @@ html,body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);mi
     <input class="search-inp" id="busca" type="text" placeholder="Buscar frota, mecânico, serviço..." oninput="buscar(this.value)" autocomplete="off">
   </div>
   <button class="filter-btn" id="btn-alerta" onclick="filtrarAtrasados()" title="OS paradas há mais de 3 dias">⚠️ Atrasadas</button>
+  <button class="filter-btn" id="btn-relatorio" onclick="abrirRelatorioModal()" title="Gerar relatório de manutenção do dia" style="background:var(--ac);color:#fff;border-color:var(--ac)">📊 Relatório Diário</button>
+</div>
+
+<!-- MODAL RELATÓRIO DIÁRIO -->
+<div class="rel-overlay" id="rel-overlay" onclick="if(event.target===this)fecharRelatorioModal()">
+  <div class="rel-modal">
+    <div class="rel-head">
+      <h2>📋 Relatório de Manutenção do Dia</h2>
+      <button class="rel-x" onclick="fecharRelatorioModal()">✕</button>
+    </div>
+    <div class="rel-body" id="rel-body"></div>
+    <div class="rel-foot">
+      <span class="rel-count" id="rel-count">0 serviços selecionados</span>
+      <div class="rel-foot-btns">
+        <button class="rel-btn cancel" onclick="fecharRelatorioModal()">Cancelar</button>
+        <button class="rel-btn gerar" onclick="gerarRelatorio()">👁️ Visualizar Planilha</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PRÉVIA DA PLANILHA -->
+<div class="rel-overlay" id="prev-overlay" onclick="if(event.target===this)fecharPrevia()">
+  <div class="rel-modal prev-modal">
+    <div class="rel-head">
+      <h2>📄 Prévia — Pendências do Dia</h2>
+      <button class="rel-x" onclick="fecharPrevia()">✕</button>
+    </div>
+    <div class="prev-body">
+      <iframe id="prev-frame" title="Prévia do relatório"></iframe>
+    </div>
+    <div class="rel-foot">
+      <span class="rel-count" id="prev-count"></span>
+      <div class="rel-foot-btns">
+        <button class="rel-btn cancel" onclick="voltarSelecao()">← Voltar</button>
+        <button class="rel-btn print" onclick="imprimirPrevia()">🖨️ Imprimir / Gerar PDF</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ABAS -->
@@ -1738,6 +1828,254 @@ window.onload=function(){
     <div id="lista-historico"></div>
   </div>
 </div><!-- /tab-historico -->
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//  RELATÓRIO DE MANUTENÇÃO DO DIA
+//  - Lista OS pendentes (aberta/andando/agpeca/externa)
+//  - Marca-se os serviços que SERÃO feitos hoje
+//  - Gera folha imprimível (PDF) só com os selecionados
+//  - Puxa a localização do veículo do módulo Jornada
+// ════════════════════════════════════════════════════════════════
+
+// URL do Apps Script da JORNADA (para puxar localização do veículo).
+// Deixe vazio se ainda não tiver — o relatório funciona sem, só não mostra local.
+var JORNADA_URL = '';
+try { var _cj = JSON.parse(localStorage.getItem('twm_config')||'{}'); if(_cj.jornadaUrl) JORNADA_URL = _cj.jornadaUrl; } catch(e){}
+
+var _relLocais = {};   // { "VP-307": "Indo Entregar", ... }
+
+// Decide se o serviço vai para OFICINA EXTERNA.
+// Táticas:
+//   (1) status 'externa'  OU  (2) tem nome de oficina preenchido.
+// Exceção: se o nome da oficina contiver "TWM", "interno" ou "interna",
+//   é oficina PRÓPRIA → conta como INTERNO.
+function _nomeEhInterno(nome){
+  var n = String(nome||'').toLowerCase();
+  return n.indexOf('twm') >= 0 || n.indexOf('interno') >= 0 || n.indexOf('interna') >= 0;
+}
+function ehExterno(sv){
+  if(!sv) return false;
+  var ofNome = String(sv.oficina_nome||'').trim();
+  // Nome de oficina própria (TWM/interno/interna) força INTERNO.
+  if(ofNome && _nomeEhInterno(ofNome)) return false;
+  if(sv.status === 'externa') return true;
+  if(ofNome !== '') return true;
+  return false;
+}
+
+function abrirRelatorioModal(){
+  document.getElementById('rel-overlay').classList.add('on');
+  _relLocais = {};
+  renderRelatorioBody();       // mostra já, mesmo sem localização
+  buscarLocaisJornada();       // atualiza local em segundo plano
+}
+
+function fecharRelatorioModal(){
+  document.getElementById('rel-overlay').classList.remove('on');
+}
+
+// Busca localização de cada frota no módulo Jornada (opcional)
+function buscarLocaisJornada(){
+  if(!JORNADA_URL || !navigator.onLine) return;
+  fetch(JORNADA_URL + '?action=getViagens&_=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d && d.ok && d.viagens){
+        d.viagens.forEach(function(v){
+          if(v.frota) _relLocais[String(v.frota).toUpperCase()] = v.local || '';
+        });
+        renderRelatorioBody(true); // re-render mantendo seleção
+      }
+    }).catch(function(){});
+}
+
+// Monta a lista de OS + serviços com checkbox
+function renderRelatorioBody(manterSelecao){
+  var selAntes = {};
+  if(manterSelecao){
+    document.querySelectorAll('.rel-svc input:checked').forEach(function(cb){ selAntes[cb.value] = true; });
+  }
+
+  var pend = (ordens||[]).filter(function(o){
+    return o.status==='aberta' || o.status==='andando' || o.status==='agpeca' || o.status==='externa';
+  });
+
+  var body = document.getElementById('rel-body');
+
+  if(!pend.length){
+    body.innerHTML = '<div class="rel-empty">Nenhuma O.S. em aberto no momento.<br>Todas as manutenções estão concluídas. ✅</div>';
+    atualizaContador();
+    return;
+  }
+
+  var html = '<div class="rel-intro">Marque os serviços que <b>serão realizados hoje</b>. Só os selecionados vão para a folha da diretoria.</div>';
+  html += '<div class="rel-tools">' +
+            '<button class="rel-tool-btn" onclick="relMarcarTodos(true)">☑ Marcar todos</button>' +
+            '<button class="rel-tool-btn" onclick="relMarcarTodos(false)">☐ Desmarcar todos</button>' +
+          '</div>';
+
+  pend.forEach(function(os){
+    var frotaU = String(os.frota||'').toUpperCase();
+    var local  = _relLocais[frotaU] || '';
+    html += '<div class="rel-oscard st-'+os.status+'">';
+    html +=   '<div class="rel-osh">' +
+                '<span class="rel-osfrota">'+(os.frota||'—')+'</span>' +
+                '<span class="rel-osbadge st-'+os.status+'">'+(COLS_LBL[os.status]||os.status)+'</span>' +
+                (local ? '<span class="rel-osloc">📍 '+local+'</span>' : '') +
+              '</div>';
+
+    var svs = (os.servicos||[]).filter(function(sv){ return sv.status!=='concl'; });
+    if(svs.length){
+      svs.forEach(function(sv){
+        var val = os.id + '::' + sv.id;
+        var checked = selAntes[val] ? ' checked' : '';
+        var ext = ehExterno(sv);
+        var ofNome = ext ? String(sv.oficina_nome||'').trim() : '';
+        html += '<label class="rel-svc">' +
+                  '<input type="checkbox" value="'+val+'" ' +
+                    'data-frota="'+(os.frota||'').replace(/"/g,'&quot;')+'" ' +
+                    'data-desc="'+String(sv.descricao||'').replace(/"/g,'&quot;')+'" ' +
+                    'data-local="'+String(local).replace(/"/g,'&quot;')+'" ' +
+                    'data-ext="'+(ext?'1':'0')+'" ' +
+                    'onchange="atualizaContador()"'+checked+'>' +
+                  '<span class="rel-svc-desc">'+(sv.descricao||'(sem descrição)') +
+                    (ofNome ? ' <span class="rel-svc-ofnome">🏭 '+ofNome+'</span>' : '') +
+                  '</span>' +
+                  '<span class="rel-svc-of '+(ext?'ext':'int')+'">'+(ext?'EXT':'INT')+'</span>' +
+                  (sv.tipo ? '<span class="rel-svc-tipo">'+sv.tipo+'</span>' : '') +
+                '</label>';
+      });
+    } else {
+      html += '<div class="rel-nosvc">Nenhum serviço pendente nesta O.S.</div>';
+    }
+    html += '</div>';
+  });
+
+  body.innerHTML = html;
+  atualizaContador();
+}
+
+function relMarcarTodos(estado){
+  document.querySelectorAll('.rel-svc input').forEach(function(cb){ cb.checked = estado; });
+  atualizaContador();
+}
+
+function atualizaContador(){
+  var n = document.querySelectorAll('.rel-svc input:checked').length;
+  var el = document.getElementById('rel-count');
+  if(el) el.textContent = n + (n===1 ? ' serviço selecionado' : ' serviços selecionados');
+}
+
+// Gera a folha e mostra na PRÉVIA (iframe dentro do modal)
+function gerarRelatorio(){
+  var marcados = document.querySelectorAll('.rel-svc input:checked');
+  if(!marcados.length){ toast('Selecione ao menos um serviço','err'); return; }
+
+  var itens = [];
+  marcados.forEach(function(cb){
+    itens.push({
+      frota: cb.getAttribute('data-frota') || '',
+      desc:  cb.getAttribute('data-desc')  || '',
+      local: cb.getAttribute('data-local') || '',
+      ext:   cb.getAttribute('data-ext') === '1'
+    });
+  });
+
+  var hoje = new Date();
+  var dia = ('0'+hoje.getDate()).slice(-2)+'/'+('0'+(hoje.getMonth()+1)).slice(-2)+'/'+hoje.getFullYear();
+
+  var linhas = itens.map(function(it, i){
+    return '<tr>' +
+      '<td class="c-num">'+(i+1)+'</td>' +
+      '<td class="c-frota">'+esc(it.frota)+'</td>' +
+      '<td class="c-of">'+(it.ext ? '' : 'x')+'</td>' +
+      '<td class="c-of">'+(it.ext ? 'x' : '')+'</td>' +
+      '<td class="c-ent">'+dia+'</td>' +
+      '<td class="c-serv">'+esc(it.desc)+'</td>' +
+      '<td class="c-prev"></td>' +
+      '<td class="c-resp"></td>' +
+      '<td class="c-loc">'+esc(it.local)+'</td>' +
+    '</tr>';
+  }).join('');
+
+  var folha =
+'<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
+'<title>Pendências de Manutenção do Dia — '+dia+'</title><style>' +
+'*{margin:0;padding:0;box-sizing:border-box}' +
+'body{font-family:Arial,Helvetica,sans-serif;background:#e5e5e5;padding:16px;color:#000}' +
+'.folha{background:#fff;max-width:1100px;margin:0 auto;padding:14px 18px;border:2px solid #000}' +
+'.top{display:flex;align-items:center;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:8px}' +
+'.top .logo{font-weight:bold;font-size:20px;letter-spacing:1px;border:2px solid #c00;color:#c00;padding:3px 8px}' +
+'.top .logo small{display:block;font-size:8px;color:#333;letter-spacing:.5px;font-weight:normal}' +
+'.top .titulo{flex:1;text-align:center;font-size:17px;font-weight:bold;letter-spacing:.5px}' +
+'.top .dia{text-align:right;font-size:12px;font-weight:bold}' +
+'.top .dia b{font-size:15px}' +
+'table{width:100%;border-collapse:collapse;font-size:12px}' +
+'th,td{border:1px solid #000;padding:4px 6px;vertical-align:middle}' +
+'thead th{background:#fff;font-weight:bold;text-align:center;font-size:11px}' +
+'.sub th{font-size:10px}' +
+'.c-num{width:26px;text-align:center}' +
+'.c-frota{width:90px;text-align:center;font-weight:bold}' +
+'.c-of{width:34px;text-align:center}' +
+'.c-ent{width:78px;text-align:center}' +
+'.c-serv{}' +
+'.c-prev{width:70px}' +
+'.c-resp{width:100px}' +
+'.c-loc{width:100px;text-align:center;font-size:11px}' +
+'tbody tr{height:26px}' +
+'@media print{body{background:#fff;padding:0}.folha{border:2px solid #000;max-width:100%}}' +
+'</style></head><body><div class="folha">' +
+'<div class="top">' +
+  '<div class="logo">TWM<small>TRANSPORTES ESPECIAIS LTDA</small></div>' +
+  '<div class="titulo">PENDÊNCIAS DE MANUTENÇÃO DO DIA</div>' +
+  '<div class="dia">DIA:<br><b>'+dia+'</b></div>' +
+'</div>' +
+'<table><thead>' +
+  '<tr><th rowspan="2" class="c-num"></th><th rowspan="2" class="c-frota">VP / RB</th>' +
+      '<th colspan="2">OFICINA</th><th rowspan="2" class="c-ent">ENTRADA</th>' +
+      '<th rowspan="2">SERVIÇO PENDENTE</th><th rowspan="2" class="c-prev">PREVISÃO</th>' +
+      '<th rowspan="2" class="c-resp">RESPONSÁVEL</th><th rowspan="2" class="c-loc">LOCALIZAÇÃO</th></tr>' +
+  '<tr class="sub"><th class="c-of">INT.</th><th class="c-of">EXT.</th></tr>' +
+'</thead><tbody>'+linhas+'</tbody></table>' +
+'</div>' +
+'</body></html>';
+
+  // Renderiza dentro do iframe da PRÉVIA (sem abrir aba nova)
+  var frame = document.getElementById('prev-frame');
+  var doc = frame.contentDocument || frame.contentWindow.document;
+  doc.open(); doc.write(folha); doc.close();
+
+  document.getElementById('prev-count').textContent =
+    itens.length + (itens.length===1 ? ' serviço' : ' serviços');
+
+  // Esconde seleção, mostra prévia
+  document.getElementById('rel-overlay').classList.remove('on');
+  document.getElementById('prev-overlay').classList.add('on');
+}
+
+// Volta da prévia para a tela de seleção (mantém as marcações)
+function voltarSelecao(){
+  document.getElementById('prev-overlay').classList.remove('on');
+  document.getElementById('rel-overlay').classList.add('on');
+}
+
+// Fecha a prévia por completo
+function fecharPrevia(){
+  document.getElementById('prev-overlay').classList.remove('on');
+}
+
+// Manda o conteúdo do iframe para impressão / PDF
+function imprimirPrevia(){
+  var frame = document.getElementById('prev-frame');
+  frame.contentWindow.focus();
+  frame.contentWindow.print();
+}
+
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
 
 <script>
 // ══ SERVICE WORKER + AUTO-ATUALIZAÇÃO SILENCIOSA ══
