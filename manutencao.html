@@ -1982,20 +1982,36 @@ function gerarRelatorio(){
     });
   });
 
+  // Agrupa por frota: uma linha por VP/RB, serviços juntos por vírgula.
+  // Mantém a ordem em que as frotas apareceram.
+  var grupos = [];       // [{frota, servicos:[], local, temInt, temExt}]
+  var idxFrota = {};     // frota -> posição em grupos
+  itens.forEach(function(it){
+    var chave = it.frota.toUpperCase();
+    if(idxFrota[chave] === undefined){
+      idxFrota[chave] = grupos.length;
+      grupos.push({ frota: it.frota, servicos: [], local: it.local, temInt: false, temExt: false });
+    }
+    var g = grupos[idxFrota[chave]];
+    if(it.desc && g.servicos.indexOf(it.desc) < 0) g.servicos.push(it.desc);
+    if(it.ext) g.temExt = true; else g.temInt = true;
+    if(!g.local && it.local) g.local = it.local; // pega a localização se ainda não tiver
+  });
+
   var hoje = new Date();
   var dia = ('0'+hoje.getDate()).slice(-2)+'/'+('0'+(hoje.getMonth()+1)).slice(-2)+'/'+hoje.getFullYear();
 
-  var linhas = itens.map(function(it, i){
+  var linhas = grupos.map(function(g, i){
     return '<tr>' +
       '<td class="c-num">'+(i+1)+'</td>' +
-      '<td class="c-frota">'+esc(it.frota)+'</td>' +
-      '<td class="c-of">'+(it.ext ? '' : 'x')+'</td>' +
-      '<td class="c-of">'+(it.ext ? 'x' : '')+'</td>' +
+      '<td class="c-frota">'+esc(g.frota)+'</td>' +
+      '<td class="c-of">'+(g.temInt ? 'x' : '')+'</td>' +
+      '<td class="c-of">'+(g.temExt ? 'x' : '')+'</td>' +
       '<td class="c-ent">'+dia+'</td>' +
-      '<td class="c-serv">'+esc(it.desc)+'</td>' +
+      '<td class="c-serv">'+esc(g.servicos.join(', '))+'</td>' +
       '<td class="c-prev"></td>' +
       '<td class="c-resp"></td>' +
-      '<td class="c-loc">'+esc(it.local)+'</td>' +
+      '<td class="c-loc">'+esc(g.local)+'</td>' +
     '</tr>';
   }).join('');
 
@@ -2047,6 +2063,7 @@ function gerarRelatorio(){
   doc.open(); doc.write(folha); doc.close();
 
   document.getElementById('prev-count').textContent =
+    grupos.length + (grupos.length===1 ? ' frota · ' : ' frotas · ') +
     itens.length + (itens.length===1 ? ' serviço' : ' serviços');
 
   // Esconde seleção, mostra prévia
