@@ -167,6 +167,18 @@ html,body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);mi
 .fc-sv-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
 .fc-sv-tipo{font-size:10px;font-weight:700;color:var(--tx3);flex:1;text-transform:uppercase;letter-spacing:.3px}
 .fc-sv-desc{font-size:13px;font-weight:500;color:var(--tx);margin-bottom:6px}
+.selo-pend{font-size:9px;font-weight:700;color:#c2410c;background:rgba(249,115,22,.12);padding:1px 6px;border-radius:8px;margin-left:4px;white-space:nowrap}
+.fc-pendconj{background:#fff7ed;border:1px solid #fed7aa;border-left:3px solid #f97316;border-radius:8px;padding:9px 11px;margin-bottom:8px}
+[data-theme=dark] .fc-pendconj{background:#1c1408;border-color:#7c2d12}
+.fc-pendconj-top{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.fc-pendconj-frota{font-size:13px;font-weight:800;color:#c2410c}
+.fc-pendconj-tipo{font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.3px}
+.fc-pendconj-desc{font-size:12.5px;color:var(--tx);margin-bottom:3px}
+.fc-pendconj-nota{font-size:10px;color:#f97316;font-style:italic;margin-bottom:6px}
+.cardpend{background:rgba(249,115,22,.08);border:1px solid #fed7aa;border-radius:8px;padding:6px 8px;margin:6px 0}
+[data-theme=dark] .cardpend{background:rgba(249,115,22,.08);border-color:#7c2d12}
+.cardpend-hd{font-size:10px;font-weight:800;color:#c2410c;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px}
+.cardpend-item{font-size:10px;color:var(--tx2);line-height:1.4}
 .fc-sv-extra{font-size:11px;font-style:italic;margin-bottom:6px}
 .fc-sv-extra.sol{color:var(--green)}.fc-sv-extra.pend{color:orange}.fc-sv-extra.ag{color:var(--cyan)}.fc-sv-extra.ext{color:var(--violet)}
 .fc-sv-acts{display:flex;gap:5px;flex-wrap:wrap}
@@ -824,6 +836,34 @@ function render(){
   document.querySelectorAll('.card').forEach(addDragListeners);
 }
 
+// Extrai as unidades (cavalo + carretas) de um código de frota.
+// "VP-520" → ["VP-520"];  "VPL-185 RB-185" → ["VP-185","RB-185"];
+// "VP-456 RB-98/99" → ["VP-456","RB-98","RB-99"]
+function unidadesDaFrota(frotaCod){
+  var out=[];
+  String(normalizaCod(frotaCod)).trim().split(/\s+/).forEach(function(tok){
+    var m=tok.match(/^([A-Za-z]+)[-\s]*([\d\/]+)$/);
+    if(!m){ if(tok) out.push(tok.toUpperCase()); return; }
+    var pref=m[1].toUpperCase();
+    m[2].split('/').forEach(function(n){ if(n) out.push(pref+'-'+n); });
+  });
+  return out;
+}
+
+// Retorna as pendências abertas de OUTRAS OS que envolvem alguma unidade
+// deste conjunto (mesmo cavalo ou mesma carreta).
+function pendenciasDoConjunto(os){
+  var minhasUnid = unidadesDaFrota(os.frota);
+  var lista = lerPendencias();
+  return lista.filter(function(p){
+    if(p.status!=='pendente') return false;
+    if(p.os_id===os.id) return false; // não conta as da própria OS
+    var pUnid = unidadesDaFrota(p.frota);
+    // Há interseção de unidade?
+    return pUnid.some(function(u){ return minhasUnid.indexOf(u)>=0; });
+  });
+}
+
 function renderCard(os){
   var fv=os.frota||''; var fCls=fv.match(/^VP/i)?'vp':fv.match(/^RB/i)?'rb':'outro';
   var prio=os.prioridade||'normal';
@@ -849,6 +889,17 @@ function renderCard(os){
       '</div>' +
       (os.origem==='checklist'?'<div class="card-origem">📋 '+(os.motorista||'Check List')+'</div>':'') +
     '</div>' +
+    // Aviso: pendências abertas de OUTRAS OS no mesmo cavalo/carreta
+    (function(){
+      var pc = pendenciasDoConjunto(os);
+      if(!pc.length) return '';
+      var lis = pc.slice(0,3).map(function(p){
+        return '<div class="cardpend-item">⏸ '+esc(p.frota)+': '+esc(String(p.descricao||'').replace(/^\s*\[[^\]]*\]\s*/,''))+'</div>';
+      }).join('');
+      var mais = pc.length>3 ? '<div class="cardpend-item">+'+(pc.length-3)+' pendência(s)…</div>' : '';
+      return '<div class="cardpend" onclick="event.stopPropagation();showTab(\'pendencias\')" title="Pendências abertas neste conjunto">' +
+             '<div class="cardpend-hd">⚠ '+pc.length+' pendência(s) neste conjunto</div>'+lis+mais+'</div>';
+    })() +
     // Serviços
     '<div class="card-svs">' +
       svs.slice(0,3).map(function(sv){
@@ -1032,7 +1083,7 @@ function abrirFC(osId){
         '<span class="prio-tag" style="font-size:9px">'+( stLbls[sv.status]||sv.status)+'</span>' +
         '<button class="btn-sv-act edit" style="padding:3px 8px;font-size:11px" data-oid="'+osId+'" data-sid="'+sv.id+'" onclick="abrirEditSV(this.dataset.oid,this.dataset.sid)">✎</button>' +
       '</div>' +
-      '<div class="fc-sv-desc">'+sv.descricao+'</div>' +
+      '<div class="fc-sv-desc">'+sv.descricao+(sv.de_pendencia?' <span class="selo-pend">↩ de pendência</span>':'')+'</div>' +
       (sv.solucao?'<div class="fc-sv-extra sol">✅ '+sv.solucao+'</div>':'')+
       (sv.status==='pend'&&sv.pend_nota?'<div class="fc-sv-extra pend">⏸ '+sv.pend_nota+'</div>':'')+
       (sv.status==='agpeca'&&sv.ag_peca?'<div class="fc-sv-extra ag">⏳ Peça: '+sv.ag_peca+(sv.ag_prev?' · '+sv.ag_prev:'')+'</div>':'')+
@@ -1048,6 +1099,9 @@ function abrirFC(osId){
             '<button class="btn-sv-act move" data-oid="'+osId+'" data-sid="'+sv.id+'" onclick="abrirMec(this.dataset.oid,this.dataset.sid)">'+(sv.mecanico?'✎ Mecânico':'+ Mecânico')+'</button>';
     } else if(sv.status==='agpeca'||sv.status==='pend'){
       html+='<button class="btn-sv-act ok" data-oid="'+osId+'" data-sid="'+sv.id+'" onclick="abrirConcluir(this.dataset.oid,this.dataset.sid)">Concluir</button>';
+      if(sv.status==='pend'){
+        html+='<button class="btn-sv-act move" data-oid="'+osId+'" data-sid="'+sv.id+'" onclick="reabrirSV(this.dataset.oid,this.dataset.sid)">↻ Reabrir</button>';
+      }
     } else if(sv.status==='externa'){
       html+='<button class="btn-sv-act ok" data-oid="'+osId+'" data-sid="'+sv.id+'" onclick="abrirConcluir(this.dataset.oid,this.dataset.sid)">Retornou</button>'+
             '<button class="btn-sv-act move" data-oid="'+osId+'" data-sid="'+sv.id+'" data-st="andando" onclick="moverSV(this.dataset.oid,this.dataset.sid,this.dataset.st)">Voltar</button>';
@@ -1060,6 +1114,26 @@ function abrirFC(osId){
     html+='</div></div>';
   });
   html+='</div>';
+
+  // ── Pendências deste conjunto (de outras OS) — decidir se ativa ──
+  var pendConj = pendenciasDoConjunto(os);
+  if(pendConj.length){
+    html+='<div class="fc-section"><div class="fc-section-title" style="color:#c2410c">⏸ Pendências deste conjunto ('+pendConj.length+')</div>';
+    html+='<div style="font-size:11px;color:var(--tx3);margin-bottom:8px">Ative para trazer a pendência para esta O.S. e resolvê-la. Se não ativar, ela continua no quadro de Pendências.</div>';
+    pendConj.forEach(function(p){
+      var descLimpa = String(p.descricao||'').replace(/^\s*\[[^\]]*\]\s*/,'');
+      html+='<div class="fc-pendconj">' +
+        '<div class="fc-pendconj-top">' +
+          '<span class="fc-pendconj-frota">'+esc(p.frota)+'</span>' +
+          (p.tipo?'<span class="fc-pendconj-tipo">'+esc(p.tipo)+'</span>':'') +
+        '</div>' +
+        '<div class="fc-pendconj-desc">'+esc(descLimpa)+'</div>' +
+        (p.pend_nota?'<div class="fc-pendconj-nota">⏸ '+esc(p.pend_nota)+'</div>':'') +
+        '<button class="btn-sv-act ok" data-oid="'+osId+'" data-pid="'+p.id+'" onclick="ativarPendencia(this.dataset.oid,this.dataset.pid)">✓ Ativar (vamos fazer)</button>' +
+      '</div>';
+    });
+    html+='</div>';
+  }
 
   // Data prevista
   html+='<div class="fc-section"><div class="fc-section-title">Data Prevista de Conclusão</div>';
@@ -1307,6 +1381,55 @@ function confirmarPend(){
   sync(os); salvarOS(); fM('m-pend'); fecharFC(); render();
   showTab('pendencias'); // abre a aba Pendências automaticamente
   toast('⏸ Pendência registrada — card removido do board','');
+}
+
+// Traz uma pendência do conjunto para DENTRO desta OS como serviço ativo.
+// Remove do quadro de Pendências. Marca origem para o selo no histórico.
+function ativarPendencia(osId, pendId){
+  ordens=lerOS();
+  var os=ordens.find(function(o){return o.id===osId;});
+  if(!os) return;
+  var lista=lerPendencias();
+  var p=lista.find(function(x){return x.id===pendId && x.status==='pendente';});
+  if(!p){ toast('Pendência não encontrada','err'); return; }
+
+  // Cria o serviço dentro desta OS (ativo, marcado como vindo de pendência)
+  var novoSV={
+    id:'SV-'+uid(),
+    tipo:p.tipo||'',
+    descricao:p.descricao||'',
+    status:'aberta',
+    mecanico:p.mecanico||'',
+    de_pendencia:true,          // selo p/ histórico
+    pend_origem:p.pend_nota||'',
+    ts:Date.now()
+  };
+  os.servicos=os.servicos||[];
+  os.servicos.push(novoSV);
+  addHistorico(os,'Pendência ativada nesta O.S.: '+String(p.descricao||'').replace(/^\s*\[[^\]]*\]\s*/,'').slice(0,40));
+
+  // Baixa a pendência do quadro (resolvida = "puxada para O.S.")
+  resolverPendencia(p.sv_id);
+
+  atualizarStatusOS(os);
+  sync(os); salvarOS(); render();
+  if(_fcOsId===osId) abrirFC(osId);
+  toast('✓ Pendência ativada nesta O.S.','ok');
+}
+
+function reabrirSV(osId,svId){
+  ordens=lerOS();
+  var os=ordens.find(function(o){return o.id===osId;});
+  var sv=os&&os.servicos.find(function(s){return s.id===svId;});
+  if(!sv) return;
+  sv.status='aberta';
+  sv.pend_nota='';
+  addHistorico(os,'Pendência reaberta: '+String(sv.descricao||'').slice(0,40));
+  resolverPendencia(sv.id);        // baixa a pendência no servidor (aba Pendências)
+  atualizarStatusOS(os);           // card pode voltar ao board (aberta/andamento)
+  sync(os); salvarOS(); render();
+  if(_fcOsId===osId) abrirFC(osId);
+  toast('↻ Pendência reaberta','ok');
 }
 
 function abrirMec(osId,svId){
@@ -1695,7 +1818,7 @@ function renderHistorico() {
         '<div class="pend-card-frota">🚛 '+os.frota+'</div>' +
         '<span class="pend-card-badge resolvida">✅ Concluída</span>' +
       '</div>' +
-      '<div class="pend-card-desc">'+svs.map(function(s){return s.descricao;}).filter(Boolean).join(' · ')+'</div>' +
+      '<div class="pend-card-desc">'+svs.map(function(s){return s.descricao+(s.de_pendencia?' ↩':'');}).filter(Boolean).join(' · ')+'</div>' +
       '<div class="pend-card-meta">' +
         '<span style="color:var(--green)">✅ Concluída: '+dataConcl+'</span>' +
         (mecs.length?'<span>🔧 '+mecs.join(', ')+'</span>':'') +
