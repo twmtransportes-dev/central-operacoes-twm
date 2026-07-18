@@ -65,6 +65,20 @@
   .sr-empty{padding:14px 16px;color:var(--muted);font-size:13px;text-align:center}
 
   /* BOTÃO E PAINEL DA FROTA (admin) */
+  /* botão recentralizar (meu local) */
+  #recenterBtn{position:absolute;bottom:78px;right:12px;z-index:1000;background:#fff;border:none;
+    border-radius:50%;width:46px;height:46px;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  #recenterBtn:active{background:#f0f0f0}
+  /* CARTÃO DE DESTINO (estilo Google Maps) */
+  #destCard{position:absolute;left:12px;right:12px;bottom:16px;z-index:1001;background:#fff;border-radius:16px;
+    box-shadow:0 4px 20px rgba(0,0,0,.28);padding:14px 16px;display:flex;align-items:center;gap:12px;max-width:460px;margin:0 auto}
+  #destInfo{flex:1;min-width:0}
+  #destTitulo{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+  #destSub{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #destBtns{display:flex;align-items:center;gap:8px;flex:none}
+  #destNavegar{background:#0A84FF;color:#fff;border:none;border-radius:22px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
+  #destNavegar:active{opacity:.85}
+  #destFechar{background:#EFEFF4;color:var(--muted);border:none;border-radius:50%;width:34px;height:34px;font-size:15px;cursor:pointer;flex:none}
   #fleetToggle{position:absolute;bottom:20px;right:12px;z-index:1000;background:var(--brand);color:#fff;border:none;
     border-radius:24px;padding:12px 18px;font-size:14px;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,.3);cursor:pointer}
   #fleetPanel{position:absolute;left:0;right:0;bottom:0;z-index:1002;background:#fff;border-radius:18px 18px 0 0;
@@ -136,6 +150,21 @@
       <span id="searchClear" title="Limpar">✕</span>
     </div>
     <div id="searchResults"></div>
+
+    <!-- botão recentralizar no meu local -->
+    <button id="recenterBtn" title="Meu local">🎯</button>
+
+    <!-- cartão de destino (aparece ao escolher um local) -->
+    <div id="destCard" class="hidden">
+      <div id="destInfo">
+        <div id="destTitulo"></div>
+        <div id="destSub"></div>
+      </div>
+      <div id="destBtns">
+        <button id="destNavegar">🧭 Navegar</button>
+        <button id="destFechar">✕</button>
+      </div>
+    </div>
 
     <!-- botão da frota (só admin) abre painel deslizante -->
     <button id="fleetToggle" class="hidden">👥 <span id="fleetToggleCount"></span></button>
@@ -311,15 +340,19 @@ function iconePessoa(txt, online){
 }
 
 // Ponto azul estilo Google Maps para "minha posição"
-function iconeMeuPonto(){
+function iconeMeuPonto(heading){
+  // caminhãozinho que gira conforme a direção (heading em graus, 0=norte)
+  var rot = (heading!=null && !isNaN(heading)) ? heading : 0;
   var html =
-    '<div style="position:relative;width:24px;height:24px">'+
-      '<div style="position:absolute;top:-8px;left:-8px;width:40px;height:40px;border-radius:50%;'+
+    '<div style="position:relative;width:44px;height:44px">'+
+      '<div style="position:absolute;top:2px;left:2px;width:40px;height:40px;border-radius:50%;'+
         'background:rgba(66,133,244,.18)"></div>'+
-      '<div style="position:absolute;top:0;left:0;width:24px;height:24px;border-radius:50%;'+
-        'background:#4285F4;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>'+
+      '<div style="position:absolute;top:8px;left:8px;width:28px;height:28px;border-radius:50%;'+
+        'background:#4285F4;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);'+
+        'display:flex;align-items:center;justify-content:center;font-size:15px;'+
+        'transform:rotate('+rot+'deg);transition:transform .3s ease">🚚</div>'+
     '</div>';
-  return L.divIcon({html:html, className:'', iconSize:[24,24], iconAnchor:[12,12], popupAnchor:[0,-14]});
+  return L.divIcon({html:html, className:'', iconSize:[44,44], iconAnchor:[22,22], popupAnchor:[0,-20]});
 }
 
 /* ============================================================
@@ -343,6 +376,17 @@ function iniciarCompartilhamento(){
   watchId = navigator.geolocation.watchPosition(function(pos){
     ultimaPos = {lat:pos.coords.latitude, lng:pos.coords.longitude, acc:pos.coords.accuracy};
     document.getElementById('meStatus').textContent = 'ao vivo';
+    // move e gira o caminhãozinho no mapa
+    if(map){
+      var ll = [pos.coords.latitude, pos.coords.longitude];
+      var head = pos.coords.heading; // graus (pode vir null se parado)
+      if(!meMarker){
+        meMarker = L.marker(ll, {icon: iconeMeuPonto(head)}).addTo(map);
+      } else {
+        meMarker.setLatLng(ll);
+        if(head!=null && !isNaN(head)) meMarker.setIcon(iconeMeuPonto(head));
+      }
+    }
   }, function(err){
     if(err.code === 1){ // permissão negada
       document.getElementById('meDot').classList.remove('live');
@@ -568,6 +612,38 @@ function buscarEndereco(termo, cb){
     .catch(function(){ cb([]); });
 }
 
+var destMarker = null, destAtual = null;
+
+// mostra o cartão de destino com botão Navegar
+function abrirDestino(it){
+  destAtual = it;
+  document.getElementById('destTitulo').textContent = it.titulo;
+  document.getElementById('destSub').textContent = it.sub || 'Toque em Navegar para iniciar a rota';
+  document.getElementById('destCard').classList.remove('hidden');
+}
+function fecharDestino(){
+  document.getElementById('destCard').classList.add('hidden');
+  if(destMarker){ map.removeLayer(destMarker); destMarker=null; }
+  destAtual = null;
+}
+// abre o Google Maps com a rota do local do motorista até o destino
+function navegarPara(){
+  if(!destAtual) return;
+  var dst = (!isNaN(destAtual.lat)&&!isNaN(destAtual.lng)) ? (destAtual.lat+','+destAtual.lng)
+            : encodeURIComponent(destAtual.titulo);
+  function abrir(origem){
+    var url = 'https://www.google.com/maps/dir/?api=1'
+            + (origem?'&origin='+origem:'')
+            + '&destination='+dst+'&travelmode=driving';
+    window.open(url,'_blank');
+  }
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(function(pos){
+      abrir(pos.coords.latitude+','+pos.coords.longitude);
+    }, function(){ abrir(null); }, {enableHighAccuracy:true, timeout:6000});
+  } else { abrir(null); }
+}
+
 function renderResultados(itens){
   var box = document.getElementById('searchResults');
   if(!itens.length){ box.style.display='none'; box.innerHTML=''; return; }
@@ -581,7 +657,9 @@ function renderResultados(itens){
     el.onclick = function(){
       if(!isNaN(it.lat) && !isNaN(it.lng)){
         map.setView([it.lat,it.lng], 16, {animate:true});
-        L.popup().setLatLng([it.lat,it.lng]).setContent('<b>'+it.titulo+'</b><br>'+(it.sub||'')).openOn(map);
+        if(destMarker) map.removeLayer(destMarker);
+        destMarker = L.marker([it.lat,it.lng]).addTo(map);
+        abrirDestino(it);
       } else if(it.tipo==='frota' && !it.temPos){
         toast(it.titulo.split('•')[0].trim()+' está sem localização recente');
       }
@@ -675,6 +753,12 @@ window.addEventListener('DOMContentLoaded', function(){
   document.getElementById('btnAtualizarFrota').addEventListener('click', carregarFrota);
   document.getElementById('btnRota').addEventListener('click', abrirRota);
   document.getElementById('btnMinhaLoc').addEventListener('click', verMinhaLocalizacao);
+  document.getElementById('destNavegar').addEventListener('click', navegarPara);
+  document.getElementById('destFechar').addEventListener('click', fecharDestino);
+  document.getElementById('recenterBtn').addEventListener('click', function(){
+    if(meMarker){ map.setView(meMarker.getLatLng(), 16, {animate:true}); }
+    else { centralizarNoUsuario(); }
+  });
 
   // ---- LUPA expansível ----
   var bar = document.getElementById('searchBar');
