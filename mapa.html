@@ -87,7 +87,8 @@
   #fleetPanel.open{transform:translateY(0)}
   #fleetPanelHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);font-weight:700;font-size:15px;color:var(--brand2)}
   .fp-btn{background:#EFEFF4;border:none;border-radius:10px;width:36px;height:36px;font-size:15px;cursor:pointer;margin-left:6px}
-  #fleetPanel .fleet-list{overflow-y:auto;padding:12px 14px}
+  #fleetPanel .fleet-list{overflow-y:auto;padding:12px 14px;min-height:120px}
+  #fleetPanel .empty{text-align:center;color:var(--muted);font-size:13px;padding:24px 16px;line-height:1.6}
   .field{margin-bottom:12px}
   .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.5px}
   .field input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:15px;font-family:var(--sfont)}
@@ -438,8 +439,10 @@ function renderFrota(lista){
   marcadores = {};
 
   if(!lista.length){
-    box.innerHTML = '<div class="empty">Ninguém compartilhando localização no momento.<br>As posições aparecem quando alguém ativa o compartilhamento na aba Frota.</div>';
+    box.innerHTML = '<div class="empty">Ninguém compartilhando localização no momento.<br><br>As posições aparecem automaticamente quando alguém abre o app com o GPS liberado.</div>';
     cnt.textContent = '';
+    var tc0 = document.getElementById('fleetToggleCount');
+    if(tc0) tc0.textContent = '0';
     return;
   }
 
@@ -489,6 +492,8 @@ function renderFrota(lista){
   });
 
   cnt.textContent = '('+online+' online / '+lista.length+' total)';
+  var tc = document.getElementById('fleetToggleCount');
+  if(tc) tc.textContent = String(online);
   // Só reenquadra se houver posições; senão mantém a centralização no usuário
   if(bounds.length){
     if(meMarker){ var ll = meMarker.getLatLng(); bounds.push([ll.lat, ll.lng]); }
@@ -732,8 +737,16 @@ window.addEventListener('DOMContentLoaded', function(){
   // ---- PAINEL DA FROTA (admin) ----
   var painel = document.getElementById('fleetPanel');
   var toggle = document.getElementById('fleetToggle');
-  toggle.addEventListener('click', function(){ painel.classList.add('open'); });
-  document.getElementById('fleetPanelClose').addEventListener('click', function(){ painel.classList.remove('open'); });
+  toggle.addEventListener('click', function(){
+    painel.classList.remove('hidden');   // sem isso o painel fica display:none
+    // pequeno atraso para a animação de subida funcionar
+    setTimeout(function(){ painel.classList.add('open'); }, 10);
+    carregarFrota();                     // atualiza a lista ao abrir
+  });
+  document.getElementById('fleetPanelClose').addEventListener('click', function(){
+    painel.classList.remove('open');
+    setTimeout(function(){ painel.classList.add('hidden'); }, 300); // espera a animação
+  });
 
   // admin vê o botão da frota (painel deslizante); motorista não
   if(_isAdmin()){
