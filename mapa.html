@@ -20,9 +20,6 @@
   .logo{width:44px;height:44px;border-radius:12px;background:var(--brand);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px}
   .brand h1{font-size:20px;letter-spacing:.5px}
   .back{color:var(--muted);text-decoration:none;font-weight:700;font-size:13px;letter-spacing:1px}
-  .tabs{display:flex;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:73px;z-index:999}
-  .tab{flex:1;padding:14px 8px;text-align:center;font-weight:700;font-size:13px;letter-spacing:1px;color:var(--muted);border-bottom:3px solid transparent;cursor:pointer;user-select:none}
-  .tab.active{color:var(--brand2);border-bottom-color:var(--brand2)}
   .wrap{padding:16px;max-width:900px;margin:0 auto}
   .card{background:var(--card);border-radius:var(--radius);border:1px solid var(--line);padding:16px;margin-bottom:14px}
   .card h2{font-size:15px;color:var(--brand2);letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
@@ -33,7 +30,7 @@
   .btn+.btn{margin-top:10px}
   /* MAPA EM TELA CHEIA */
   #tab-frota{position:relative}
-  #mapFull{position:relative;width:100%;height:calc(100vh - 124px);min-height:420px}
+  #mapFull{position:relative;width:100%;height:calc(100vh - 74px);min-height:420px}
   #map{position:absolute;inset:0;width:100%;height:100%;z-index:1}
 
   /* status minúsculo e discreto no canto inferior esquerdo */
@@ -87,7 +84,6 @@
   #fleetPanelHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);font-weight:700;font-size:15px;color:var(--brand2)}
   .fp-btn{background:#EFEFF4;border:none;border-radius:10px;width:36px;height:36px;font-size:15px;cursor:pointer;margin-left:6px}
   #fleetPanel .fleet-list{overflow-y:auto;padding:12px 14px}
-  #mapNav{width:100%;height:42vh;min-height:280px;border-radius:var(--radius);border:1px solid var(--line);z-index:1;margin-top:12px}
   .field{margin-bottom:12px}
   .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.5px}
   .field input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:15px;font-family:var(--sfont)}
@@ -127,12 +123,7 @@
   <a class="back" href="index.html">← CENTRAL</a>
 </div>
 
-<div class="tabs">
-  <div class="tab active" data-tab="frota" id="tabFrotaBtn">🗺️ FROTA NO MAPA</div>
-  <div class="tab" data-tab="navegar">🧭 NAVEGAR</div>
-</div>
-
-<!-- ======================= ABA FROTA ======================= -->
+<!-- ======================= MAPA ======================= -->
 <div id="tab-frota">
   <div id="mapFull">
     <div id="map"></div>
@@ -181,24 +172,6 @@
       <div class="fleet-list" id="fleetList"></div>
     </div>
     <div id="adminControls" class="hidden"></div>
-  </div>
-</div>
-
-<!-- ======================= ABA NAVEGAR ======================= -->
-<div class="wrap hidden" id="tab-navegar">
-  <div class="card">
-    <h2>🧭 TRAÇAR ROTA</h2>
-    <div id="gpsBanner" class="banner warn hidden">
-      <span>⚠️</span>
-      <span>Ative o GPS do aparelho para calcular a rota a partir da sua posição atual.</span>
-    </div>
-    <div class="field">
-      <label>DESTINO</label>
-      <input type="text" id="destino" placeholder="Ex: Refinaria Gabriel Passos, Betim" autocomplete="off">
-    </div>
-    <button class="btn" id="btnRota">🚗 Abrir rota no Google Maps</button>
-    <button class="btn ghost" id="btnMinhaLoc">📍 Ver minha localização no mapa</button>
-    <div id="mapNav"></div>
   </div>
 </div>
 
@@ -274,7 +247,7 @@ function tempoRelativo(iso){
 /* ============================================================
    MAPA  (Leaflet com tiles estilo Google)
    ============================================================ */
-var map, mapNav, marcadores = {}, meuMarcadorNav = null;
+var map, marcadores = {};
 var frotaAtual = [];
 var TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 var TILE_ATTR = '&copy; OpenStreetMap &copy; CARTO';
@@ -318,11 +291,6 @@ function centralizarNoUsuario(){
       // sem nenhuma fonte disponível — mantém o centro padrão, sem travar
     }, {enableHighAccuracy:false, timeout:12000, maximumAge:60000});
   }, {enableHighAccuracy:true, timeout:7000, maximumAge:15000});
-}
-function initMapaNav(){
-  if(mapNav) return;
-  mapNav = L.map('mapNav', {zoomControl:true}).setView(CENTRO_PADRAO, 13);
-  L.tileLayer(TILE_URL, {attribution:TILE_ATTR, maxZoom:20, subdomains:'abcd'}).addTo(mapNav);
 }
 
 // Ícone customizado (pin com iniciais) estilo rastreador
@@ -691,68 +659,20 @@ function onBusca(){
   }, 500);
 }
 
-function abrirRota(){
-  var destino = document.getElementById('destino').value.trim();
-  if(!destino){ toast('Digite um destino'); return; }
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(function(pos){
-      var o = pos.coords.latitude+','+pos.coords.longitude;
-      var url = 'https://www.google.com/maps/dir/?api=1&origin='+o+'&destination='+encodeURIComponent(destino)+'&travelmode=driving';
-      window.open(url,'_blank');
-    }, function(){
-      var url = 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(destino)+'&travelmode=driving';
-      window.open(url,'_blank');
-    }, {enableHighAccuracy:true, timeout:8000});
-  } else {
-    var url = 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(destino);
-    window.open(url,'_blank');
-  }
-}
-function verMinhaLocalizacao(){
-  initMapaNav();
-  if(!navigator.geolocation){ toast('GPS não suportado'); return; }
-  document.getElementById('gpsBanner').classList.add('hidden');
-  navigator.geolocation.getCurrentPosition(function(pos){
-    var lat=pos.coords.latitude, lng=pos.coords.longitude;
-    mapNav.setView([lat,lng], 16, {animate:true});
-    if(meuMarcadorNav) mapNav.removeLayer(meuMarcadorNav);
-    meuMarcadorNav = L.marker([lat,lng], {icon:iconeMeuPonto()}).addTo(mapNav);
-    meuMarcadorNav.bindPopup('<b>Você está aqui</b>').openPopup();
-    setTimeout(function(){ mapNav.invalidateSize(); }, 200);
-  }, function(){
-    document.getElementById('gpsBanner').classList.remove('hidden');
-  }, {enableHighAccuracy:true, timeout:10000});
-}
-
 /* ============================================================
-   ABAS
+   INIT DO MAPA
    ============================================================ */
-function trocarAba(nome){
-  document.querySelectorAll('.tab').forEach(function(t){ t.classList.toggle('active', t.dataset.tab===nome); });
-  document.getElementById('tab-frota').classList.toggle('hidden', nome!=='frota');
-  document.getElementById('tab-navegar').classList.toggle('hidden', nome!=='navegar');
-  if(nome==='frota'){
-    initMapaFrota();
-    setTimeout(function(){ map.invalidateSize(); }, 200);
-    if(_isAdmin()) carregarFrota();
-  }
-  if(nome==='navegar'){
-    initMapaNav();
-    setTimeout(function(){ mapNav.invalidateSize(); }, 200);
-  }
+function abrirMapa(){
+  initMapaFrota();
+  setTimeout(function(){ map.invalidateSize(); }, 200);
+  if(_isAdmin()) carregarFrota();
 }
 
 /* ============================================================
    INIT
    ============================================================ */
 window.addEventListener('DOMContentLoaded', function(){
-  // abas
-  document.querySelectorAll('.tab').forEach(function(t){
-    t.addEventListener('click', function(){ trocarAba(t.dataset.tab); });
-  });
   document.getElementById('btnAtualizarFrota').addEventListener('click', carregarFrota);
-  document.getElementById('btnRota').addEventListener('click', abrirRota);
-  document.getElementById('btnMinhaLoc').addEventListener('click', verMinhaLocalizacao);
   document.getElementById('destNavegar').addEventListener('click', navegarPara);
   document.getElementById('destFechar').addEventListener('click', fecharDestino);
   document.getElementById('recenterBtn').addEventListener('click', function(){
@@ -802,11 +722,11 @@ window.addEventListener('DOMContentLoaded', function(){
   if(_isAdmin()){
     document.getElementById('fleetToggle').classList.remove('hidden');
     refreshTimer = setInterval(function(){
-      if(!document.getElementById('tab-frota').classList.contains('hidden')) carregarFrota();
+      carregarFrota();
     }, REFRESH_INTERVALO_MS);
   }
 
-  trocarAba('frota');
+  abrirMapa();
   carregarEquipamentos();  // cadastro da frota (VP/RB/placa/modelo) para a lupa
 
   // Compartilhamento AUTOMÁTICO: começa sozinho ao abrir o mapa.
@@ -819,7 +739,7 @@ window.addEventListener('DOMContentLoaded', function(){
       // mantém watch, apenas não força envio extra
     } else {
       if(compartilhando) enviarMinhaPos();
-      if(_isAdmin() && !document.getElementById('tab-frota').classList.contains('hidden')) carregarFrota();
+      if(_isAdmin()) carregarFrota();
     }
   });
 
