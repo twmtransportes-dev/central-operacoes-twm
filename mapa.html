@@ -6,6 +6,8 @@
 <title>TWM • Mapa</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- plugin de rotação do mapa (gesto de dois dedos) -->
+<script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
 <style>
   :root{
     --bg:#F2F2F7; --card:#FFFFFF; --ink:#1C1C1E; --muted:#8E8E93;
@@ -33,7 +35,7 @@
   /* MAPA EM TELA CHEIA */
   #tab-frota{position:relative;flex:1;min-height:0;display:flex}
   #mapFull{position:relative;width:100%;flex:1;min-height:0}
-  #map{position:absolute;inset:0;width:100%;height:100%;z-index:1;touch-action:none;overscroll-behavior:none}
+  #map{position:absolute;inset:0;width:100%;height:100%;z-index:1;touch-action:pan-x pan-y;overscroll-behavior:none}
 
   /* status minúsculo e discreto no canto inferior esquerdo */
   #statusChip{position:absolute;bottom:8px;left:8px;z-index:1000;background:rgba(255,255,255,.85);border-radius:12px;
@@ -69,6 +71,23 @@
     background:#fff;border:none;border-radius:50%;width:48px;height:48px;font-size:20px;
     box-shadow:0 2px 10px rgba(0,0,0,.28);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
   #recenterBtn:active{background:#f0f0f0}
+  #statusChip #cfgAbrir{cursor:pointer;font-size:10px;opacity:.75;padding-left:2px}
+  /* modal de configuração do tablet */
+  #cfgOverlay{position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,.5);
+    display:flex;align-items:center;justify-content:center;padding:20px}
+  #cfgBox{background:#fff;border-radius:18px;padding:22px;width:100%;max-width:380px;
+    box-shadow:0 10px 40px rgba(0,0,0,.35);max-height:90vh;overflow-y:auto}
+  #cfgBox h3{font-size:17px;margin-bottom:6px;color:var(--ink)}
+  #cfgBox .cfg-atual{font-size:13px;color:var(--ink);margin-bottom:2px}
+  #cfgBox .cfg-hint{font-size:12px;color:var(--muted);margin-bottom:16px}
+  #cfgBox label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 5px;letter-spacing:.4px}
+  #cfgBox input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;
+    font-size:16px;font-family:var(--sfont);background:#fff;color:var(--ink)}
+  #cfgMsg{font-size:12px;color:#D70015;min-height:16px;margin-top:10px}
+  .cfg-btns{display:flex;gap:10px;margin-top:14px}
+  .cfg-btns button{flex:1;padding:13px;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer}
+  .cfg-cancel{background:#EFEFF4;color:var(--ink)}
+  .cfg-ok{background:var(--brand2);color:#fff}
   /* CARTÃO DE DESTINO (estilo Google Maps) */
   #destCard{position:absolute;left:14px;right:14px;bottom:28px;z-index:1003;background:#fff;border-radius:16px;
     box-shadow:0 4px 20px rgba(0,0,0,.28);padding:14px 16px;display:flex;align-items:center;gap:12px;max-width:460px;margin:0 auto}
@@ -143,6 +162,7 @@
     <div id="statusChip">
       <span class="dot" id="meDot"></span>
       <span id="meStatus">iniciando</span>
+      <span id="cfgAbrir" title="Configurar VP deste tablet">⚙️</span>
     </div>
 
     <!-- lupa: botão pequeno que expande ao tocar -->
@@ -186,6 +206,31 @@
   </div>
 </div>
 
+<!-- MODAL: configuração da VP deste tablet -->
+<div id="cfgOverlay" class="hidden">
+  <div id="cfgBox">
+    <h3>🚛 VP deste tablet</h3>
+    <p class="cfg-atual">Atual: <b id="cfgVpAtual">—</b></p>
+    <p class="cfg-hint">Alterar exige login de administrador.</p>
+
+    <label>VP do caminhão</label>
+    <input type="text" id="cfgFrota" list="listaFrotas" placeholder="Ex: VP-183" autocomplete="off">
+    <datalist id="listaFrotas"></datalist>
+
+    <label>Usuário admin</label>
+    <input type="text" id="cfgUser" placeholder="matrícula ou e-mail" autocomplete="off">
+
+    <label>Senha</label>
+    <input type="password" id="cfgSenha" placeholder="senha" autocomplete="off">
+
+    <div id="cfgMsg"></div>
+    <div class="cfg-btns">
+      <button class="cfg-cancel" id="cfgCancelar">Cancelar</button>
+      <button class="cfg-ok" id="cfgSalvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -218,11 +263,21 @@ function _nomeUsuario(){
   var s = _sessao();
   return s.nome || s.usuario || s.motorista || s.name || 'Usuário';
 }
+/* A VP vem do APARELHO (tablet fixo no caminhão), configurada uma vez.
+   É a fonte mais confiável: o tablet está no veículo, então se ele se move,
+   aquele veículo se move — independente de quem está dirigindo. */
 function _frotaUsuario(){
+  var doTablet = (localStorage.getItem('twm_vp_tablet') || '').toString().toUpperCase();
+  if(doTablet) return doTablet;
   var s = _sessao();
   return (s.frota || s.veiculo || localStorage.getItem('twm_frota') || '').toString().toUpperCase();
 }
+function _placaTablet(){
+  return (localStorage.getItem('twm_placa_tablet') || '').toString().toUpperCase();
+}
 function _placaUsuario(){
+  var pt = _placaTablet();
+  if(pt) return pt;
   var s = _sessao();
   return (s.placa || s.placa_cav || localStorage.getItem('twm_placa') || '').toString().toUpperCase();
 }
@@ -266,7 +321,13 @@ var CENTRO_PADRAO = [-19.9668, -44.1985]; // Betim/MG (ajuste se quiser)
 
 function initMapaFrota(){
   if(map) return;
-  map = L.map('map', {zoomControl:false, attributionControl:false}).setView(CENTRO_PADRAO, 12);
+  map = L.map('map', {
+    zoomControl:false,
+    attributionControl:false,
+    rotate:true,              // habilita rotação do mapa
+    touchRotate:true,         // girar com dois dedos na tela
+    rotateControl:false       // sem botão de bússola (só o gesto)
+  }).setView(CENTRO_PADRAO, 12);
   L.control.attribution({prefix:false, position:'bottomright'}).addTo(map);
   L.tileLayer(TILE_URL, {attribution:TILE_ATTR, maxZoom:20, subdomains:'abcd'}).addTo(map);
   centralizarNoUsuario();
@@ -528,6 +589,68 @@ function carregarEquipamentos(){
     .catch(function(){ /* segue só com quem está reportando */ });
 }
 
+/* ============================================================
+   CONFIGURAÇÃO DO TABLET (qual VP este aparelho representa)
+   Só pode ser alterada com login e senha de administrador.
+   ============================================================ */
+function abrirConfigTablet(){
+  document.getElementById('cfgVpAtual').textContent = _frotaUsuario() || '(não configurado)';
+  document.getElementById('cfgUser').value = '';
+  document.getElementById('cfgSenha').value = '';
+  document.getElementById('cfgFrota').value = '';
+  document.getElementById('cfgMsg').textContent = '';
+  document.getElementById('cfgOverlay').classList.remove('hidden');
+  montarListaFrotas();
+}
+function fecharConfigTablet(){
+  document.getElementById('cfgOverlay').classList.add('hidden');
+}
+// preenche o datalist com as VPs do cadastro
+function montarListaFrotas(){
+  var dl = document.getElementById('listaFrotas');
+  if(!dl) return;
+  dl.innerHTML = '';
+  equipamentos.forEach(function(e){
+    if(!/^VP|^VA/.test(e.frota)) return;           // só cavalos
+    var o = document.createElement('option');
+    o.value = e.frota;
+    o.label = (e.placa||'') + (e.modelo? ' • '+e.modelo : '');
+    dl.appendChild(o);
+  });
+}
+// valida no servidor (planilha MOTORISTAS) e salva a VP no aparelho
+function salvarConfigTablet(){
+  var user  = document.getElementById('cfgUser').value.trim();
+  var senha = document.getElementById('cfgSenha').value;
+  var frota = document.getElementById('cfgFrota').value.trim().toUpperCase();
+  var msg   = document.getElementById('cfgMsg');
+
+  if(!user || !senha){ msg.textContent = 'Informe usuário e senha de administrador.'; return; }
+  if(!frota){ msg.textContent = 'Escolha a VP deste caminhão.'; return; }
+
+  msg.textContent = 'Verificando...';
+  fetch(SCRIPT_URL+'?action=validarAdmin'
+        +'&usuario='+encodeURIComponent(user)
+        +'&senha='+encodeURIComponent(senha)
+        +'&_t='+Date.now(), {cache:'no-store'})
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if(!res || !res.ok || !res.admin){
+        msg.textContent = (res && res.msg) ? res.msg : 'Usuário ou senha inválidos, ou sem permissão de admin.';
+        return;
+      }
+      localStorage.setItem('twm_vp_tablet', frota);
+      var cad = equipPorFrota[chaveFrota(frota)];
+      if(cad && cad.placa) localStorage.setItem('twm_placa_tablet', cad.placa);
+      msg.textContent = '';
+      fecharConfigTablet();
+      toast('Tablet configurado como ' + frota);
+      if(compartilhando) enviarMinhaPos();   // reenvia já com a VP certa
+    })
+    .catch(function(){ msg.textContent = 'Falha de conexão. Tente novamente.'; });
+}
+
+
 // posição reportada (se houver) para uma frota
 function posicaoDaFrota(frota){
   var k = chaveFrota(frota);
@@ -697,6 +820,9 @@ window.addEventListener('DOMContentLoaded', function(){
   document.getElementById('btnAtualizarFrota').addEventListener('click', carregarFrota);
   document.getElementById('destNavegar').addEventListener('click', navegarPara);
   document.getElementById('destFechar').addEventListener('click', fecharDestino);
+  document.getElementById('cfgAbrir').addEventListener('click', abrirConfigTablet);
+  document.getElementById('cfgCancelar').addEventListener('click', fecharConfigTablet);
+  document.getElementById('cfgSalvar').addEventListener('click', salvarConfigTablet);
   document.getElementById('recenterBtn').addEventListener('click', function(){
     if(meMarker){ map.setView(meMarker.getLatLng(), 16, {animate:true}); }
     else { centralizarNoUsuario(); }
@@ -758,6 +884,15 @@ window.addEventListener('DOMContentLoaded', function(){
 
   abrirMapa();
   carregarEquipamentos();  // cadastro da frota (VP/RB/placa/modelo) para a lupa
+
+  // avisa se este tablet ainda não tem VP configurada
+  if(!_frotaUsuario()){
+    var chip = document.getElementById('statusChip');
+    if(chip) chip.style.background = '#FFF4E5';
+    var st = document.getElementById('meStatus');
+    if(st) st.textContent = 'sem VP';
+    setTimeout(function(){ toast('Este tablet ainda não tem VP configurada — toque na engrenagem'); }, 1500);
+  }
 
   // Compartilhamento AUTOMÁTICO: começa sozinho ao abrir o mapa.
   // (o navegador ainda pede a permissão de GPS na primeira vez — obrigatório)
