@@ -30,7 +30,7 @@
   .btn+.btn{margin-top:10px}
   /* MAPA EM TELA CHEIA */
   #tab-frota{position:relative}
-  #mapFull{position:relative;width:100%;height:calc(100vh - 74px);min-height:420px}
+  #mapFull{position:relative;width:100%;height:calc(100vh - 74px);height:calc(100dvh - 74px);min-height:420px}
   #map{position:absolute;inset:0;width:100%;height:100%;z-index:1}
 
   /* status minúsculo e discreto no canto inferior esquerdo */
@@ -40,11 +40,11 @@
   #statusChip .dot{width:6px;height:6px}
 
   /* LUPA: botão pequeno que expande */
-  #searchBar{position:absolute;top:12px;right:12px;z-index:1001;background:#fff;border-radius:26px;
+  #searchBar{position:absolute;top:14px;right:14px;z-index:1001;background:#fff;border-radius:26px;
     box-shadow:0 2px 10px rgba(0,0,0,.22);display:flex;align-items:center;gap:8px;height:48px;
     transition:width .28s ease, padding .28s ease;overflow:hidden}
   #searchBar.collapsed{width:48px;padding:0;justify-content:center;cursor:pointer}
-  #searchBar.expanded{width:calc(100vw - 24px);max-width:420px;padding:0 14px}
+  #searchBar.expanded{width:calc(100vw - 28px);max-width:420px;padding:0 14px}
   #searchIcon{font-size:18px;opacity:.75;flex:none;cursor:pointer}
   #searchBar.collapsed #searchIcon{margin:0}
   #searchInput{flex:1;border:none;outline:none;font-size:15px;font-family:var(--sfont);background:transparent;color:var(--ink);min-width:0;width:0}
@@ -63,11 +63,11 @@
 
   /* BOTÃO E PAINEL DA FROTA (admin) */
   /* botão recentralizar (meu local) */
-  #recenterBtn{position:absolute;bottom:78px;right:12px;z-index:1000;background:#fff;border:none;
-    border-radius:50%;width:46px;height:46px;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  #recenterBtn{position:absolute;bottom:96px;right:14px;z-index:1000;background:#fff;border:none;
+    border-radius:50%;width:48px;height:48px;font-size:20px;box-shadow:0 2px 10px rgba(0,0,0,.28);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
   #recenterBtn:active{background:#f0f0f0}
   /* CARTÃO DE DESTINO (estilo Google Maps) */
-  #destCard{position:absolute;left:12px;right:12px;bottom:16px;z-index:1001;background:#fff;border-radius:16px;
+  #destCard{position:absolute;left:14px;right:14px;bottom:28px;z-index:1003;background:#fff;border-radius:16px;
     box-shadow:0 4px 20px rgba(0,0,0,.28);padding:14px 16px;display:flex;align-items:center;gap:12px;max-width:460px;margin:0 auto}
   #destInfo{flex:1;min-width:0}
   #destTitulo{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
@@ -76,7 +76,7 @@
   #destNavegar{background:#0A84FF;color:#fff;border:none;border-radius:22px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
   #destNavegar:active{opacity:.85}
   #destFechar{background:#EFEFF4;color:var(--muted);border:none;border-radius:50%;width:34px;height:34px;font-size:15px;cursor:pointer;flex:none}
-  #fleetToggle{position:absolute;bottom:20px;right:12px;z-index:1000;background:var(--brand);color:#fff;border:none;
+  #fleetToggle{position:absolute;bottom:32px;right:14px;z-index:1000;background:var(--brand);color:#fff;border:none;
     border-radius:24px;padding:12px 18px;font-size:14px;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,.3);cursor:pointer}
   #fleetPanel{position:absolute;left:0;right:0;bottom:0;z-index:1002;background:#fff;border-radius:18px 18px 0 0;
     box-shadow:0 -4px 20px rgba(0,0,0,.25);max-height:60%;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .3s ease}
@@ -111,6 +111,12 @@
   .toast.show{opacity:1}
   .count{font-size:12px;color:var(--muted);font-weight:600}
   .leaflet-container{font-family:var(--sfont)}
+  /* atribuição do mapa: obrigatória por licença, mas bem discreta */
+  .leaflet-control-attribution{background:rgba(255,255,255,.55)!important;font-size:7px!important;
+    padding:0 4px!important;color:#9a9a9e!important;line-height:12px!important;border-radius:6px 0 0 0;
+    margin:0!important;position:absolute;bottom:0;right:0}
+  .leaflet-control-attribution a{color:#9a9a9e!important;text-decoration:none!important}
+  .leaflet-control-attribution svg{display:none!important}
 </style>
 </head>
 <body>
@@ -250,13 +256,13 @@ function tempoRelativo(iso){
 var map, marcadores = {};
 var frotaAtual = [];
 var TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-var TILE_ATTR = '&copy; OpenStreetMap &copy; CARTO';
+var TILE_ATTR = '© OpenStreetMap © CARTO';
 var CENTRO_PADRAO = [-19.9668, -44.1985]; // Betim/MG (ajuste se quiser)
 
 function initMapaFrota(){
   if(map) return;
-  map = L.map('map', {zoomControl:false}).setView(CENTRO_PADRAO, 12);
-  L.control.zoom({position:'bottomright'}).addTo(map);
+  map = L.map('map', {zoomControl:false, attributionControl:false}).setView(CENTRO_PADRAO, 12);
+  L.control.attribution({prefix:false, position:'bottomright'}).addTo(map);
   L.tileLayer(TILE_URL, {attribution:TILE_ATTR, maxZoom:20, subdomains:'abcd'}).addTo(map);
   centralizarNoUsuario();
 }
@@ -588,11 +594,18 @@ function abrirDestino(it){
   document.getElementById('destTitulo').textContent = it.titulo;
   document.getElementById('destSub').textContent = it.sub || 'Toque em Navegar para iniciar a rota';
   document.getElementById('destCard').classList.remove('hidden');
+  // esconde botões flutuantes para não sobrepor o cartão
+  document.getElementById('recenterBtn').style.display = 'none';
+  var ft = document.getElementById('fleetToggle');
+  if(ft) ft.style.visibility = 'hidden';
 }
 function fecharDestino(){
   document.getElementById('destCard').classList.add('hidden');
   if(destMarker){ map.removeLayer(destMarker); destMarker=null; }
   destAtual = null;
+  document.getElementById('recenterBtn').style.display = 'flex';
+  var ft = document.getElementById('fleetToggle');
+  if(ft) ft.style.visibility = 'visible';
 }
 // abre o Google Maps com a rota do local do motorista até o destino
 function navegarPara(){
