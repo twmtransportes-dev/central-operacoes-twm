@@ -31,15 +31,30 @@
   .btn.stop{background:#FF453A}
   .btn:active{opacity:.85}
   .btn+.btn{margin-top:10px}
-  #mapBox{position:relative}
-  #map{width:100%;height:60vh;min-height:380px;border-radius:var(--radius);border:1px solid var(--line);z-index:1}
-  #searchBar{position:absolute;top:12px;left:12px;right:12px;z-index:1000;background:#fff;border-radius:26px;
-    box-shadow:0 2px 10px rgba(0,0,0,.22);display:flex;align-items:center;gap:8px;padding:0 14px;height:48px}
-  #searchIcon{font-size:16px;opacity:.7;flex:none}
-  #searchInput{flex:1;border:none;outline:none;font-size:15px;font-family:var(--sfont);background:transparent;color:var(--ink);min-width:0}
+  /* MAPA EM TELA CHEIA */
+  #tab-frota{position:relative}
+  #mapFull{position:relative;width:100%;height:calc(100vh - 124px);min-height:420px}
+  #map{position:absolute;inset:0;width:100%;height:100%;z-index:1}
+
+  /* status minúsculo e discreto no canto inferior esquerdo */
+  #statusChip{position:absolute;bottom:8px;left:8px;z-index:1000;background:rgba(255,255,255,.85);border-radius:12px;
+    box-shadow:0 1px 4px rgba(0,0,0,.15);display:flex;align-items:center;gap:4px;padding:3px 7px;font-size:9px;font-weight:600;color:var(--muted);max-width:120px}
+  #statusChip #meStatus{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #statusChip .dot{width:6px;height:6px}
+
+  /* LUPA: botão pequeno que expande */
+  #searchBar{position:absolute;top:12px;right:12px;z-index:1001;background:#fff;border-radius:26px;
+    box-shadow:0 2px 10px rgba(0,0,0,.22);display:flex;align-items:center;gap:8px;height:48px;
+    transition:width .28s ease, padding .28s ease;overflow:hidden}
+  #searchBar.collapsed{width:48px;padding:0;justify-content:center;cursor:pointer}
+  #searchBar.expanded{width:calc(100vw - 24px);max-width:420px;padding:0 14px}
+  #searchIcon{font-size:18px;opacity:.75;flex:none;cursor:pointer}
+  #searchBar.collapsed #searchIcon{margin:0}
+  #searchInput{flex:1;border:none;outline:none;font-size:15px;font-family:var(--sfont);background:transparent;color:var(--ink);min-width:0;width:0}
+  #searchBar.collapsed #searchInput{display:none}
   #searchClear{font-size:15px;color:var(--muted);cursor:pointer;flex:none;display:none;padding:4px}
-  #searchResults{position:absolute;top:66px;left:12px;right:12px;z-index:1000;background:#fff;border-radius:14px;
-    box-shadow:0 4px 16px rgba(0,0,0,.18);overflow:hidden;display:none;max-height:280px;overflow-y:auto}
+  #searchResults{position:absolute;top:68px;right:12px;left:12px;max-width:420px;margin-left:auto;z-index:1001;background:#fff;border-radius:14px;
+    box-shadow:0 4px 16px rgba(0,0,0,.18);overflow:hidden;display:none;max-height:50vh;overflow-y:auto}
   .sr-item{padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;align-items:center;gap:10px}
   .sr-item:last-child{border-bottom:none}
   .sr-item:active{background:#F2F2F7}
@@ -48,6 +63,16 @@
   .sr-tx .t1{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .sr-tx .t2{font-size:12px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .sr-empty{padding:14px 16px;color:var(--muted);font-size:13px;text-align:center}
+
+  /* BOTÃO E PAINEL DA FROTA (admin) */
+  #fleetToggle{position:absolute;bottom:20px;right:12px;z-index:1000;background:var(--brand);color:#fff;border:none;
+    border-radius:24px;padding:12px 18px;font-size:14px;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,.3);cursor:pointer}
+  #fleetPanel{position:absolute;left:0;right:0;bottom:0;z-index:1002;background:#fff;border-radius:18px 18px 0 0;
+    box-shadow:0 -4px 20px rgba(0,0,0,.25);max-height:60%;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .3s ease}
+  #fleetPanel.open{transform:translateY(0)}
+  #fleetPanelHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);font-weight:700;font-size:15px;color:var(--brand2)}
+  .fp-btn{background:#EFEFF4;border:none;border-radius:10px;width:36px;height:36px;font-size:15px;cursor:pointer;margin-left:6px}
+  #fleetPanel .fleet-list{overflow-y:auto;padding:12px 14px}
   #mapNav{width:100%;height:42vh;min-height:280px;border-radius:var(--radius);border:1px solid var(--line);z-index:1;margin-top:12px}
   .field{margin-bottom:12px}
   .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.5px}
@@ -94,31 +119,39 @@
 </div>
 
 <!-- ======================= ABA FROTA ======================= -->
-<div class="wrap" id="tab-frota">
-  <div class="card">
-    <h2>🛰️ RASTREAMENTO EM TEMPO REAL</h2>
-    <button class="btn" id="btnCompartilhar">📍 Compartilhar minha localização</button>
-    <button class="btn stop hidden" id="btnParar">⏹️ Parar compartilhamento</button>
-    <div class="status-row">
+<div id="tab-frota">
+  <div id="mapFull">
+    <div id="map"></div>
+
+    <!-- status compacto flutuante (canto superior esquerdo) -->
+    <div id="statusChip">
       <span class="dot" id="meDot"></span>
-      <span id="meStatus">Compartilhamento desligado</span>
+      <span id="meStatus">iniciando</span>
     </div>
-  </div>
 
-  <div class="card" id="adminControls">
-    <h2>👥 FROTA <span class="count" id="fleetCount"></span></h2>
-    <button class="btn ghost" id="btnAtualizarFrota">🔄 Atualizar posições</button>
-    <div class="fleet-list" id="fleetList"></div>
-  </div>
-
-  <div id="mapBox">
-    <div id="searchBar">
+    <!-- lupa: botão pequeno que expande ao tocar -->
+    <div id="searchBar" class="collapsed">
       <span id="searchIcon">🔍</span>
       <input type="text" id="searchInput" placeholder="Buscar VP, placa ou endereço" autocomplete="off">
       <span id="searchClear" title="Limpar">✕</span>
     </div>
     <div id="searchResults"></div>
-    <div id="map"></div>
+
+    <!-- botão da frota (só admin) abre painel deslizante -->
+    <button id="fleetToggle" class="hidden">👥 <span id="fleetToggleCount"></span></button>
+
+    <!-- painel deslizante da frota (admin) -->
+    <div id="fleetPanel" class="hidden">
+      <div id="fleetPanelHead">
+        <span>👥 FROTA <span class="count" id="fleetCount"></span></span>
+        <div>
+          <button class="fp-btn" id="btnAtualizarFrota">🔄</button>
+          <button class="fp-btn" id="fleetPanelClose">✕</button>
+        </div>
+      </div>
+      <div class="fleet-list" id="fleetList"></div>
+    </div>
+    <div id="adminControls" class="hidden"></div>
   </div>
 </div>
 
@@ -295,22 +328,28 @@ function iconeMeuPonto(){
 var watchId = null, envioTimer = null, ultimaPos = null, compartilhando = false;
 
 function iniciarCompartilhamento(){
-  if(!navigator.geolocation){ toast('GPS não suportado neste aparelho'); return; }
+  if(!navigator.geolocation){
+    document.getElementById('meStatus').textContent = 'GPS não suportado neste aparelho';
+    return;
+  }
+  if(compartilhando) return;   // evita iniciar duas vezes
   compartilhando = true;
-  document.getElementById('btnCompartilhar').classList.add('hidden');
-  document.getElementById('btnParar').classList.remove('hidden');
   document.getElementById('meDot').classList.add('live');
-  document.getElementById('meStatus').textContent = 'Obtendo posição…';
+  document.getElementById('meStatus').textContent = 'iniciando';
 
   // watchPosition mantém a posição sempre atualizada.
   // enableHighAccuracy:false deixa o navegador usar GPS, Wi-Fi OU torre de
   // celular (o que estiver disponível) — não trava se o GPS estiver desligado.
   watchId = navigator.geolocation.watchPosition(function(pos){
     ultimaPos = {lat:pos.coords.latitude, lng:pos.coords.longitude, acc:pos.coords.accuracy};
-    var aprox = (pos.coords.accuracy||0) > 300 ? ' (aprox.)' : '';
-    document.getElementById('meStatus').textContent = 'Ativo • precisão ~'+Math.round(pos.coords.accuracy)+'m'+aprox;
+    document.getElementById('meStatus').textContent = 'ao vivo';
   }, function(err){
-    document.getElementById('meStatus').textContent = 'Erro no GPS: '+err.message;
+    if(err.code === 1){ // permissão negada
+      document.getElementById('meDot').classList.remove('live');
+      document.getElementById('meStatus').textContent = 'GPS bloqueado';
+    } else {
+      document.getElementById('meStatus').textContent = 'buscando GPS';
+    }
   }, {enableHighAccuracy:true, maximumAge:15000, timeout:25000});
 
   // primeiro envio rápido + timer de 30s
@@ -323,8 +362,6 @@ function pararCompartilhamento(silencioso){
   compartilhando = false;
   if(watchId!=null){ navigator.geolocation.clearWatch(watchId); watchId=null; }
   if(envioTimer){ clearInterval(envioTimer); envioTimer=null; }
-  document.getElementById('btnCompartilhar').classList.remove('hidden');
-  document.getElementById('btnParar').classList.add('hidden');
   document.getElementById('meDot').classList.remove('live');
   document.getElementById('meStatus').textContent = 'Compartilhamento desligado';
   localStorage.removeItem('twm_compartilhar_loc');
@@ -394,12 +431,20 @@ function renderFrota(lista){
     var on = minutosDesde(p.ts) <= ONLINE_LIMITE_MIN;
     if(on) online++;
 
+    // cruza com o cadastro (EQUIPAMENTOS) para mostrar placa/modelo corretos
+    var cad = equipPorFrota[chaveFrota(p.frota)] || {};
+    var placa = p.placa || cad.placa || '';
+    var modelo = cad.modelo || '';
+
     var rotulo = (p.nome||'—') + (p.frota ? ' • '+p.frota : '');
     var chave = (p.nome||'')+'|'+(p.frota||'');
 
     // marcador no mapa
     var mk = L.marker([lat,lng], {icon: iconePessoa(iniciais(p.nome||p.frota||'?'), on)}).addTo(map);
-    mk.bindPopup('<b>'+rotulo+'</b><br>'+tempoRelativo(p.ts)+'<br>precisão ~'+(p.precisao||'?')+'m');
+    mk.bindPopup('<b>'+rotulo+'</b>'+
+                 (placa?'<br>Placa: '+placa:'')+
+                 (modelo?'<br>'+modelo:'')+
+                 '<br>'+tempoRelativo(p.ts)+'<br>precisão ~'+(p.precisao||'?')+'m');
     marcadores[chave] = mk;
     bounds.push([lat,lng]);
 
@@ -410,7 +455,7 @@ function renderFrota(lista){
       '<div class="fleet-ava">'+iniciais(p.nome||p.frota||'?')+'</div>'+
       '<div class="fleet-info">'+
         '<div class="nm">'+(p.nome||'Sem nome')+'</div>'+
-        '<div class="sub">'+(p.frota?p.frota+' • ':'')+tempoRelativo(p.ts)+'</div>'+
+        '<div class="sub">'+(p.frota?p.frota+' • ':'')+(placa?placa+' • ':'')+tempoRelativo(p.ts)+'</div>'+
       '</div>'+
       '<span class="badge '+(on?'on':'off')+'">'+(on?'ONLINE':'offline')+'</span>';
     item.onclick = function(){
@@ -430,30 +475,84 @@ function renderFrota(lista){
 }
 
 /* ============================================================
-   BUSCA (lupa): VP / placa / nome entre quem reporta + endereço
+   BUSCA (lupa): VP / RB / placa / nome (cadastro) + endereço
    ============================================================ */
 var buscaTimer = null;
+var equipamentos = [];      // cadastro completo da frota (aba EQUIPAMENTOS)
+var equipPorFrota = {};     // índice frota->dados para cruzar rápido
 
 function normaliza(s){
   return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+}
+// normaliza frota p/ comparação: VPL-185 -> VP-185, RBL-202 -> RB-202, tira espaços
+function chaveFrota(f){
+  return normaliza(f).replace(/\s+/g,'').replace(/^vpl/,'vp').replace(/^rbl/,'rb').replace('-','');
+}
+
+// carrega o cadastro da frota uma vez (fica em cache)
+function carregarEquipamentos(){
+  fetch(SCRIPT_URL+'?action=getEquipamentos&_t='+Date.now(), {cache:'no-store'})
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      equipamentos = (res && res.ok && res.equipamentos) ? res.equipamentos : [];
+      equipPorFrota = {};
+      equipamentos.forEach(function(e){ equipPorFrota[chaveFrota(e.frota)] = e; });
+    })
+    .catch(function(){ /* segue só com quem está reportando */ });
+}
+
+// posição reportada (se houver) para uma frota
+function posicaoDaFrota(frota){
+  var k = chaveFrota(frota);
+  for(var i=0;i<frotaAtual.length;i++){
+    if(chaveFrota(frotaAtual[i].frota)===k) return frotaAtual[i];
+  }
+  return null;
 }
 
 function buscarFrotaLocal(termo){
   var t = normaliza(termo);
   if(!t) return [];
-  return frotaAtual.filter(function(p){
-    return normaliza(p.nome).indexOf(t)>=0 ||
-           normaliza(p.frota).indexOf(t)>=0 ||
-           normaliza(p.placa).indexOf(t)>=0;
-  }).map(function(p){
-    return {
+  var vistos = {};
+  var res = [];
+
+  // 1) procura no CADASTRO completo (VP/RB/placa/modelo/motorista)
+  equipamentos.forEach(function(e){
+    var alvo = normaliza(e.frota)+' '+normaliza(e.placa)+' '+normaliza(e.modelo)+' '+normaliza(e.motorista);
+    if(alvo.indexOf(t)<0) return;
+    var k = chaveFrota(e.frota);
+    if(vistos[k]) return; vistos[k]=1;
+
+    var pos = posicaoDaFrota(e.frota);
+    var online = pos ? (minutosDesde(pos.ts)<=ONLINE_LIMITE_MIN) : false;
+    res.push({
       tipo:'frota',
-      titulo:(p.nome||'Sem nome') + (p.frota?' • '+p.frota:''),
-      sub: (p.placa?('Placa '+p.placa+' • '):'') + tempoRelativo(p.ts),
-      lat:parseFloat(p.lat), lng:parseFloat(p.lng),
-      icon: minutosDesde(p.ts)<=ONLINE_LIMITE_MIN ? '🟢' : '⚪'
-    };
+      titulo: e.frota + (e.placa?' • '+e.placa:''),
+      sub: (e.modelo||'') + (pos ? ' • '+tempoRelativo(pos.ts) : ' • sem localização recente'),
+      lat: pos?parseFloat(pos.lat):NaN,
+      lng: pos?parseFloat(pos.lng):NaN,
+      temPos: !!pos,
+      icon: pos ? (online?'🟢':'⚪') : '🚚'
+    });
   });
+
+  // 2) fallback: quem está reportando mas não está no cadastro
+  frotaAtual.forEach(function(p){
+    var k = chaveFrota(p.frota);
+    if(vistos[k]) return;
+    var alvo = normaliza(p.nome)+' '+normaliza(p.frota)+' '+normaliza(p.placa);
+    if(alvo.indexOf(t)<0) return;
+    vistos[k]=1;
+    res.push({
+      tipo:'frota',
+      titulo:(p.frota||p.nome||'—')+(p.placa?' • '+p.placa:''),
+      sub:(p.nome?p.nome+' • ':'')+tempoRelativo(p.ts),
+      lat:parseFloat(p.lat), lng:parseFloat(p.lng), temPos:true,
+      icon: minutosDesde(p.ts)<=ONLINE_LIMITE_MIN?'🟢':'⚪'
+    });
+  });
+
+  return res.slice(0, 8);
 }
 
 function buscarEndereco(termo, cb){
@@ -482,7 +581,9 @@ function renderResultados(itens){
     el.onclick = function(){
       if(!isNaN(it.lat) && !isNaN(it.lng)){
         map.setView([it.lat,it.lng], 16, {animate:true});
-        L.popup().setLatLng([it.lat,it.lng]).setContent('<b>'+it.titulo+'</b>').openOn(map);
+        L.popup().setLatLng([it.lat,it.lng]).setContent('<b>'+it.titulo+'</b><br>'+(it.sub||'')).openOn(map);
+      } else if(it.tipo==='frota' && !it.temPos){
+        toast(it.titulo.split('•')[0].trim()+' está sem localização recente');
       }
       box.style.display='none';
       document.getElementById('searchInput').blur();
@@ -571,42 +672,62 @@ window.addEventListener('DOMContentLoaded', function(){
   document.querySelectorAll('.tab').forEach(function(t){
     t.addEventListener('click', function(){ trocarAba(t.dataset.tab); });
   });
-  document.getElementById('btnCompartilhar').addEventListener('click', iniciarCompartilhamento);
-  document.getElementById('btnParar').addEventListener('click', function(){ pararCompartilhamento(false); });
   document.getElementById('btnAtualizarFrota').addEventListener('click', carregarFrota);
   document.getElementById('btnRota').addEventListener('click', abrirRota);
   document.getElementById('btnMinhaLoc').addEventListener('click', verMinhaLocalizacao);
 
-  // busca (lupa)
+  // ---- LUPA expansível ----
+  var bar = document.getElementById('searchBar');
   var si = document.getElementById('searchInput');
+  function expandirLupa(){
+    bar.classList.remove('collapsed'); bar.classList.add('expanded');
+    setTimeout(function(){ si.focus(); }, 120);
+  }
+  function colapsarLupa(){
+    bar.classList.remove('expanded'); bar.classList.add('collapsed');
+    si.value=''; document.getElementById('searchClear').style.display='none';
+    renderResultados([]); si.blur();
+  }
+  // toca na barra colapsada -> expande
+  bar.addEventListener('click', function(){
+    if(bar.classList.contains('collapsed')) expandirLupa();
+  });
   si.addEventListener('input', onBusca);
   si.addEventListener('focus', function(){ if(si.value.trim()) onBusca(); });
-  document.getElementById('searchClear').addEventListener('click', function(){
+  document.getElementById('searchClear').addEventListener('click', function(ev){
+    ev.stopPropagation();
     si.value=''; document.getElementById('searchClear').style.display='none';
     renderResultados([]); si.focus();
   });
-  // fecha resultados ao tocar fora
+  // toca fora -> fecha resultados e colapsa (se vazio)
   document.addEventListener('click', function(ev){
-    var bar = document.getElementById('searchBar');
     var res = document.getElementById('searchResults');
-    if(bar && res && !bar.contains(ev.target) && !res.contains(ev.target)) res.style.display='none';
+    if(!bar.contains(ev.target) && !res.contains(ev.target)){
+      res.style.display='none';
+      if(bar.classList.contains('expanded') && !si.value.trim()) colapsarLupa();
+    }
   });
 
-  // admin vê a lista + mapa completo; motorista vê só a própria posição
-  if(!_isAdmin()){
-    document.getElementById('adminControls').classList.add('hidden');
-  } else {
+  // ---- PAINEL DA FROTA (admin) ----
+  var painel = document.getElementById('fleetPanel');
+  var toggle = document.getElementById('fleetToggle');
+  toggle.addEventListener('click', function(){ painel.classList.add('open'); });
+  document.getElementById('fleetPanelClose').addEventListener('click', function(){ painel.classList.remove('open'); });
+
+  // admin vê o botão da frota (painel deslizante); motorista não
+  if(_isAdmin()){
+    document.getElementById('fleetToggle').classList.remove('hidden');
     refreshTimer = setInterval(function(){
       if(!document.getElementById('tab-frota').classList.contains('hidden')) carregarFrota();
     }, REFRESH_INTERVALO_MS);
   }
 
   trocarAba('frota');
+  carregarEquipamentos();  // cadastro da frota (VP/RB/placa/modelo) para a lupa
 
-  // retoma compartilhamento se estava ligado
-  if(localStorage.getItem('twm_compartilhar_loc')==='1'){
-    iniciarCompartilhamento();
-  }
+  // Compartilhamento AUTOMÁTICO: começa sozinho ao abrir o mapa.
+  // (o navegador ainda pede a permissão de GPS na primeira vez — obrigatório)
+  iniciarCompartilhamento();
 
   // pausa/retoma quando o app sai/volta pra tela
   document.addEventListener('visibilitychange', function(){
