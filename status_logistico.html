@@ -223,6 +223,33 @@
     text-overflow: ellipsis;
   }
 
+  /* distância da garagem (GPS em tempo real) */
+  .truck-gps {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .truck-gps.gps-vivo { color: #1B7A3D; }
+  .truck-gps.gps-vivo::after {
+    content: '';
+    display: inline-block;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: #30D158;
+    margin-left: 4px;
+    vertical-align: middle;
+    animation: gpsPulse 1.8s infinite;
+  }
+  @keyframes gpsPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(48,209,88,.6); }
+    70%  { box-shadow: 0 0 0 5px rgba(48,209,88,0); }
+    100% { box-shadow: 0 0 0 0 rgba(48,209,88,0); }
+  }
+
   /* icon colors per status */
   .icon-viagem  { background: var(--viagem-bg);  color: var(--viagem-icon); }
   .icon-desc    { background: var(--desc-bg);    color: var(--desc-icon); }
@@ -522,7 +549,14 @@
 <script>
 // ── CONFIG ──────────────────────────────────────────────────────
 const FROTA_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx62CxMqSchj3wdG83U48YiyM8eH9vIj8Jv7Gg1QVWm0Ow7abDlyYWtAEecM4iCPWTvH8e5Y84jJdf/pub?gid=644783428&single=true&output=csv&_=' + Date.now();
-const REFRESH_MS = 2 * 60 * 1000; // 2 minutos
+const REFRESH_MS = 2 * 60 * 1000; // 2 minutos (recarrega a planilha)
+
+// ── STATUS AUTOMÁTICO POR GPS ──────────────────────────────────
+// Mesmo Web App do módulo Mapa/Jornada.
+const GPS_URL     = 'https://script.google.com/macros/s/AKfycbx0wK7f3lJvahV8LvsKOwNN_iu9Txo7grisBi2SvLRdVzAIG4lVom_yxXw2rYhjZhEeTA/exec';
+const GPS_REFRESH = 30 * 1000;   // 30s — mesmo ritmo do envio dos tablets
+var gpsPorFrota   = {};          // { 'VP183': {status, sentido, dist_garagem, ...} }
+var gpsAtivo      = false;       // vira true quando o GPS responde
 
 // ── STATUS MAPPING ──────────────────────────────────────────────
 const STATUS_MAP = {
@@ -866,6 +900,60 @@ function carregarFrota() {
     });
 }
 
+// ── STATUS AUTOMÁTICO POR GPS ─────────────────────────────────
+// Busca a posição de cada veículo e o status calculado (indo/voltando/
+// descarregando/garagem) + distância da garagem em km.
+function carregarGPS() {
+  return fetch(GPS_URL + '?action=getStatusFrota&_=' + Date.now(), { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (!res || !res.ok || !res.status) return;
+      var novo = {};
+      res.status.forEach(function(v) {
+        novo[chaveFlex(v.frota)] = v;
+      });
+      gpsPorFrota = novo;
+      gpsAtivo = true;
+    })
+    .catch(function() { /* sem GPS: painel segue com o status da planilha */ });
+}
+
+// Converte o status do GPS para a chave usada pelo painel
+function statusDoGps(g) {
+  if (!g) return null;
+  var s = String(g.status || '').toUpperCase();
+  if (s.indexOf('GARAGEM') >= 0)       return 'garagem';
+  if (s.indexOf('DESCARREG') >= 0)     return 'desc';
+  if (s.indexOf('RETORNO') >= 0)       return 'retorno';
+  if (s.indexOf('VIAGEM') >= 0)        return 'viagem';
+  if (s.indexOf('PARADO') >= 0)        return 'viagem';   // parado na estrada
+  return null;
+}
+
+// Dados de GPS de um veículo (aceita VP-313 e VPL-313 como o mesmo)
+function gpsDoVeiculo(v) {
+  var g = gpsPorFrota[chaveFlex(frotaLabel(v.cavalo))];
+  if (!g) g = gpsPorFrota[chaveFlex(v.cavalo)];
+  return g || null;
+}
+
+// Sobrepõe o status da planilha pelo status real do GPS.
+// Só substitui quando há posição recente — senão mantém o da planilha.
+function aplicarStatusGps() {
+  fleetData.forEach(function(v) {
+    var g = gpsDoVeiculo(v);
+    v.gps = g || null;
+    if (!g) return;
+    // posição velha (mais de 15 min) não é confiável para mudar o status
+    if (g.minutos_atras !== null && g.minutos_atras > 15) return;
+    var k = statusDoGps(g);
+    if (k) {
+      v.statusPlanilha = v.status;   // guarda o original, para o modal
+      v.status = k;
+    }
+  });
+}
+
 // ── CARREGAR TUDO E SÓ ENTÃO RENDERIZAR ───────────────────────
 // Antes, o mapa placa→VP chegava DEPOIS do render, então getAlertas()
 // não conseguia converter a placa e nenhum alerta aparecia.
@@ -877,8 +965,10 @@ function carregarTudo() {
     carregarFrota(),
     carregarMapeamentoFrota(),
     carregarManutencao(),
-    carregarPendencias()
+    carregarPendencias(),
+    carregarGPS()
   ]).then(function() {
+    aplicarStatusGps();
     var ls = document.getElementById('loadingState');
     if (ls) ls.style.display = 'none';
     renderDashboard();
@@ -1012,12 +1102,27 @@ function renderDashboard() {
       var tC = parseDataHora(v.carreg);
       var urgente = tC && (tC - Date.now()) > 0 && (tC - Date.now()) < 6*3600*1000;
 
+      // ── GPS: distância da garagem + sentido do movimento ──
+      var gpsHtml = '';
+      var g = v.gps;
+      if (g && g.dist_garagem !== null && g.dist_garagem !== undefined) {
+        var seta = g.sentido === 'voltando' ? '⬅️'
+                 : g.sentido === 'indo'     ? '➡️'
+                 : g.sentido === 'base'     ? '🏠' : '⏸️';
+        var kmTxt = g.dist_garagem < 1
+          ? Math.round(g.dist_garagem * 1000) + ' m'
+          : g.dist_garagem.toFixed(1).replace('.', ',') + ' km';
+        var vivo = g.online ? ' gps-vivo' : '';
+        gpsHtml = '<div class="truck-gps' + vivo + '">' + seta + ' ' + kmTxt + ' da base</div>';
+      }
+
       var card = document.createElement('div');
       card.className = 'truck-card card-' + key;
       card.onclick = function() { openModal(v); };
       card.innerHTML = '<div class="truck-icon-wrap ' + meta.iconClass + '">' + meta.icon + '</div>'
         + '<div class="truck-plate">' + esc(frotaLabel(v.cavalo)) + '</div>'
         + '<div class="truck-driver">' + esc(shortName(v.motorista)) + '</div>'
+        + gpsHtml
         + (carreg ? '<div class="truck-load' + (urgente ? ' urgente' : '') + '">🕐 ' + carreg + '</div>' : '')
         + (alertHtml ? '<div class="truck-alerts">' + alertHtml + '</div>' : '');
       grid.appendChild(card);
@@ -1036,7 +1141,25 @@ function openModal(v) {
   document.getElementById('modalPlate').textContent = frotaLabel(v.cavalo);
   document.getElementById('modalDriver').textContent = v.motorista || '—';
 
-  document.getElementById('modalBadge').innerHTML = '<div class="modal-status-badge ' + meta.badgeClass + '"><span>⬤</span> ' + meta.label + '</div>';
+  // badge do status + detalhe do GPS (indo para X, faltam Y km)
+  var badgeHtml = '<div class="modal-status-badge ' + meta.badgeClass + '"><span>⬤</span> ' + meta.label + '</div>';
+  var gm = v.gps;
+  if (gm) {
+    var quando = (gm.minutos_atras === null) ? ''
+               : gm.minutos_atras < 1 ? ' • agora mesmo'
+               : gm.minutos_atras < 60 ? ' • há ' + gm.minutos_atras + ' min'
+               : ' • há ' + Math.floor(gm.minutos_atras/60) + 'h';
+    var linhas = [];
+    if (gm.detalhe) linhas.push(esc(gm.detalhe));
+    if (gm.dist_garagem !== null && gm.dist_garagem !== undefined) {
+      linhas.push(String(gm.dist_garagem).replace('.', ',') + ' km da garagem');
+    }
+    if (linhas.length) {
+      badgeHtml += '<div style="font-size:11.5px;color:#8E8E93;margin-top:6px;line-height:1.5">'
+                 + '📍 ' + linhas.join(' &nbsp;·&nbsp; ') + quando + '</div>';
+    }
+  }
+  document.getElementById('modalBadge').innerHTML = badgeHtml;
 
   var alertas = getAlertas(v);
   var alertSection = '';
@@ -1229,6 +1352,14 @@ function fecharAlertaModal(e) {
 carregarPrefs();   // restaura filtro/ordenação escolhidos antes
 carregarTudo();
 setInterval(carregarTudo, 120000);
+
+// GPS a cada 30s — atualiza posição e status sem recarregar a planilha
+setInterval(function() {
+  carregarGPS().then(function() {
+    aplicarStatusGps();
+    renderDashboard();
+  });
+}, GPS_REFRESH);
 
 // Atualiza também ao voltar para o app (ex: depois de criar uma OS)
 document.addEventListener('visibilitychange', function() {
