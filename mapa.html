@@ -84,6 +84,9 @@
   #cfgBox input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;
     font-size:16px;font-family:var(--sfont);background:#fff;color:var(--ink)}
   #cfgMsg{font-size:12px;color:#D70015;min-height:16px;margin-top:10px}
+  .cfg-remover{width:100%;margin-top:12px;padding:11px;border:1px solid #FFD3D0;border-radius:12px;
+    background:#FFF5F5;color:#D70015;font-size:14px;font-weight:600;cursor:pointer}
+  .cfg-remover:active{background:#FFE8E6}
   .cfg-btns{display:flex;gap:10px;margin-top:14px}
   .cfg-btns button{flex:1;padding:13px;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer}
   .cfg-cancel{background:#EFEFF4;color:var(--ink)}
@@ -224,6 +227,7 @@
     <input type="password" id="cfgSenha" placeholder="senha" autocomplete="off">
 
     <div id="cfgMsg"></div>
+    <button class="cfg-remover" id="cfgRemover">🗑️ Remover VP deste tablet</button>
     <div class="cfg-btns">
       <button class="cfg-cancel" id="cfgCancelar">Cancelar</button>
       <button class="cfg-ok" id="cfgSalvar">Salvar</button>
@@ -238,7 +242,7 @@
    CONFIG
    ============================================================ */
 // MESMA URL do Web App da Jornada (que já grava a aba LOCALIZACAO)
-var SCRIPT_URL = 'COLE_AQUI_A_URL_DO_SCRIPT_JORNADA';
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx0wK7f3lJvahV8LvsKOwNN_iu9Txo7grisBi2SvLRdVzAIG4lVom_yxXw2rYhjZhEeTA/exec';
 
 var ENVIO_INTERVALO_MS   = 30000;  // envia a cada 30s
 var REFRESH_INTERVALO_MS = 30000;  // admin recarrega a cada 30s
@@ -594,11 +598,15 @@ function carregarEquipamentos(){
    Só pode ser alterada com login e senha de administrador.
    ============================================================ */
 function abrirConfigTablet(){
-  document.getElementById('cfgVpAtual').textContent = _frotaUsuario() || '(não configurado)';
+  var atual = _frotaUsuario();
+  document.getElementById('cfgVpAtual').textContent = atual || '(não configurado)';
   document.getElementById('cfgUser').value = '';
   document.getElementById('cfgSenha').value = '';
-  document.getElementById('cfgFrota').value = '';
+  document.getElementById('cfgFrota').value = atual;      // já vem preenchido
   document.getElementById('cfgMsg').textContent = '';
+  // botão remover só aparece se houver VP configurada
+  var btnRem = document.getElementById('cfgRemover');
+  if(btnRem) btnRem.style.display = atual ? 'block' : 'none';
   document.getElementById('cfgOverlay').classList.remove('hidden');
   montarListaFrotas();
 }
@@ -650,6 +658,38 @@ function salvarConfigTablet(){
     .catch(function(){ msg.textContent = 'Falha de conexão. Tente novamente.'; });
 }
 
+
+// remove a VP deste tablet (também exige admin)
+function removerConfigTablet(){
+  var user  = document.getElementById('cfgUser').value.trim();
+  var senha = document.getElementById('cfgSenha').value;
+  var msg   = document.getElementById('cfgMsg');
+
+  if(!user || !senha){ msg.textContent = 'Informe usuário e senha de administrador para remover.'; return; }
+
+  msg.textContent = 'Verificando...';
+  fetch(SCRIPT_URL+'?action=validarAdmin'
+        +'&usuario='+encodeURIComponent(user)
+        +'&senha='+encodeURIComponent(senha)
+        +'&_t='+Date.now(), {cache:'no-store'})
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if(!res || !res.ok || !res.admin){
+        msg.textContent = (res && res.msg) ? res.msg : 'Usuário ou senha inválidos.';
+        return;
+      }
+      localStorage.removeItem('twm_vp_tablet');
+      localStorage.removeItem('twm_placa_tablet');
+      msg.textContent = '';
+      fecharConfigTablet();
+      toast('VP removida deste tablet');
+      var st = document.getElementById('meStatus');
+      if(st) st.textContent = 'sem VP';
+      var chip = document.getElementById('statusChip');
+      if(chip) chip.style.background = '#FFF4E5';
+    })
+    .catch(function(){ msg.textContent = 'Falha de conexão. Tente novamente.'; });
+}
 
 // posição reportada (se houver) para uma frota
 function posicaoDaFrota(frota){
@@ -823,6 +863,7 @@ window.addEventListener('DOMContentLoaded', function(){
   document.getElementById('cfgAbrir').addEventListener('click', abrirConfigTablet);
   document.getElementById('cfgCancelar').addEventListener('click', fecharConfigTablet);
   document.getElementById('cfgSalvar').addEventListener('click', salvarConfigTablet);
+  document.getElementById('cfgRemover').addEventListener('click', removerConfigTablet);
   document.getElementById('recenterBtn').addEventListener('click', function(){
     if(meMarker){ map.setView(meMarker.getLatLng(), 16, {animate:true}); }
     else { centralizarNoUsuario(); }
