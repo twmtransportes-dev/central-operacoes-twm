@@ -1616,11 +1616,6 @@ function isAdminMaster(){
     return !!(u.permissoes&&(u.permissoes.admin_master||u.permissoes.ADMIN_MASTER));}
   catch(e){return false;}
 }
-function salvarCfg(){
-  var url=(document.getElementById('cfg-url').value||'').trim();
-  if(url){SCRIPT_URL=url;var cfg=JSON.parse(localStorage.getItem('twm_config')||'{}');cfg.scriptUrl=url;localStorage.setItem('twm_config',JSON.stringify(cfg));}
-  toast('✅ Configurações salvas','ok');
-}
 function limparCache(){
   localStorage.removeItem(OS_KEY);localStorage.removeItem(APAG_KEY);
   ordens=[];render();toast('Cache limpo','ok');
@@ -1636,7 +1631,10 @@ function showTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('on'); });
   document.getElementById('tab-'+tab).classList.add('on');
   document.getElementById('tab-'+tab+'-btn').classList.add('on');
-  if (tab === 'pendencias') renderPendList();
+  if (tab === 'pendencias') {
+    renderPendList();                    // mostra o que já tem (local) na hora
+    carregarPendenciasServidor().then(renderPendList);  // e atualiza com o servidor
+  }
   if (tab === 'historico') renderHistorico();
 }
 
@@ -1649,6 +1647,61 @@ function lerPendencias() {
 }
 function salvarPendencias(lista) {
   localStorage.setItem(PEND_KEY, JSON.stringify(lista));
+}
+
+// Busca pendências da PLANILHA (servidor) e mescla com as locais.
+// Assim aparecem em qualquer dispositivo e também as digitadas direto
+// na planilha. Chave de deduplicação: sv_id (ou os_id+frota).
+var _pendServidor = [];   // cache da última resposta do servidor
+function carregarPendenciasServidor() {
+  if (!SCRIPT_URL || !navigator.onLine) return Promise.resolve();
+  return fetch(SCRIPT_URL + '?action=getPendencias&_=' + Date.now(), { cache:'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res && res.ok && Array.isArray(res.pendencias)) {
+        _pendServidor = res.pendencias;
+      }
+    })
+    .catch(function(){ /* offline: fica só com as locais */ });
+}
+
+// Junta local + servidor sem duplicar
+function pendenciasMescladas() {
+  var locais = lerPendencias();
+  var vistos = {};
+  var out = [];
+
+  function chave(p){
+    return (p.sv_id || '') + '|' + (p.os_id || '') + '|' + (p.frota || '');
+  }
+  // primeiro as locais (têm mais dados: mecânico, ts, status resolvida)
+  locais.forEach(function(p){
+    out.push(p);
+    vistos[chave(p)] = true;
+  });
+  // depois as do servidor que ainda não estão
+  _pendServidor.forEach(function(p){
+    var k = chave(p);
+    if (vistos[k]) return;
+    // normaliza para o formato usado no render
+    out.push({
+      id:        p.id || ('S-' + k),
+      os_id:     p.os_id || '',
+      sv_id:     p.sv_id || '',
+      frota:     p.frota || '—',
+      tipo:      p.tipo || '',
+      descricao: p.descricao || '',
+      pend_nota: p.pend_nota || '',
+      mecanico:  p.mecanico || '',
+      motorista: p.motorista || '',
+      data_pend: p.data_pend || '',
+      status:    'pendente',
+      data_resol:'',
+      _doServidor: true
+    });
+    vistos[k] = true;
+  });
+  return out;
 }
 
 // Chamado ao confirmar pendência — registra no histórico
@@ -1717,7 +1770,7 @@ function resolverPendencia(svId) {
 }
 
 function atualizarTabPend() {
-  var lista  = lerPendencias();
+  var lista  = pendenciasMescladas();
   var qtPend = lista.filter(function(p){ return p.status === 'pendente'; }).length;
   var cnt    = document.getElementById('pend-tab-cnt');
   if (cnt) cnt.textContent = qtPend;
@@ -1735,7 +1788,7 @@ function filtrarPend(filtro) {
 }
 
 function renderPendList() {
-  var lista = lerPendencias();
+  var lista = pendenciasMescladas();
   atualizarTabPend();
 
   if (_pendFiltro !== 'todas') lista = lista.filter(function(p){ return p.status === _pendFiltro; });
@@ -1936,6 +1989,7 @@ window.onload=function(){
   render();
   atualizarTabPend();
   carregarDoServidor();
+  carregarPendenciasServidor().then(atualizarTabPend);  // contador da aba já vem certo
   // Verifica se veio do check list com uma OS específica para destacar
   try {
     var osDestaque = sessionStorage.getItem('twm_abrir_os');
@@ -1955,9 +2009,6 @@ window.onload=function(){
     }
   } catch(e) {}
   setInterval(carregarDoServidor,10000);
-  var eu=document.getElementById('cfg-url');
-  var cfg=JSON.parse(localStorage.getItem('twm_config')||'{}');
-  if(eu&&cfg.scriptUrl)eu.value=cfg.scriptUrl;
 };
 </script>
 </div><!-- /tab-board -->
