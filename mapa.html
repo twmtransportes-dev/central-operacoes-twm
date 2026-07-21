@@ -482,6 +482,19 @@ function pararCompartilhamento(silencioso){
   if(!silencioso) toast('Compartilhamento parado');
 }
 
+// ID único e permanente deste aparelho (identifica o tablet físico).
+// Gerado uma vez e guardado no próprio aparelho — não muda com rede/operadora.
+function _deviceId(){
+  var id = localStorage.getItem('twm_device_id');
+  if(!id){
+    var r = Math.random().toString(36).slice(2, 8) +
+            Date.now().toString(36).slice(-4);
+    id = 'TBL-' + r.toUpperCase();
+    localStorage.setItem('twm_device_id', id);
+  }
+  return id;
+}
+
 function enviarMinhaPos(){
   if(!ultimaPos) return;
   var nome  = _nomeUsuario();
@@ -491,6 +504,7 @@ function enviarMinhaPos(){
     nome: nome,
     frota: frota,
     placa: _placaUsuario(),
+    device: _deviceId(),
     lat: ultimaPos.lat,
     lng: ultimaPos.lng,
     precisao: Math.round(ultimaPos.acc||0),
