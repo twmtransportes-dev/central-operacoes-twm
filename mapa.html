@@ -345,7 +345,7 @@ function centralizarNoUsuario(){
     var zoom = acc > 300 ? 13 : 15;
     map.setView([lat,lng], zoom, {animate:true});
     if(meMarker) map.removeLayer(meMarker);
-    meMarker = L.marker([lat,lng], {icon: iconeMeuPonto()}).addTo(map);
+    meMarker = L.marker([lat,lng], {icon: iconeMeuPonto(null, _frotaUsuario())}).addTo(map);
     meMarker.bindPopup('<b>Você está aqui</b>' + (aproximada ? '<br><small>posição aproximada (~'+Math.round(acc)+'m)</small>' : ''));
     setTimeout(function(){ map.invalidateSize(); }, 200);
   }
@@ -364,23 +364,32 @@ function centralizarNoUsuario(){
 }
 
 // Ícone customizado (pin com iniciais) estilo rastreador
-function iconePessoa(txt, online){
+function iconePessoa(vp, online){
   var cor = online ? '#30D158' : '#8E8E93';
+  var vpTxt = vp || '?';
   var html =
-    '<div style="position:relative;width:36px;height:44px">'+
-      '<div style="width:36px;height:36px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);'+
-        'background:'+cor+';border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)"></div>'+
-      '<div style="position:absolute;top:6px;left:0;width:36px;height:32px;display:flex;'+
-        'align-items:center;justify-content:center;color:#fff;font-weight:800;'+
-        'font-size:11px;font-family:var(--sfont)">'+txt+'</div>'+
+    '<div style="position:relative;display:flex;flex-direction:column;align-items:center;width:auto">'+
+      // bolinha com caminhãozinho
+      '<div style="width:30px;height:30px;border-radius:50%;background:'+cor+';'+
+        'border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);'+
+        'display:flex;align-items:center;justify-content:center;font-size:14px">🚚</div>'+
+      // etiqueta com a VP
+      '<div style="margin-top:2px;background:'+cor+';color:#fff;font-weight:800;'+
+        'font-size:11px;font-family:var(--sfont);padding:1px 7px;border-radius:8px;'+
+        'white-space:nowrap;border:1.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)">'+vpTxt+'</div>'+
     '</div>';
-  return L.divIcon({html:html, className:'', iconSize:[36,44], iconAnchor:[18,44], popupAnchor:[0,-42]});
+  return L.divIcon({html:html, className:'', iconSize:[60,50], iconAnchor:[30,15], popupAnchor:[0,-16]});
 }
 
-// Ponto azul estilo Google Maps para "minha posição"
-function iconeMeuPonto(heading){
-  // caminhãozinho que gira conforme a direção (heading em graus, 0=norte)
+// Ponto azul estilo Google Maps para "minha posição", com a VP embaixo
+function iconeMeuPonto(heading, vp){
   var rot = (heading!=null && !isNaN(heading)) ? heading : 0;
+  var etiqueta = vp ? (
+    '<div style="position:absolute;top:44px;left:50%;transform:translateX(-50%);'+
+      'background:#4285F4;color:#fff;font-weight:800;font-size:11px;'+
+      'font-family:var(--sfont);padding:2px 7px;border-radius:8px;white-space:nowrap;'+
+      'border:1.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)">'+vp+'</div>'
+  ) : '';
   var html =
     '<div style="position:relative;width:44px;height:44px">'+
       '<div style="position:absolute;top:2px;left:2px;width:40px;height:40px;border-radius:50%;'+
@@ -389,6 +398,7 @@ function iconeMeuPonto(heading){
         'background:#4285F4;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);'+
         'display:flex;align-items:center;justify-content:center;font-size:15px;'+
         'transform:rotate('+rot+'deg);transition:transform .3s ease">🚚</div>'+
+      etiqueta+
     '</div>';
   return L.divIcon({html:html, className:'', iconSize:[44,44], iconAnchor:[22,22], popupAnchor:[0,-20]});
 }
@@ -416,7 +426,7 @@ function iniciarCompartilhamento(){
     document.getElementById('meStatus').textContent = 'ao vivo';
     if(map){
       var ll0 = [pos.coords.latitude, pos.coords.longitude];
-      if(!meMarker) meMarker = L.marker(ll0, {icon: iconeMeuPonto(null)}).addTo(map);
+      if(!meMarker) meMarker = L.marker(ll0, {icon: iconeMeuPonto(null, _frotaUsuario())}).addTo(map);
       else meMarker.setLatLng(ll0);
       map.setView(ll0, 15, {animate:true});   // centraliza ao pegar a 1ª posição
     }
@@ -441,10 +451,10 @@ function iniciarCompartilhamento(){
       var ll = [pos.coords.latitude, pos.coords.longitude];
       var head = pos.coords.heading; // graus (pode vir null se parado)
       if(!meMarker){
-        meMarker = L.marker(ll, {icon: iconeMeuPonto(head)}).addTo(map);
+        meMarker = L.marker(ll, {icon: iconeMeuPonto(head, _frotaUsuario())}).addTo(map);
       } else {
         meMarker.setLatLng(ll);
-        if(head!=null && !isNaN(head)) meMarker.setIcon(iconeMeuPonto(head));
+        if(head!=null && !isNaN(head)) meMarker.setIcon(iconeMeuPonto(head, _frotaUsuario()));
       }
     }
   }, function(err){
@@ -546,7 +556,7 @@ function renderFrota(lista){
     var chave = (p.nome||'')+'|'+(p.frota||'');
 
     // marcador no mapa
-    var mk = L.marker([lat,lng], {icon: iconePessoa(iniciais(p.nome||p.frota||'?'), on)}).addTo(map);
+    var mk = L.marker([lat,lng], {icon: iconePessoa(frotaLabel(p.frota) || '?', on)}).addTo(map);
     mk.bindPopup('<b>'+rotulo+'</b>'+
                  (placa?'<br>Placa: '+placa:'')+
                  (modelo?'<br>'+modelo:'')+
@@ -595,6 +605,13 @@ function normaliza(s){
 // normaliza frota p/ comparação: VPL-185 -> VP-185, RBL-202 -> RB-202, tira espaços
 function chaveFrota(f){
   return normaliza(f).replace(/\s+/g,'').replace(/^vpl/,'vp').replace(/^rbl/,'rb').replace('-','');
+}
+
+// Rótulo da frota para exibir no mapa: maiúsculo, VPL->VP, RBL->RB
+function frotaLabel(f){
+  var s = String(f||'').toUpperCase().trim().replace(/\s+/g,'');
+  s = s.replace(/^VPL/,'VP').replace(/^RBL/,'RB');
+  return s;
 }
 
 // carrega o cadastro da frota uma vez (fica em cache)
