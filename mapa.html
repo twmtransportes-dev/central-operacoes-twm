@@ -408,6 +408,28 @@ function iniciarCompartilhamento(){
   document.getElementById('meDot').classList.add('live');
   document.getElementById('meStatus').textContent = 'iniciando';
 
+  // Pede a permissão de GPS logo de cara. getCurrentPosition dispara o
+  // popup de permissão de forma mais confiável que o watchPosition sozinho
+  // (alguns Android não mostram o popup no watch automático).
+  navigator.geolocation.getCurrentPosition(function(pos){
+    ultimaPos = {lat:pos.coords.latitude, lng:pos.coords.longitude, acc:pos.coords.accuracy};
+    document.getElementById('meStatus').textContent = 'ao vivo';
+    if(map){
+      var ll0 = [pos.coords.latitude, pos.coords.longitude];
+      if(!meMarker) meMarker = L.marker(ll0, {icon: iconeMeuPonto(null)}).addTo(map);
+      else meMarker.setLatLng(ll0);
+      map.setView(ll0, 15, {animate:true});   // centraliza ao pegar a 1ª posição
+    }
+    enviarMinhaPos();
+  }, function(err){
+    if(err.code === 1){
+      document.getElementById('meDot').classList.remove('live');
+      document.getElementById('meStatus').textContent = 'GPS bloqueado';
+    } else {
+      document.getElementById('meStatus').textContent = 'buscando GPS';
+    }
+  }, {enableHighAccuracy:true, maximumAge:0, timeout:20000});
+
   // watchPosition mantém a posição sempre atualizada.
   // enableHighAccuracy:false deixa o navegador usar GPS, Wi-Fi OU torre de
   // celular (o que estiver disponível) — não trava se o GPS estiver desligado.
@@ -842,6 +864,14 @@ window.addEventListener('DOMContentLoaded', function(){
   document.getElementById('destNavegar').addEventListener('click', navegarPara);
   document.getElementById('destFechar').addEventListener('click', fecharDestino);
   document.getElementById('cfgAbrir').addEventListener('click', abrirConfigTablet);
+  // tocar no status quando bloqueado tenta pedir a permissão de novo
+  document.getElementById('meStatus').addEventListener('click', function(){
+    var t = this.textContent || '';
+    if(t.indexOf('bloqueado') >= 0 || t.indexOf('suportado') >= 0){
+      compartilhando = false;         // permite reiniciar
+      iniciarCompartilhamento();
+    }
+  });
   document.getElementById('cfgCancelar').addEventListener('click', fecharConfigTablet);
   document.getElementById('cfgSalvar').addEventListener('click', salvarConfigTablet);
   document.getElementById('cfgRemover').addEventListener('click', removerConfigTablet);
