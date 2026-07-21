@@ -214,17 +214,11 @@
   <div id="cfgBox">
     <h3>🚛 VP deste tablet</h3>
     <p class="cfg-atual">Atual: <b id="cfgVpAtual">—</b></p>
-    <p class="cfg-hint">Alterar exige login de administrador.</p>
+    <p class="cfg-hint" id="cfgQuem"></p>
 
     <label>VP do caminhão</label>
     <input type="text" id="cfgFrota" list="listaFrotas" placeholder="Ex: VP-183" autocomplete="off">
     <datalist id="listaFrotas"></datalist>
-
-    <label>Usuário admin</label>
-    <input type="text" id="cfgUser" placeholder="matrícula ou e-mail" autocomplete="off">
-
-    <label>Senha</label>
-    <input type="password" id="cfgSenha" placeholder="senha" autocomplete="off">
 
     <div id="cfgMsg"></div>
     <button class="cfg-remover" id="cfgRemover">🗑️ Remover VP deste tablet</button>
@@ -600,13 +594,31 @@ function carregarEquipamentos(){
 function abrirConfigTablet(){
   var atual = _frotaUsuario();
   document.getElementById('cfgVpAtual').textContent = atual || '(não configurado)';
-  document.getElementById('cfgUser').value = '';
-  document.getElementById('cfgSenha').value = '';
   document.getElementById('cfgFrota').value = atual;      // já vem preenchido
   document.getElementById('cfgMsg').textContent = '';
-  // botão remover só aparece se houver VP configurada
+
+  // só admin ou administrativo master pode configurar
+  var ehAdmin = _isAdmin();
+  var quem = document.getElementById('cfgQuem');
+  var frotaInput = document.getElementById('cfgFrota');
+  var btnSalvar = document.getElementById('cfgSalvar');
   var btnRem = document.getElementById('cfgRemover');
-  if(btnRem) btnRem.style.display = atual ? 'block' : 'none';
+
+  if(ehAdmin){
+    var nome = _nomeUsuario();
+    quem.textContent = '✓ Liberado para ' + (nome && nome !== 'Usuário' ? nome : 'administrador');
+    quem.style.color = '#1B7A3D';
+    frotaInput.disabled = false;
+    btnSalvar.style.display = 'block';
+    btnRem.style.display = atual ? 'block' : 'none';
+  } else {
+    quem.textContent = '🔒 Apenas administrador pode configurar a VP. Faça login como admin.';
+    quem.style.color = '#D70015';
+    frotaInput.disabled = true;
+    btnSalvar.style.display = 'none';
+    btnRem.style.display = 'none';
+  }
+
   document.getElementById('cfgOverlay').classList.remove('hidden');
   montarListaFrotas();
 }
@@ -628,67 +640,36 @@ function montarListaFrotas(){
 }
 // valida no servidor (planilha MOTORISTAS) e salva a VP no aparelho
 function salvarConfigTablet(){
-  var user  = document.getElementById('cfgUser').value.trim();
-  var senha = document.getElementById('cfgSenha').value;
   var frota = document.getElementById('cfgFrota').value.trim().toUpperCase();
   var msg   = document.getElementById('cfgMsg');
 
-  if(!user || !senha){ msg.textContent = 'Informe usuário e senha de administrador.'; return; }
+  if(!_isAdmin()){ msg.textContent = 'Apenas administrador pode configurar.'; return; }
   if(!frota){ msg.textContent = 'Escolha a VP deste caminhão.'; return; }
 
-  msg.textContent = 'Verificando...';
-  fetch(SCRIPT_URL+'?action=validarAdmin'
-        +'&usuario='+encodeURIComponent(user)
-        +'&senha='+encodeURIComponent(senha)
-        +'&_t='+Date.now(), {cache:'no-store'})
-    .then(function(r){ return r.json(); })
-    .then(function(res){
-      if(!res || !res.ok || !res.admin){
-        msg.textContent = (res && res.msg) ? res.msg : 'Usuário ou senha inválidos, ou sem permissão de admin.';
-        return;
-      }
-      localStorage.setItem('twm_vp_tablet', frota);
-      var cad = equipPorFrota[chaveFrota(frota)];
-      if(cad && cad.placa) localStorage.setItem('twm_placa_tablet', cad.placa);
-      msg.textContent = '';
-      fecharConfigTablet();
-      toast('Tablet configurado como ' + frota);
-      if(compartilhando) enviarMinhaPos();   // reenvia já com a VP certa
-    })
-    .catch(function(){ msg.textContent = 'Falha de conexão. Tente novamente.'; });
+  localStorage.setItem('twm_vp_tablet', frota);
+  var cad = equipPorFrota[chaveFrota(frota)];
+  if(cad && cad.placa) localStorage.setItem('twm_placa_tablet', cad.placa);
+  msg.textContent = '';
+  fecharConfigTablet();
+  toast('Tablet configurado como ' + frota);
+  if(compartilhando) enviarMinhaPos();   // reenvia já com a VP certa
 }
 
 
 // remove a VP deste tablet (também exige admin)
 function removerConfigTablet(){
-  var user  = document.getElementById('cfgUser').value.trim();
-  var senha = document.getElementById('cfgSenha').value;
-  var msg   = document.getElementById('cfgMsg');
+  var msg = document.getElementById('cfgMsg');
+  if(!_isAdmin()){ msg.textContent = 'Apenas administrador pode remover.'; return; }
 
-  if(!user || !senha){ msg.textContent = 'Informe usuário e senha de administrador para remover.'; return; }
-
-  msg.textContent = 'Verificando...';
-  fetch(SCRIPT_URL+'?action=validarAdmin'
-        +'&usuario='+encodeURIComponent(user)
-        +'&senha='+encodeURIComponent(senha)
-        +'&_t='+Date.now(), {cache:'no-store'})
-    .then(function(r){ return r.json(); })
-    .then(function(res){
-      if(!res || !res.ok || !res.admin){
-        msg.textContent = (res && res.msg) ? res.msg : 'Usuário ou senha inválidos.';
-        return;
-      }
-      localStorage.removeItem('twm_vp_tablet');
-      localStorage.removeItem('twm_placa_tablet');
-      msg.textContent = '';
-      fecharConfigTablet();
-      toast('VP removida deste tablet');
-      var st = document.getElementById('meStatus');
-      if(st) st.textContent = 'sem VP';
-      var chip = document.getElementById('statusChip');
-      if(chip) chip.style.background = '#FFF4E5';
-    })
-    .catch(function(){ msg.textContent = 'Falha de conexão. Tente novamente.'; });
+  localStorage.removeItem('twm_vp_tablet');
+  localStorage.removeItem('twm_placa_tablet');
+  msg.textContent = '';
+  fecharConfigTablet();
+  toast('VP removida deste tablet');
+  var st = document.getElementById('meStatus');
+  if(st) st.textContent = 'sem VP';
+  var chip = document.getElementById('statusChip');
+  if(chip) chip.style.background = '#FFF4E5';
 }
 
 // posição reportada (se houver) para uma frota
