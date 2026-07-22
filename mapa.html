@@ -83,7 +83,8 @@
   #cfgBox label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 5px;letter-spacing:.4px}
   #cfgBox input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;
     font-size:16px;font-family:var(--sfont);background:#fff;color:var(--ink)}
-  #cfgMsg{font-size:12px;color:#D70015;min-height:16px;margin-top:10px}
+  #cfgMsg{font-size:12px;color:#D70015;min-height:16px;margin-top:10px;line-height:1.45;
+    word-break:break-word}
   .cfg-remover{width:100%;margin-top:12px;padding:11px;border:1px solid #FFD3D0;border-radius:12px;
     background:#FFF5F5;color:#D70015;font-size:14px;font-weight:600;cursor:pointer}
   .cfg-remover:active{background:#FFE8E6}
@@ -236,7 +237,7 @@
    CONFIG
    ============================================================ */
 // MESMA URL do Web App da Jornada (que já grava a aba LOCALIZACAO)
-var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx0wK7f3lJvahV8LvsKOwNN_iu9Txo7grisBi2SvLRdVzAIG4lVom_yxXw2rYhjZhEeTA/exec';
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxZ5P_l0cBM3g79srBUcxwdpMkKSHeE8d89Ksp9uFjhw4YnD2-m5rH8MVMyB5rDWRX9wQ/exec';
 
 var ENVIO_INTERVALO_MS   = 30000;  // envia a cada 30s
 var REFRESH_INTERVALO_MS = 30000;  // admin recarrega a cada 30s
@@ -659,7 +660,8 @@ function abrirConfigTablet(){
 
   if(ehAdmin){
     var nome = _nomeUsuario();
-    quem.textContent = '✓ Liberado para ' + (nome && nome !== 'Usuário' ? nome : 'administrador');
+    quem.innerHTML = '✓ Liberado para ' + (nome && nome !== 'Usuário' ? nome : 'administrador') +
+                     '<br><span style="color:#8E8E93">Este aparelho: <b>' + _deviceId() + '</b></span>';
     quem.style.color = '#1B7A3D';
     frotaInput.disabled = false;
     btnSalvar.style.display = 'block';
@@ -699,10 +701,60 @@ function salvarConfigTablet(){
   if(!_isAdmin()){ msg.textContent = 'Apenas administrador pode configurar.'; return; }
   if(!frota){ msg.textContent = 'Escolha a VP deste caminhão.'; return; }
 
+  // A VP precisa existir no cadastro da frota (aba EQUIPAMENTOS)
+  msg.style.color = '#D70015';
+  if(!equipamentos.length){
+    msg.textContent = 'Cadastro da frota não carregado. Verifique a conexão e tente de novo.';
+    return;
+  }
+  var cadastro = equipPorFrota[chaveFrota(frota)];
+  if(!cadastro){
+    msg.textContent = frota + ' não existe no cadastro da frota. Escolha uma VP da lista.';
+    return;
+  }
+  // só cavalos (VP/VPL/VA) — carreta não carrega tablet
+  if(!/^(VP|VA)/.test(chaveFrota(frota).toUpperCase())){
+    msg.textContent = frota + ' não é um cavalo. Configure apenas VP ou VA.';
+    return;
+  }
+  frota = cadastro.frota;   // usa a grafia oficial do cadastro
+
+  // Verifica no servidor se essa VP já está em outro tablet
+  msg.style.color = '#8E8E93';
+  msg.textContent = 'Verificando...';
+  fetch(SCRIPT_URL+'?action=checarVpTablet'
+        +'&frota='+encodeURIComponent(frota)
+        +'&device='+encodeURIComponent(_deviceId())
+        +'&_t='+Date.now(), {cache:'no-store'})
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      msg.style.color = '#D70015';
+      if(res && res.ok && res.livre === false){
+        // VP já usada por outro aparelho — bloqueia e mostra qual
+        var det = 'Esta VP já está cadastrada no aparelho ' + (res.device || '?');
+        if(res.nome)   det += ' (' + res.nome + ')';
+        if(res.quando) det += ', última posição em ' + res.quando;
+        det += '. Remova a VP daquele tablet antes de usar aqui.';
+        msg.textContent = det;
+        return;
+      }
+      // livre (ou o servidor não conseguiu checar): salva
+      _gravarVpTablet(frota, msg);
+    })
+    .catch(function(){
+      // sem conexão: não trava o trabalho, mas avisa
+      msg.style.color = '#B45309';
+      msg.textContent = 'Sem conexão para verificar duplicidade. Salvando mesmo assim.';
+      setTimeout(function(){ _gravarVpTablet(frota, msg); }, 1200);
+    });
+}
+
+// grava a VP no aparelho (usado depois da verificação)
+function _gravarVpTablet(frota, msg){
   localStorage.setItem('twm_vp_tablet', frota);
   var cad = equipPorFrota[chaveFrota(frota)];
   if(cad && cad.placa) localStorage.setItem('twm_placa_tablet', cad.placa);
-  msg.textContent = '';
+  if(msg){ msg.textContent = ''; msg.style.color = '#D70015'; }
   fecharConfigTablet();
   toast('Tablet configurado como ' + frota);
   if(compartilhando) enviarMinhaPos();   // reenvia já com a VP certa
