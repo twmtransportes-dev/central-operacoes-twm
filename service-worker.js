@@ -6,7 +6,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 // ⚠️ IMPORTANTE: mude este número a cada deploy para forçar atualização
-const VERSION = 'v20260722-05';
+const VERSION = 'v20260722-06';
 const CACHE_HTML   = 'twm-html-'   + VERSION;
 const CACHE_ASSETS = 'twm-assets-' + VERSION;
 
@@ -34,17 +34,15 @@ self.addEventListener('fetch', function(event) {
   const isLocal = url.origin === location.origin;
 
   // 1. DADOS DINÂMICOS (Apps Script, Google Sheets, ImgBB) → SEMPRE rede
+  //    NÃO passa pelo Service Worker: deixa o navegador tratar direto.
+  //    Isso evita problemas com o redirect que o Apps Script sempre faz
+  //    (o SW no meio quebrava a resposta e o mapa recebia vazio).
   if (url.hostname.includes('script.google.com') ||
       url.hostname.includes('googleusercontent.com') ||
       url.hostname.includes('docs.google.com') ||
       url.hostname.includes('sheets.google.com') ||
       url.hostname.includes('imgbb.com')) {
-    event.respondWith(
-      fetch(event.request).catch(function() {
-        return new Response('{}', { headers: { 'Content-Type': 'application/json' } });
-      })
-    );
-    return;
+    return;   // sem event.respondWith → o navegador faz a requisição normal
   }
 
   // 2. RECURSOS EXTERNOS (Google Fonts, CDN) → Cache-First
