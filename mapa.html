@@ -631,14 +631,15 @@ function frotaLabel(f){
 
 // carrega o cadastro da frota uma vez (fica em cache)
 function carregarEquipamentos(){
-  fetch(SCRIPT_URL+'?action=getEquipamentos&_t='+Date.now(), {cache:'no-store'})
+  return fetch(SCRIPT_URL+'?action=getEquipamentos&_t='+Date.now(), {cache:'no-store'})
     .then(function(r){ return r.json(); })
     .then(function(res){
       equipamentos = (res && res.ok && res.equipamentos) ? res.equipamentos : [];
       equipPorFrota = {};
       equipamentos.forEach(function(e){ equipPorFrota[chaveFrota(e.frota)] = e; });
+      return equipamentos;
     })
-    .catch(function(){ /* segue só com quem está reportando */ });
+    .catch(function(){ return equipamentos; });
 }
 
 /* ============================================================
@@ -676,6 +677,10 @@ function abrirConfigTablet(){
 
   document.getElementById('cfgOverlay').classList.remove('hidden');
   montarListaFrotas();
+  // se o cadastro ainda não chegou, busca agora para preencher a lista
+  if(!equipamentos.length){
+    carregarEquipamentos().then(montarListaFrotas);
+  }
 }
 function fecharConfigTablet(){
   document.getElementById('cfgOverlay').classList.add('hidden');
@@ -701,12 +706,24 @@ function salvarConfigTablet(){
   if(!_isAdmin()){ msg.textContent = 'Apenas administrador pode configurar.'; return; }
   if(!frota){ msg.textContent = 'Escolha a VP deste caminhão.'; return; }
 
-  // A VP precisa existir no cadastro da frota (aba EQUIPAMENTOS)
-  msg.style.color = '#D70015';
+  // Se o cadastro ainda não chegou (abriu a config antes de carregar),
+  // busca agora e só então valida — em vez de recusar.
   if(!equipamentos.length){
-    msg.textContent = 'Cadastro da frota não carregado. Verifique a conexão e tente de novo.';
+    msg.style.color = '#8E8E93';
+    msg.textContent = 'Carregando cadastro da frota...';
+    carregarEquipamentos().then(function(){
+      if(!equipamentos.length){
+        msg.style.color = '#D70015';
+        msg.textContent = 'Não consegui carregar o cadastro da frota. Verifique a conexão.';
+        return;
+      }
+      salvarConfigTablet();   // agora com o cadastro na mão
+    });
     return;
   }
+
+  // A VP precisa existir no cadastro da frota (aba EQUIPAMENTOS)
+  msg.style.color = '#D70015';
   var cadastro = equipPorFrota[chaveFrota(frota)];
   if(!cadastro){
     msg.textContent = frota + ' não existe no cadastro da frota. Escolha uma VP da lista.';
