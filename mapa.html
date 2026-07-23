@@ -8,6 +8,10 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <!-- plugin de rotação do mapa (gesto de dois dedos) -->
 <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
+<!-- agrupamento de marcadores próximos (evita ficarem um sobre o outro) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <style>
   :root{
     --bg:#F2F2F7; --card:#FFFFFF; --ink:#1C1C1E; --muted:#8E8E93;
@@ -243,35 +247,16 @@ var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxZ5P_l0cBM3g79srBUcxw
    O Apps Script responde 302 → googleusercontent.com, que não manda
    header CORS. Lendo em modo texto e com redirect:follow, o navegador
    segue o redirect sem exigir CORS no destino. */
-/* Chamada ao Apps Script via JSONP.
-   Antes usávamos fetch() com redirect:'follow', mas o Apps Script redireciona
-   toda resposta (302) para script.googleusercontent.com, e esse destino nem
-   sempre manda o header Access-Control-Allow-Origin — o navegador bloqueia
-   por CORS de forma inconsistente. JSONP usa uma tag <script src="...">, que
-   nunca é sujeita a CORS, então é a forma confiável de resolver isso. */
-var _jsonpSeq = 0;
 function apiGet(qs){
-  return new Promise(function(resolve){
-    var cbName = '_twmcb_' + Date.now() + '_' + (_jsonpSeq++);
-    var script = document.createElement('script');
-    var finished = false;
-    var timer = setTimeout(function(){ finalizar(null); }, 15000);
-
-    function finalizar(data){
-      if(finished) return;
-      finished = true;
-      clearTimeout(timer);
-      delete window[cbName];
-      if(script.parentNode) script.parentNode.removeChild(script);
-      resolve(data);
-    }
-
-    window[cbName] = finalizar;
-    script.onerror = function(){ finalizar(null); };
-
-    var sep = qs.indexOf('?') >= 0 ? '&' : '?';
-    script.src = SCRIPT_URL + qs + sep + 'callback=' + cbName;
-    document.head.appendChild(script);
+  return fetch(SCRIPT_URL + qs, {
+    method: 'GET',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain' }   // text/plain evita preflight
+  })
+  .then(function(r){ return r.text(); })
+  .then(function(t){
+    try { return JSON.parse(t); }
+    catch(e){ return null; }   // resposta não-JSON
   });
 }
 
@@ -349,6 +334,7 @@ function tempoRelativo(iso){
    MAPA  (Leaflet com tiles estilo Google)
    ============================================================ */
 var map, marcadores = {};
+var clusterFrota = null;   // grupo que agrupa marcadores próximos
 var frotaAtual = [];
 var TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 var TILE_ATTR = '© OpenStreetMap © CARTO';
@@ -365,6 +351,31 @@ function initMapaFrota(){
   }).setView(CENTRO_PADRAO, 12);
   L.control.attribution({prefix:false, position:'bottomright'}).addTo(map);
   L.tileLayer(TILE_URL, {attribution:TILE_ATTR, maxZoom:20, subdomains:'abcd'}).addTo(map);
+
+  // Agrupa marcadores próximos para não ficarem um sobre o outro.
+  // Ao aproximar o zoom, eles se separam sozinhos.
+  if(typeof L.markerClusterGroup === 'function'){
+    clusterFrota = L.markerClusterGroup({
+      maxClusterRadius: 45,          // só agrupa o que está bem perto
+      spiderfyOnMaxZoom: true,       // no zoom máximo, abre em leque
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      iconCreateFunction: function(cluster){
+        var n = cluster.getChildCount();
+        return L.divIcon({
+          html: '<div style="width:38px;height:38px;border-radius:50%;'+
+                'background:#7C3AED;color:#fff;border:2.5px solid #fff;'+
+                'box-shadow:0 2px 8px rgba(0,0,0,.35);display:flex;'+
+                'align-items:center;justify-content:center;'+
+                'font-weight:800;font-size:14px;font-family:var(--sfont)">'+n+'</div>',
+          className: '',
+          iconSize: [38,38]
+        });
+      }
+    });
+    map.addLayer(clusterFrota);
+  }
+
   centralizarNoUsuario();
 }
 
@@ -574,8 +585,8 @@ function renderFrota(lista){
   var cnt = document.getElementById('fleetCount');
   box.innerHTML = '';
 
-  // remove marcadores antigos
-  Object.keys(marcadores).forEach(function(k){ map.removeLayer(marcadores[k]); });
+  // remove marcadores antigos (do grupo agrupado)
+  if(clusterFrota) clusterFrota.clearLayers();
   marcadores = {};
 
   if(!lista.length){
@@ -604,12 +615,14 @@ function renderFrota(lista){
     var rotulo = (p.nome||'—') + (p.frota ? ' • '+p.frota : '');
     var chave = (p.nome||'')+'|'+(p.frota||'');
 
-    // marcador no mapa
-    var mk = L.marker([lat,lng], {icon: iconePessoa(frotaLabel(p.frota) || '?', on)}).addTo(map);
+    // marcador vai para o grupo agrupado (separa quando estão sobrepostos)
+    var mk = L.marker([lat,lng], {icon: iconePessoa(frotaLabel(p.frota) || '?', on)});
     mk.bindPopup('<b>'+rotulo+'</b>'+
                  (placa?'<br>Placa: '+placa:'')+
                  (modelo?'<br>'+modelo:'')+
                  '<br>'+tempoRelativo(p.ts)+'<br>precisão ~'+(p.precisao||'?')+'m');
+    if(clusterFrota) clusterFrota.addLayer(mk);
+    else mk.addTo(map);
     marcadores[chave] = mk;
     bounds.push([lat,lng]);
 
@@ -625,8 +638,12 @@ function renderFrota(lista){
       '<span class="badge '+(on?'on':'off')+'">'+(on?'ONLINE':'offline')+'</span>';
     item.onclick = function(){
       map.setView([lat,lng], 16, {animate:true});
-      mk.openPopup();
-      window.scrollTo({top:document.getElementById('map').offsetTop-80, behavior:'smooth'});
+      // se estiver agrupado, abre o grupo antes de mostrar o popup
+      if(clusterFrota && clusterFrota.hasLayer(mk)){
+        clusterFrota.zoomToShowLayer(mk, function(){ mk.openPopup(); });
+      } else {
+        mk.openPopup();
+      }
     };
     box.appendChild(item);
   });
@@ -664,27 +681,15 @@ function frotaLabel(f){
 }
 
 // carrega o cadastro da frota uma vez (fica em cache)
-var ultimoErroEquip = '';   // guarda o motivo real da última falha ao buscar o cadastro
 function carregarEquipamentos(){
   return apiGet('?action=getEquipamentos&_t='+Date.now())
     .then(function(res){
-      if(res && res.ok){
-        equipamentos = res.equipamentos || [];
-        ultimoErroEquip = '';
-      } else {
-        // não zera o cache existente, mas registra o motivo pra exibir na tela
-        ultimoErroEquip = (res && res.msg) ? res.msg
-                         : (res===null ? 'resposta não-JSON do Apps Script (deploy desatualizado ou página de erro/login retornada)'
-                         : 'resposta vazia do servidor');
-      }
+      equipamentos = (res && res.ok && res.equipamentos) ? res.equipamentos : [];
       equipPorFrota = {};
       equipamentos.forEach(function(e){ equipPorFrota[chaveFrota(e.frota)] = e; });
       return equipamentos;
     })
-    .catch(function(err){
-      ultimoErroEquip = 'falha de rede/fetch: ' + err;
-      return equipamentos;
-    });
+    .catch(function(){ return equipamentos; });
 }
 
 /* ============================================================
@@ -759,8 +764,7 @@ function salvarConfigTablet(){
     carregarEquipamentos().then(function(){
       if(!equipamentos.length){
         msg.style.color = '#D70015';
-        msg.textContent = 'Não consegui carregar o cadastro da frota'
-          + (ultimoErroEquip ? (' — ' + ultimoErroEquip) : '. Verifique a conexão.');
+        msg.textContent = 'Não consegui carregar o cadastro da frota. Verifique a conexão.';
         return;
       }
       salvarConfigTablet();   // agora com o cadastro na mão
