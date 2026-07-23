@@ -239,6 +239,23 @@
 // MESMA URL do Web App da Jornada (que já grava a aba LOCALIZACAO)
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxZ5P_l0cBM3g79srBUcxwdpMkKSHeE8d89Ksp9uFjhw4YnD2-m5rH8MVMyB5rDWRX9wQ/exec';
 
+/* Chamada ao Apps Script contornando o CORS do redirect 302.
+   O Apps Script responde 302 → googleusercontent.com, que não manda
+   header CORS. Lendo em modo texto e com redirect:follow, o navegador
+   segue o redirect sem exigir CORS no destino. */
+function apiGet(qs){
+  return fetch(SCRIPT_URL + qs, {
+    method: 'GET',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain' }   // text/plain evita preflight
+  })
+  .then(function(r){ return r.text(); })
+  .then(function(t){
+    try { return JSON.parse(t); }
+    catch(e){ return null; }   // resposta não-JSON
+  });
+}
+
 var ENVIO_INTERVALO_MS   = 30000;  // envia a cada 30s
 var REFRESH_INTERVALO_MS = 30000;  // admin recarrega a cada 30s
 var ONLINE_LIMITE_MIN    = 3;      // "online" se reportou nos últimos 3 min
@@ -511,9 +528,8 @@ function enviarMinhaPos(){
     precisao: Math.round(ultimaPos.acc||0),
     ts: new Date().toISOString()
   });
-  // GET simples evita preflight CORS no Apps Script
-  fetch(SCRIPT_URL+'?'+params.toString(), {method:'GET', cache:'no-store'})
-    .then(function(r){ return r.json(); })
+  // envia via apiGet (contorna CORS do redirect)
+  apiGet('?'+params.toString())
     .then(function(){ /* ok silencioso */ })
     .catch(function(){ /* rede instável — tenta no próximo ciclo */ });
 }
@@ -525,8 +541,7 @@ var refreshTimer = null;
 
 function carregarFrota(){
   if(!_isAdmin()) return;
-  fetch(SCRIPT_URL+'?action=getLocalizacoes&_t='+Date.now(), {cache:'no-store'})
-    .then(function(r){ return r.json(); })
+  apiGet('?action=getLocalizacoes&_t='+Date.now())
     .then(function(res){
       var lista = (res && res.ok && res.localizacoes) ? res.localizacoes : [];
       renderFrota(lista);
@@ -631,8 +646,7 @@ function frotaLabel(f){
 
 // carrega o cadastro da frota uma vez (fica em cache)
 function carregarEquipamentos(){
-  return fetch(SCRIPT_URL+'?action=getEquipamentos&_t='+Date.now(), {cache:'no-store'})
-    .then(function(r){ return r.json(); })
+  return apiGet('?action=getEquipamentos&_t='+Date.now())
     .then(function(res){
       equipamentos = (res && res.ok && res.equipamentos) ? res.equipamentos : [];
       equipPorFrota = {};
@@ -739,11 +753,10 @@ function salvarConfigTablet(){
   // Verifica no servidor se essa VP já está em outro tablet
   msg.style.color = '#8E8E93';
   msg.textContent = 'Verificando...';
-  fetch(SCRIPT_URL+'?action=checarVpTablet'
+  apiGet('?action=checarVpTablet'
         +'&frota='+encodeURIComponent(frota)
         +'&device='+encodeURIComponent(_deviceId())
-        +'&_t='+Date.now(), {cache:'no-store'})
-    .then(function(r){ return r.json(); })
+        +'&_t='+Date.now())
     .then(function(res){
       msg.style.color = '#D70015';
       if(res && res.ok && res.livre === false){
