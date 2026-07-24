@@ -1102,18 +1102,26 @@ function renderDashboard() {
       var tC = parseDataHora(v.carreg);
       var urgente = tC && (tC - Date.now()) > 0 && (tC - Date.now()) < 6*3600*1000;
 
-      // ── GPS: distância da garagem + sentido do movimento ──
+      // ── GPS: distância da garagem + sentido + previsão de chegada ──
       var gpsHtml = '';
       var g = v.gps;
       if (g && g.dist_garagem !== null && g.dist_garagem !== undefined) {
-        var seta = g.sentido === 'voltando' ? '⬅️'
-                 : g.sentido === 'indo'     ? '➡️'
-                 : g.sentido === 'base'     ? '🏠' : '⏸️';
+        // ↑ afastando · ↓ voltando · 🏠 na garagem · ⏸ parado
+        var seta = g.sentido === 'voltando' ? '↓'
+                 : g.sentido === 'indo'     ? '↑'
+                 : g.sentido === 'base'     ? '🏠' : '⏸';
         var kmTxt = g.dist_garagem < 1
           ? Math.round(g.dist_garagem * 1000) + ' m'
           : g.dist_garagem.toFixed(1).replace('.', ',') + ' km';
+        // previsão de chegada (só quando está voltando)
+        var etaTxt = '';
+        if (g.sentido === 'voltando' && g.eta_garagem !== null && g.eta_garagem !== undefined) {
+          var m = g.eta_garagem;
+          etaTxt = ' • chega ' + (m < 60 ? m + ' min'
+                   : Math.floor(m/60) + 'h' + String(m % 60).padStart(2,'0'));
+        }
         var vivo = g.online ? ' gps-vivo' : '';
-        gpsHtml = '<div class="truck-gps' + vivo + '">' + seta + ' ' + kmTxt + ' da base</div>';
+        gpsHtml = '<div class="truck-gps' + vivo + '">' + seta + ' ' + kmTxt + etaTxt + '</div>';
       }
 
       var card = document.createElement('div');
@@ -1153,6 +1161,11 @@ function openModal(v) {
     if (gm.detalhe) linhas.push(esc(gm.detalhe));
     if (gm.dist_garagem !== null && gm.dist_garagem !== undefined) {
       linhas.push(String(gm.dist_garagem).replace('.', ',') + ' km da garagem');
+    }
+    if (gm.sentido === 'voltando' && gm.eta_garagem !== null && gm.eta_garagem !== undefined) {
+      var mm = gm.eta_garagem;
+      linhas.push('chega na garagem em ' +
+        (mm < 60 ? mm + ' min' : Math.floor(mm/60) + 'h' + String(mm % 60).padStart(2,'0')));
     }
     if (linhas.length) {
       badgeHtml += '<div style="font-size:11.5px;color:#8E8E93;margin-top:6px;line-height:1.5">'
