@@ -1,918 +1,104 @@
-/* ════════════════════════════════════════════════════════════════
-   TWM Apps Script — MÓDULO JORNADA (Início/Fim de Viagem)
-   VERSION 4: Jornada + Rastreio GPS + Equipamentos + Validar Admin
-              + Status automático por GPS (indo/voltando/descarregando)
-   ────────────────────────────────────────────────────────────────
-   SUBSTITUA TODO O CONTEÚDO DO SEU ARQUIVO POR ESTE.
-   Depois: Implantar → Gerenciar implantações → editar a existente
-           → Nova versão → Implantar (mesma URL de sempre).
-   ════════════════════════════════════════════════════════════════ */
+// ══════════════════════════════════════════════════════════════════
+// TWM DataLink — Service Worker (versão consolidada)
+// HTML: Network-First com cache:no-store (SEMPRE versão nova do servidor)
+// Assets: Stale-While-Revalidate (rápido + atualiza em background)
+// Dados (Apps Script/Sheets): sempre rede, nunca cache
+// ══════════════════════════════════════════════════════════════════
 
-// ── PLANILHAS ──────────────────────────────────────────────────
-// ⚠️ ATENÇÃO: este ID deu "Illegal spreadsheet id" no teste.
-// Abra a planilha da JORNADA/ABASTECIMENTO e copie o ID da URL:
-// https://docs.google.com/spreadsheets/d/ ESTE_PEDACO_AQUI /edit
-var ABASTECIMENTO_ID = '1Cx2RR_3GNOuJZD60vYtA2Jcgnvdf5EXHzR-lXGHHtw4'; // Jornada/Abastecimento
-var FROTA_ID         = '1Q1XHvwuho8nNFAUMd3XcZx70njgU7kKatVnbk45X5Xg'; // Frota (EQUIPAMENTOS)
-var MOTORISTAS_ID    = '1YBcHrhZdTvW1Z41AUW6qOtAnvE5kMom6dlXVmStQI8w'; // Usuários/login (MOTORISTAS)
+// ⚠️ IMPORTANTE: mude este número a cada deploy para forçar atualização
+const VERSION = 'v20260723-04';
+const CACHE_HTML   = 'twm-html-'   + VERSION;
+const CACHE_ASSETS = 'twm-assets-' + VERSION;
 
-// ── ABAS ───────────────────────────────────────────────────────
-var ABA_JORNADA    = 'Jornada';
-var ABA_RASTREIO   = 'RASTREIO';       // GPS do mapa (nome diferente de LOCALIZACAO,
-                                        // que já é COLUNA de status na aba Jornada)
-var ABA_EQUIP      = 'EQUIPAMENTOS';   // fica na planilha FROTA_ID
-var ABA_MOTORISTAS = 'MOTORISTAS';     // fica na planilha MOTORISTAS_ID
+// ── INSTALL ──────────────────────────────────────────────────────
+self.addEventListener('install', function(event) {
+  self.skipWaiting(); // ativa a nova versão imediatamente
+});
 
-var REGEX_ABA_ANO = /^\d{4}$/;
+// ── ACTIVATE: apaga TODOS os caches antigos ──────────────────────
+self.addEventListener('activate', function(event) {
+  event.waitUntil(
+    caches.keys().then(function(keys) {
+      return Promise.all(
+        keys.filter(function(k){ return k !== CACHE_HTML && k !== CACHE_ASSETS; })
+            .map(function(k){ return caches.delete(k); })
+      );
+    }).then(function(){ return self.clients.claim(); })
+  );
+});
 
-function out(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+// ── FETCH ────────────────────────────────────────────────────────
+self.addEventListener('fetch', function(event) {
+  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  const isLocal = url.origin === location.origin;
 
-/* ── ROTEAMENTO ─────────────────────────────────────────────── */
-function doGet(e) {
-  var action = e.parameter.action || '';
-  try {
-    // Jornada (já existentes)
-    if (action === 'iniciarViagem')    return iniciarViagem(e);
-    if (action === 'finalizarViagem')  return finalizarViagem(e);
-    if (action === 'getViagens')       return getViagens(e);
-    if (action === 'atualizarLocal')   return atualizarLocal(e);
-
-    // Mapa (novas)
-    if (action === 'salvarLocalizacao') return salvarLocalizacao(e);
-    if (action === 'getLocalizacoes')   return getLocalizacoes(e);
-    if (action === 'getEquipamentos')   return getEquipamentos(e);
-    if (action === 'validarAdmin')      return validarAdmin(e);
-    if (action === 'validarLogin')      return validarLogin(e);
-    if (action === 'checarVpTablet')    return checarVpTablet(e);
-    if (action === 'getStatusFrota')    return getStatusFrota(e);
-
-    if (action === 'ping')             return out({ ok: true, msg: 'Jornada Script ativo!' });
-    return out({ ok: true, msg: 'Jornada Script ativo!' });
-  } catch (err) {
-    return out({ ok: false, msg: 'Erro: ' + err.toString() });
-  }
-}
-
-/* ════════════════════════════════════════════════════════════════
-   JORNADA  (mantido igual ao seu, sem alterações de comportamento)
-   ════════════════════════════════════════════════════════════════ */
-function _sheetJornada() {
-  var ss = SpreadsheetApp.openById(ABASTECIMENTO_ID);
-  var sh = ss.getSheetByName(ABA_JORNADA);
-  if (!sh) throw new Error('Aba "' + ABA_JORNADA + '" não encontrada na planilha de Abastecimento.');
-  return sh;
-}
-
-function _vazio(v) {
-  return v === '' || v === null || v === undefined;
-}
-
-function _initJornadaCols() {
-  var sh = _sheetJornada();
-  var dados = sh.getDataRange().getValues();
-  if (dados.length === 0) return null;
-
-  var header = dados[0].map(function(h) { return String(h).toUpperCase().trim(); });
-
-  // Se não tem LOCALIZACAO, adiciona
-  var iLoc = header.indexOf('LOCALIZACAO');
-  if (iLoc < 0) {
-    var ultimaCol = header.length + 1;
-    sh.getRange(1, ultimaCol).setValue('LOCALIZACAO');
-    iLoc = ultimaCol - 1;
+  // 1. DADOS DINÂMICOS (Apps Script, Google Sheets, ImgBB) → SEMPRE rede
+  //    NÃO passa pelo Service Worker: deixa o navegador tratar direto.
+  //    Isso evita problemas com o redirect que o Apps Script sempre faz
+  //    (o SW no meio quebrava a resposta e o mapa recebia vazio).
+  if (url.hostname.includes('script.google.com') ||
+      url.hostname.includes('googleusercontent.com') ||
+      url.hostname.includes('docs.google.com') ||
+      url.hostname.includes('sheets.google.com') ||
+      url.hostname.includes('imgbb.com')) {
+    return;   // sem event.respondWith → o navegador faz a requisição normal
   }
 
-  return { frota: 0, motorista: 1, km_ini: 2, km_fim: 3, km_rod: 4, kml: 5, rota: 6, local: iLoc };
-}
-
-/* ── INICIAR VIAGEM ─────────────────────────────────────────── */
-function iniciarViagem(e) {
-  var p = e.parameter;
-  var frota     = (p.frota || '').trim().toUpperCase();
-  var motorista = (p.motorista || '').trim();
-  var kmInicial = parseFloat(p.km_inicial || 0);
-  var rota      = (p.rota || '').trim();
-
-  if (!frota || !motorista || !kmInicial) {
-    return out({ ok: false, msg: 'Frota, motorista e KM inicial são obrigatórios.' });
+  // 2. RECURSOS EXTERNOS (Google Fonts, CDN) → Cache-First
+  if (!isLocal) {
+    event.respondWith(
+      caches.match(event.request).then(function(cached) {
+        return cached || fetch(event.request).then(function(resp) {
+          if (resp.ok) {
+            const clone = resp.clone();
+            caches.open(CACHE_ASSETS).then(function(c){ c.put(event.request, clone); });
+          }
+          return resp;
+        });
+      })
+    );
+    return;
   }
 
-  var sh = _sheetJornada();
-  var cols = _initJornadaCols();
-  var dados = sh.getDataRange().getValues();
-
-  // Evita duas viagens abertas para mesma frota
-  for (var i = 1; i < dados.length; i++) {
-    var f = String(dados[i][0] || '').trim().toUpperCase();
-    if (f === frota && _vazio(dados[i][3])) {
-      return out({ ok: false, msg: 'Já existe uma viagem em aberto para ' + frota + '. Finalize-a antes de iniciar outra.' });
-    }
+  // 3. HTML LOCAL → Network-First com no-store (SEMPRE versão nova)
+  if (url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/')) {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' })
+        .then(function(resp) {
+          const clone = resp.clone();
+          caches.open(CACHE_HTML).then(function(c){ c.put(event.request, clone); });
+          return resp;
+        })
+        .catch(function() {
+          // Offline → usa cache como fallback
+          return caches.match(event.request).then(function(cached) {
+            return cached || caches.match('./index.html');
+          });
+        })
+    );
+    return;
   }
 
-  sh.appendRow([frota, motorista, kmInicial, '', '', '', rota, 'Garagem']);
-  return out({ ok: true });
-}
-
-/* ── FINALIZAR VIAGEM ───────────────────────────────────────── */
-function finalizarViagem(e) {
-  var p = e.parameter;
-  var frota   = (p.frota || '').trim().toUpperCase();
-  var kmFinal = parseFloat(p.km_final || 0);
-
-  var sh = _sheetJornada();
-  var dados = sh.getDataRange().getValues();
-
-  var rowIdx = -1, kmInicial = 0;
-  for (var i = 1; i < dados.length; i++) {
-    var f = String(dados[i][0] || '').trim().toUpperCase();
-    if (f === frota && _vazio(dados[i][3])) {
-      rowIdx = i + 1;
-      kmInicial = parseFloat(dados[i][2]);
-      break;
-    }
-  }
-
-  if (rowIdx < 0) return out({ ok: false, msg: 'Nenhuma viagem em aberto encontrada para ' + frota + '.' });
-  if (!kmFinal || kmFinal <= kmInicial) {
-    return out({ ok: false, msg: 'KM final deve ser maior que o KM inicial (' + kmInicial + ').' });
-  }
-
-  var kmRodado = kmFinal - kmInicial;
-  sh.getRange(rowIdx, 4).setValue(kmFinal);   // D = KM FINAL
-  sh.getRange(rowIdx, 5).setValue(kmRodado);  // E = KM RODADA
-
-  var consumo = _calcularConsumo(frota, kmInicial, kmFinal);
-  sh.getRange(rowIdx, 6).setValue(consumo.kml); // F = KM/LITRO
-  sh.getRange(rowIdx, 8).setValue('Garagem');   // LOCALIZACAO
-
-  return out({ ok: true, km_rodado: kmRodado, litros: consumo.litros, km_l: consumo.kml });
-}
-
-/* ── ATUALIZAR LOCALIZAÇÃO (status) DO VEÍCULO ─────────────── */
-function atualizarLocal(e) {
-  var p = e.parameter;
-  var frota = (p.frota || '').trim().toUpperCase();
-  var local = (p.local || '').trim(); // Garagem, Indo Entregar, Descarregando, Voltando
-
-  if (!frota || !local) {
-    return out({ ok: false, msg: 'Frota e localização são obrigatórios.' });
-  }
-
-  var sh = _sheetJornada();
-  var cols = _initJornadaCols();
-  var dados = sh.getDataRange().getValues();
-
-  for (var i = 1; i < dados.length; i++) {
-    var f = String(dados[i][0] || '').trim().toUpperCase();
-    if (f === frota) {
-      sh.getRange(i + 1, cols.local + 1).setValue(local);
-      return out({ ok: true, msg: 'Localização de ' + frota + ' atualizada para: ' + local });
-    }
-  }
-
-  return out({ ok: false, msg: 'Frota ' + frota + ' não encontrada.' });
-}
-
-/* ── LISTAR VIAGENS ────────────────────────────────────────── */
-function getViagens(e) {
-  var p = e.parameter || {};
-  var status    = (p.status || '').toUpperCase();
-  var motorista = (p.motorista || '').trim().toUpperCase();
-  var frota     = (p.frota || '').trim().toUpperCase();
-
-  var sh = _sheetJornada();
-  var cols = _initJornadaCols();
-  var dados = sh.getDataRange().getValues();
-  var lista = [];
-
-  for (var i = 1; i < dados.length; i++) {
-    var r = dados[i];
-    var f = String(r[0] || '').trim();
-    if (!f) continue;
-
-    var kmIni = parseFloat(r[2]) || 0;
-    var aberta = _vazio(r[3]);
-    var kmFim = aberta ? null : parseFloat(r[3]);
-
-    var item = {
-      frota: f,
-      motorista: r[1] || '',
-      km_inicial: kmIni,
-      km_final: kmFim,
-      km_rodado: aberta ? null : (parseFloat(r[4]) || (kmFim - kmIni)),
-      rota: r[6] || '',
-      local: r[cols.local] || 'Garagem',
-      status: aberta ? 'ABERTA' : 'FECHADA'
-    };
-
-    if (status && item.status !== status) continue;
-    if (motorista && String(item.motorista).toUpperCase().indexOf(motorista) < 0) continue;
-    if (frota && item.frota.toUpperCase().indexOf(frota) < 0) continue;
-
-    if (!aberta) {
-      var consumo = _calcularConsumo(item.frota, kmIni, kmFim);
-      item.litros = consumo.litros;
-      item.km_l = consumo.kml;
-    }
-    lista.push(item);
-  }
-  lista.reverse();
-  return out({ ok: true, viagens: lista });
-}
-
-/* ── CÁLCULO DE CONSUMO ─────────────────────────────────────── */
-function _calcularConsumo(frota, kmInicial, kmFinal) {
-  var ss = SpreadsheetApp.openById(ABASTECIMENTO_ID);
-  var todas = ss.getSheets();
-  var litros = 0;
-  var frotaU = String(frota).toUpperCase();
-
-  for (var a = 0; a < todas.length; a++) {
-    if (!REGEX_ABA_ANO.test(todas[a].getName())) continue;
-    var dados = todas[a].getDataRange().getValues();
-    for (var i = 1; i < dados.length; i++) {
-      var f      = String(dados[i][0] || '').toUpperCase();
-      var km     = parseFloat(dados[i][2]);
-      var diesel = parseFloat(dados[i][3]) || 0;
-      if (f === frotaU && km > kmInicial && km <= kmFinal) litros += diesel;
-    }
-  }
-
-  var kmRodado = kmFinal - kmInicial;
-  var kml = litros > 0 ? (kmRodado / litros) : 0;
-  return { litros: Math.round(litros * 100) / 100, kml: Math.round(kml * 100) / 100 };
-}
-
-/* ════════════════════════════════════════════════════════════════
-   MAPA — RASTREIO GPS EM TEMPO REAL
-   Aba RASTREIO na planilha da Jornada. Nome diferente de LOCALIZACAO
-   porque LOCALIZACAO já é COLUNA de status na aba Jornada.
-   ════════════════════════════════════════════════════════════════ */
-function _sheetRastreio_() {
-  var ss = SpreadsheetApp.openById(ABASTECIMENTO_ID);
-  var sh = ss.getSheetByName(ABA_RASTREIO);
-  if (!sh) {
-    sh = ss.insertSheet(ABA_RASTREIO);
-    var cab = ['CHAVE','NOME','FROTA','PLACA','LAT','LNG','PRECISAO','TS','ATUALIZADO_EM','DEVICE'];
-    sh.appendRow(cab);
-    var h = sh.getRange(1, 1, 1, cab.length);
-    h.setBackground('#7C3AED'); h.setFontColor('#FFFFFF'); h.setFontWeight('bold');
-    sh.setFrozenRows(1);
-  }
-  return sh;
-}
-
-/* Grava/atualiza a posição de UMA pessoa. Chave = NOME|FROTA */
-function salvarLocalizacao(e) {
-  try {
-    var p = e.parameter;
-    var nome  = String(p.nome  || '').trim();
-    var frota = String(p.frota || '').trim().toUpperCase();
-    var placa = String(p.placa || '').trim().toUpperCase();
-    var device= String(p.device|| '').trim().toUpperCase();
-    var lat   = parseFloat(p.lat);
-    var lng   = parseFloat(p.lng);
-    if (isNaN(lat) || isNaN(lng)) return out({ ok: false, msg: 'lat/lng inválidos' });
-
-    var chave = (nome || 'ANON') + '|' + frota;
-    var sh    = _sheetRastreio_();
-    var dados = sh.getDataRange().getValues();
-    var hdr   = dados[0];
-    var cCha  = hdr.indexOf('CHAVE');
-
-    // garante a coluna DEVICE (cria no fim se ainda não existir)
-    var cDev = hdr.indexOf('DEVICE');
-    if (cDev < 0) {
-      cDev = hdr.length;
-      sh.getRange(1, cDev + 1).setValue('DEVICE');
-    }
-
-    var rowIdx = -1;
-    for (var i = 1; i < dados.length; i++) {
-      if (String(dados[i][cCha]) === chave) { rowIdx = i + 1; break; }
-    }
-
-    var agora = new Date();
-    var linha = [chave, nome, frota, placa, lat, lng, (p.precisao || ''),
-                 (p.ts || agora.toISOString()), agora];
-
-    if (rowIdx > 0) {
-      sh.getRange(rowIdx, 1, 1, linha.length).setValues([linha]);
-      sh.getRange(rowIdx, cDev + 1).setValue(device);
-    } else {
-      linha[cDev] = device;   // posiciona o device na coluna certa
-      sh.appendRow(linha);
-    }
-    return out({ ok: true });
-  } catch (err) {
-    return out({ ok: false, msg: String(err) });
-  }
-}
-
-/* Lista a última posição de todos (painel do admin no mapa). */
-function getLocalizacoes(e) {
-  try {
-    var sh    = _sheetRastreio_();
-    var dados = sh.getDataRange().getValues();
-    if (dados.length < 2) return out({ ok: true, localizacoes: [] });
-
-    var hdr = dados[0];
-    var iNome = hdr.indexOf('NOME'), iFro = hdr.indexOf('FROTA'), iPla = hdr.indexOf('PLACA'),
-        iLat  = hdr.indexOf('LAT'),  iLng = hdr.indexOf('LNG'),
-        iPre  = hdr.indexOf('PRECISAO'), iTs = hdr.indexOf('TS');
-
-    var lista = [];
-    for (var i = 1; i < dados.length; i++) {
-      var r = dados[i];
-      if (r[iLat] === '' || r[iLng] === '') continue;
-      lista.push({
-        nome:     String(r[iNome] || ''),
-        frota:    String(r[iFro]  || ''),
-        placa:    iPla >= 0 ? String(r[iPla] || '') : '',
-        lat:      r[iLat],
-        lng:      r[iLng],
-        precisao: r[iPre],
-        ts:       (r[iTs] instanceof Date) ? r[iTs].toISOString() : String(r[iTs] || '')
+  // 4. ASSETS LOCAIS (js, css, imagens) → Stale-While-Revalidate
+  event.respondWith(
+    caches.open(CACHE_ASSETS).then(function(cache) {
+      return cache.match(event.request).then(function(cached) {
+        const networkFetch = fetch(event.request, { cache: 'no-store' })
+          .then(function(resp) {
+            if (resp.ok) cache.put(event.request, resp.clone());
+            return resp;
+          })
+          .catch(function(){ return cached; });
+        return cached || networkFetch;
       });
-    }
-    return out({ ok: true, localizacoes: lista });
-  } catch (err) {
-    return out({ ok: false, msg: String(err) });
+    })
+  );
+});
+
+// ── MENSAGEM: força ativação ─────────────────────────────────────
+self.addEventListener('message', function(event) {
+  if (event.data === 'SKIP_WAITING' || event.data === 'skipWaiting') {
+    self.skipWaiting();
   }
-}
-
-/* ════════════════════════════════════════════════════════════════
-   EQUIPAMENTOS — cadastro da frota (fica na planilha FROTA_ID)
-   ════════════════════════════════════════════════════════════════ */
-function _norm_(s) {
-  return String(s || '').trim().toUpperCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-}
-
-function getEquipamentos(e) {
-  try {
-    var ss = SpreadsheetApp.openById(FROTA_ID);
-    var sh = ss.getSheetByName(ABA_EQUIP)
-          || ss.getSheetByName('Equipamentos')
-          || ss.getSheetByName('equipamentos');
-    if (!sh) return out({ ok: false, msg: 'Aba EQUIPAMENTOS não encontrada' });
-
-    var dados = sh.getDataRange().getValues();
-    if (dados.length < 2) return out({ ok: true, equipamentos: [] });
-
-    var hdr = dados[0].map(function(h) { return _norm_(h); });
-    function achar(nomes) {
-      for (var n = 0; n < nomes.length; n++) {
-        var idx = hdr.indexOf(_norm_(nomes[n]));
-        if (idx >= 0) return idx;
-      }
-      return -1;
-    }
-    var iVeic  = achar(['VEICULO', 'VEÍCULO', 'FROTA']);
-    var iPlaca = achar(['PLACA']);
-    var iMarca = achar(['MARCA / TIPO', 'MARCA/TIPO', 'MARCA', 'TIPO']);
-    var iAno   = achar(['ANO']);
-    var iMot   = achar(['MOTORISTA']);
-
-    if (iVeic  < 0) iVeic  = 1; // B
-    if (iPlaca < 0) iPlaca = 2; // C
-    if (iMarca < 0) iMarca = 3; // D
-    if (iAno   < 0) iAno   = 4; // E
-    if (iMot   < 0) iMot   = 6; // G
-
-    var lista = [];
-    for (var i = 1; i < dados.length; i++) {
-      var r = dados[i];
-      var frota = String(r[iVeic] || '').trim().toUpperCase();
-      if (!frota) continue;
-      if (!/^[A-Z]{1,3}L?-?\d/.test(frota)) continue; // VP/RB/VPL/RBL/VA/RA...
-
-      var mot = String(r[iMot] || '').trim();
-      if (/CPF|CNH|\d{3}\.\d{3}/.test(mot)) mot = '';
-
-      lista.push({
-        frota:     frota,
-        placa:     String(r[iPlaca] || '').trim().toUpperCase(),
-        modelo:    String(r[iMarca] || '').trim(),
-        ano:       String(r[iAno]   || '').trim(),
-        motorista: mot
-      });
-    }
-    return out({ ok: true, equipamentos: lista });
-  } catch (err) {
-    return out({ ok: false, msg: String(err) });
-  }
-}
-
-/* ════════════════════════════════════════════════════════════════
-   VALIDAR ADMIN — libera a troca da VP do tablet
-   (aba MOTORISTAS, na planilha de usuários MOTORISTAS_ID)
-   ════════════════════════════════════════════════════════════════ */
-function validarAdmin(e) {
-  try {
-    var usuario = String(e.parameter.usuario || '').trim();
-    var senha   = String(e.parameter.senha   || '');
-    if (!usuario || !senha) return out({ ok: false, msg: 'Informe usuário e senha.' });
-
-    // procura a aba de usuários nas planilhas conhecidas
-    var sh = null;
-    var idsBusca = [MOTORISTAS_ID, FROTA_ID, ABASTECIMENTO_ID];
-    for (var b = 0; b < idsBusca.length && !sh; b++) {
-      try {
-        var ssTmp = SpreadsheetApp.openById(idsBusca[b]);
-        sh = ssTmp.getSheetByName(ABA_MOTORISTAS)
-          || ssTmp.getSheetByName('Motoristas')
-          || ssTmp.getSheetByName('USUARIOS');
-      } catch (ex) { /* planilha inacessível, tenta a próxima */ }
-    }
-    if (!sh) return out({ ok: false, msg: 'Aba MOTORISTAS não encontrada em nenhuma planilha.' });
-
-    var dados = sh.getDataRange().getValues();
-    if (dados.length < 2) return out({ ok: false, msg: 'Sem usuários cadastrados.' });
-
-    var hdr = dados[0].map(function(h) { return _norm_(h); });
-    function col(nomes) {
-      for (var i = 0; i < nomes.length; i++) {
-        var idx = hdr.indexOf(_norm_(nomes[i]));
-        if (idx >= 0) return idx;
-      }
-      for (var j = 0; j < hdr.length; j++) {
-        for (var k = 0; k < nomes.length; k++) {
-          if (hdr[j].indexOf(_norm_(nomes[k])) >= 0) return j;
-        }
-      }
-      return -1;
-    }
-
-    var iMat   = col(['MATRICULA', 'MATRÍCULA']);
-    var iNome  = col(['NOME']);
-    var iEmail = col(['EMAIL', 'E-MAIL']);
-    var iSenha = col(['SENHA']);
-    var iAtivo = col(['ATIVO']);
-    // ADMIN precisa ser EXATO (senão casa com "ADMINISTRATIVO MASTER")
-    var iAdmin = hdr.indexOf('ADMIN');
-    var iAdmMs = col(['ADMINISTRATIVO MASTER', 'ADMIN MASTER', 'ADMIN_MASTER', 'ADMINMASTER']);
-
-    if (iSenha < 0) return out({ ok: false, msg: 'Coluna SENHA não encontrada.' });
-
-    var alvo = _norm_(usuario);
-
-    function marcado(v) {
-      var t = _norm_(v);
-      return t === 'X' || t === 'SIM' || t === 'S' || t === 'TRUE' || t === 'VERDADEIRO';
-    }
-
-    for (var r = 1; r < dados.length; r++) {
-      var linha = dados[r];
-
-      var bate = false;
-      if (iMat   >= 0 && _norm_(linha[iMat])   === alvo) bate = true;
-      if (iEmail >= 0 && _norm_(linha[iEmail]) === alvo) bate = true;
-      if (iNome  >= 0 && _norm_(linha[iNome])  === alvo) bate = true;
-      if (!bate) continue;
-
-      if (String(linha[iSenha]) !== senha) {
-        return out({ ok: false, msg: 'Senha incorreta.' });
-      }
-
-      if (iAtivo >= 0) {
-        var at = _norm_(linha[iAtivo]);
-        if (at === 'NAO' || at === 'N' || at === 'FALSE' || at === 'INATIVO') {
-          return out({ ok: false, msg: 'Usuário inativo.' });
-        }
-      }
-
-      var ehAdmin = (iAdmin >= 0 && marcado(linha[iAdmin])) ||
-                    (iAdmMs >= 0 && marcado(linha[iAdmMs]));
-      if (!ehAdmin) return out({ ok: false, msg: 'Este usuário não é administrador.' });
-
-      return out({ ok: true, admin: true, nome: (iNome >= 0 ? String(linha[iNome] || '') : usuario) });
-    }
-
-    return out({ ok: false, msg: 'Usuário não encontrado.' });
-  } catch (err) {
-    return out({ ok: false, msg: String(err) });
-  }
-}
-
-/* ════════════════════════════════════════════════════════════════
-   VALIDAR LOGIN — qualquer usuário válido (NÃO exige admin)
-   Usado para configurar a VP do tablet: basta ter login no sistema.
-   ════════════════════════════════════════════════════════════════ */
-/* ════════════════════════════════════════════════════════════════
-   CHECAR VP JÁ CADASTRADA EM OUTRO TABLET
-   Evita que dois aparelhos sejam configurados com a mesma VP.
-   Parâmetros: ?action=checarVpTablet&frota=VP-183&device=TBL-XXXX
-   Resposta: { ok:true, livre:true }  ou
-             { ok:true, livre:false, device:'TBL-YYYY', nome:'...', quando:'...' }
-   ════════════════════════════════════════════════════════════════ */
-function checarVpTablet(e) {
-  try {
-    var frota  = String(e.parameter.frota  || '').trim().toUpperCase();
-    var device = String(e.parameter.device || '').trim().toUpperCase();
-    if (!frota) return out({ ok: false, msg: 'Frota não informada' });
-
-    var sh = _sheetRastreio_();
-    var dados = sh.getDataRange().getValues();
-    if (dados.length < 2) return out({ ok: true, livre: true });
-
-    var hdr  = dados[0];
-    var iFro = hdr.indexOf('FROTA');
-    var iDev = hdr.indexOf('DEVICE');
-    var iNom = hdr.indexOf('NOME');
-    var iAtu = hdr.indexOf('ATUALIZADO_EM');
-    if (iFro < 0 || iDev < 0) return out({ ok: true, livre: true }); // sem coluna: não bloqueia
-
-    // normaliza VPL-313 e VP-313 como a mesma frota
-    function chave(f){
-      return String(f||'').toUpperCase().replace(/\s+/g,'')
-        .replace(/^VPL/,'VP').replace(/^RBL/,'RB').replace(/-/g,'');
-    }
-    var alvo = chave(frota);
-
-    for (var i = 1; i < dados.length; i++) {
-      var linha = dados[i];
-      if (chave(linha[iFro]) !== alvo) continue;
-
-      var devLinha = String(linha[iDev] || '').trim().toUpperCase();
-      if (!devLinha) continue;              // linha antiga sem device: ignora
-      if (devLinha === device) continue;    // é o próprio aparelho: liberado
-
-      // achou outro aparelho com essa VP
-      var quando = '';
-      if (iAtu >= 0 && linha[iAtu]) {
-        var d = linha[iAtu];
-        quando = (d instanceof Date)
-          ? Utilities.formatDate(d, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')
-          : String(d);
-      }
-      return out({
-        ok: true,
-        livre: false,
-        device: devLinha,
-        nome: iNom >= 0 ? String(linha[iNom] || '') : '',
-        quando: quando
-      });
-    }
-
-    return out({ ok: true, livre: true });
-  } catch (err) {
-    return out({ ok: false, msg: String(err) });
-  }
-}
-
-/* ════════════════════════════════════════════════════════════════
-   CHECAR VP JÁ CADASTRADA — fim
-   ════════════════════════════════════════════════════════════════ */
-function validarLogin(e) {
-  try {
-    var usuario = String(e.parameter.usuario || '').trim();
-    var senha   = String(e.parameter.senha   || '');
-    if (!usuario || !senha) return out({ ok: false, msg: 'Informe usuário e senha.' });
-
-    // procura a aba de usuários nas planilhas conhecidas
-    var sh = null;
-    var idsBusca = [MOTORISTAS_ID, FROTA_ID, ABASTECIMENTO_ID];
-    for (var b = 0; b < idsBusca.length && !sh; b++) {
-      try {
-        var ssTmp = SpreadsheetApp.openById(idsBusca[b]);
-        sh = ssTmp.getSheetByName(ABA_MOTORISTAS)
-          || ssTmp.getSheetByName('Motoristas')
-          || ssTmp.getSheetByName('USUARIOS');
-      } catch (ex) {}
-    }
-    if (!sh) return out({ ok: false, msg: 'Aba MOTORISTAS não encontrada.' });
-
-    var dados = sh.getDataRange().getValues();
-    if (dados.length < 2) return out({ ok: false, msg: 'Sem usuários cadastrados.' });
-
-    var hdr = dados[0].map(function(h){ return _norm_(h); });
-    function col(nomes){
-      for (var i = 0; i < nomes.length; i++){
-        var idx = hdr.indexOf(_norm_(nomes[i]));
-        if (idx >= 0) return idx;
-      }
-      for (var j = 0; j < hdr.length; j++){
-        for (var k = 0; k < nomes.length; k++){
-          if (hdr[j].indexOf(_norm_(nomes[k])) >= 0) return j;
-        }
-      }
-      return -1;
-    }
-
-    var iMat   = col(['MATRICULA', 'MATRÍCULA']);
-    var iNome  = col(['NOME']);
-    var iEmail = col(['EMAIL', 'E-MAIL']);
-    var iSenha = col(['SENHA']);
-    var iAtivo = col(['ATIVO']);
-    if (iSenha < 0) return out({ ok: false, msg: 'Coluna SENHA não encontrada.' });
-
-    var alvo = _norm_(usuario);
-
-    for (var r = 1; r < dados.length; r++) {
-      var linha = dados[r];
-
-      var bate = false;
-      if (iMat   >= 0 && _norm_(linha[iMat])   === alvo) bate = true;
-      if (iEmail >= 0 && _norm_(linha[iEmail]) === alvo) bate = true;
-      if (iNome  >= 0 && _norm_(linha[iNome])  === alvo) bate = true;
-      if (!bate) continue;
-
-      if (String(linha[iSenha]) !== senha) {
-        return out({ ok: false, msg: 'Senha incorreta.' });
-      }
-
-      if (iAtivo >= 0) {
-        var at = _norm_(linha[iAtivo]);
-        if (at === 'NAO' || at === 'N' || at === 'FALSE' || at === 'INATIVO') {
-          return out({ ok: false, msg: 'Usuário inativo.' });
-        }
-      }
-
-      return out({ ok: true, login: true, nome: (iNome >= 0 ? String(linha[iNome] || '') : usuario) });
-    }
-
-    return out({ ok: false, msg: 'Usuário não encontrado.' });
-  } catch (err) {
-    return out({ ok: false, msg: String(err) });
-  }
-}
-
-/* ════════════════════════════════════════════════════════════════
-   STATUS AUTOMÁTICO POR GPS  (painel Status Logístico)
-   ════════════════════════════════════════════════════════════════ */
-
-// ── CONFIGURAÇÃO ───────────────────────────────────────────────
-// Garagem TWM — R. Mirafiori, 34, Distrito Industrial Paulo Camilo Sul, Betim/MG
-var GARAGEM_LAT = -19.964264;
-var GARAGEM_LNG = -44.118880;
-var GARAGEM_NOME = 'Garagem TWM — Betim';
-
-var RAIO_GARAGEM  = 0.2;   // km (200 m) — pátio tem ~95x105 m; sobra p/ erro do GPS
-var RAIO_DESTINO  = 2.0;   // km — dentro disso considera "Descarregando"
-var MIN_DESLOC    = 0.3;   // km — variação mínima para dizer que se moveu
-
-// Planilha do Status Logístico — é de onde vem a coluna ROTA.
-// (a mesma que alimenta o quadro de frota da tela inicial)
-var LOGISTICO_ID  = '16Zjm0udIqi7z7nZfo32JKGHh-2bFOJtgP3yd3brV0bY';
-var ABA_LOGISTICO = 'Frota';   // ajuste se a aba tiver outro nome
-
-// ── DISTÂNCIA ENTRE DOIS PONTOS (fórmula de Haversine, em km) ──
-function _distanciaKm_(lat1, lng1, lat2, lng2) {
-  var R = 6371;
-  var dLat = (lat2 - lat1) * Math.PI / 180;
-  var dLng = (lng2 - lng1) * Math.PI / 180;
-  var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
-          Math.sin(dLng/2) * Math.sin(dLng/2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-// ── COORDENADAS DE UMA CIDADE (com cache) ──────────────────────
-function _coordDaCidade_(nome) {
-  if (!nome) return null;
-  var chave = 'geo_' + String(nome).trim().toUpperCase().substring(0, 90);
-  var cache = CacheService.getScriptCache();
-
-  var salvo = cache.get(chave);
-  if (salvo) {
-    if (salvo === 'NAO_ACHOU') return null;
-    var p = salvo.split(',');
-    return { lat: parseFloat(p[0]), lng: parseFloat(p[1]) };
-  }
-
-  // também guarda permanentemente, para não consultar de novo em outro dia
-  var props = PropertiesService.getScriptProperties();
-  var perm = props.getProperty(chave);
-  if (perm) {
-    cache.put(chave, perm, 21600);
-    if (perm === 'NAO_ACHOU') return null;
-    var q = perm.split(',');
-    return { lat: parseFloat(q[0]), lng: parseFloat(q[1]) };
-  }
-
-  try {
-    var busca = encodeURIComponent(nome + ', Brasil');
-    var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=' + busca;
-    var resp = UrlFetchApp.fetch(url, {
-      muteHttpExceptions: true,
-      headers: { 'User-Agent': 'TWM-DataLink/1.0' }
-    });
-    var arr = JSON.parse(resp.getContentText());
-    if (arr && arr.length) {
-      var valor = arr[0].lat + ',' + arr[0].lon;
-      cache.put(chave, valor, 21600);
-      props.setProperty(chave, valor);
-      return { lat: parseFloat(arr[0].lat), lng: parseFloat(arr[0].lon) };
-    }
-    cache.put(chave, 'NAO_ACHOU', 21600);
-    props.setProperty(chave, 'NAO_ACHOU');
-    return null;
-  } catch (err) {
-    return null;   // sem internet ou serviço fora: não trava
-  }
-}
-
-// ── HISTÓRICO DA DISTÂNCIA (para saber se aproxima ou afasta) ──
-function _distanciaAnterior_(frota) {
-  var v = PropertiesService.getScriptProperties().getProperty('dist_' + frota);
-  return v ? parseFloat(v) : null;
-}
-function _guardarDistancia_(frota, km) {
-  PropertiesService.getScriptProperties().setProperty('dist_' + frota, String(km));
-}
-
-/* Histórico da distância até a GARAGEM (com horário), para estimar
-   a velocidade de aproximação e o tempo previsto de chegada. */
-function _histGaragem_(frota) {
-  var v = PropertiesService.getScriptProperties().getProperty('gar_' + frota);
-  if (!v) return null;
-  var p = String(v).split('|');
-  return { km: parseFloat(p[0]), ts: parseFloat(p[1]) };
-}
-function _guardarGaragem_(frota, km) {
-  PropertiesService.getScriptProperties()
-    .setProperty('gar_' + frota, km + '|' + new Date().getTime());
-}
-
-/* Calcula quanto falta para chegar na garagem, comparando a distância
-   atual com a da leitura anterior. Devolve minutos ou null. */
-function _etaGaragem_(frota, kmAgora) {
-  var ant = _histGaragem_(frota);
-  _guardarGaragem_(frota, kmAgora);
-  if (!ant || isNaN(ant.km)) return null;
-
-  var minutos = (new Date().getTime() - ant.ts) / 60000;
-  if (minutos < 0.5 || minutos > 120) return null;   // intervalo inútil
-
-  var percorreu = ant.km - kmAgora;                  // positivo = aproximando
-  if (percorreu <= 0.2) return null;                 // parado ou afastando
-
-  var kmh = (percorreu / minutos) * 60;
-  if (kmh < 5 || kmh > 130) return null;             // valor implausível
-
-  return Math.round((kmAgora / kmh) * 60);           // minutos até a garagem
-}
-
-// ── CÁLCULO DO STATUS DE UM VEÍCULO ────────────────────────────
-function _statusDoVeiculo_(frota, lat, lng, rota) {
-  // 1) está na garagem?
-  var dGaragem = _distanciaKm_(lat, lng, GARAGEM_LAT, GARAGEM_LNG);
-  if (dGaragem <= RAIO_GARAGEM) {
-    _guardarDistancia_(frota, null);
-    return { status: 'Na Garagem', detalhe: 'na base', sentido: 'base',
-             dist_destino: null, dist_garagem: Math.round(dGaragem*10)/10 };
-  }
-
-  // 2) sem rota definida: só sabemos que está fora
-  if (!rota) {
-    return { status: 'Em Viagem', detalhe: 'sem rota informada', sentido: 'indo',
-             dist_destino: null, dist_garagem: Math.round(dGaragem*10)/10 };
-  }
-
-  // 3) onde fica o destino?
-  var destino = _coordDaCidade_(rota);
-  if (!destino) {
-    return { status: 'Em Viagem', detalhe: 'destino "' + rota + '" não localizado', sentido: 'indo',
-             dist_destino: null, dist_garagem: Math.round(dGaragem*10)/10 };
-  }
-
-  var dDestino = _distanciaKm_(lat, lng, destino.lat, destino.lng);
-
-  // 4) chegou no destino?
-  if (dDestino <= RAIO_DESTINO) {
-    _guardarDistancia_(frota, dDestino);
-    return { status: 'Descarregando', detalhe: 'em ' + rota, sentido: 'parado',
-             dist_destino: Math.round(dDestino*10)/10, dist_garagem: Math.round(dGaragem*10)/10 };
-  }
-
-  // 5) aproximando ou afastando?
-  var antes = _distanciaAnterior_(frota);
-  _guardarDistancia_(frota, dDestino);
-
-  var status, detalhe, sentido;
-  if (antes === null) {
-    status = 'Em Viagem'; sentido = 'indo';
-    detalhe = 'a ' + Math.round(dDestino) + ' km de ' + rota;
-  } else if (dDestino < antes - MIN_DESLOC) {
-    status = 'Em Viagem'; sentido = 'indo';
-    detalhe = 'indo para ' + rota + ' (faltam ' + Math.round(dDestino) + ' km)';
-  } else if (dDestino > antes + MIN_DESLOC) {
-    status = 'Retorno'; sentido = 'voltando';
-    detalhe = 'voltando de ' + rota + ' (a ' + Math.round(dGaragem) + ' km da base)';
-  } else {
-    status = 'Parado'; sentido = 'parado';
-    detalhe = 'sem deslocamento • a ' + Math.round(dDestino) + ' km de ' + rota;
-  }
-
-  return { status: status, detalhe: detalhe, sentido: sentido,
-           dist_destino: Math.round(dDestino*10)/10,
-           dist_garagem: Math.round(dGaragem*10)/10 };
-}
-
-// ── AÇÃO: devolve o status calculado de toda a frota ───────────
-function getStatusFrota(e) {
-  try {
-    // posições GPS
-    var shR = _sheetRastreio_();
-    var dadosR = shR.getDataRange().getValues();
-    if (dadosR.length < 2) return out({ ok: true, status: [] });
-
-    var hR = dadosR[0];
-    var iFro = hR.indexOf('FROTA'), iNome = hR.indexOf('NOME'),
-        iLat = hR.indexOf('LAT'),   iLng  = hR.indexOf('LNG'),
-        iTs  = hR.indexOf('TS');
-
-    // rotas (planilha do Status Logístico)
-    var rotas = {};
-    try {
-      var ssL = SpreadsheetApp.openById(LOGISTICO_ID);
-      var shL = ssL.getSheetByName(ABA_LOGISTICO) || ssL.getSheets()[0];
-      var dadosL = shL.getDataRange().getValues();
-      var hL = dadosL[0].map(function(x){ return _norm_(x); });
-      var cFrota = hL.indexOf('FROTA');
-      if (cFrota < 0) cFrota = hL.indexOf('CAVALO');
-      var cRota  = hL.indexOf('ROTA');
-      if (cFrota >= 0 && cRota >= 0) {
-        for (var i = 1; i < dadosL.length; i++) {
-          var f = String(dadosL[i][cFrota] || '').trim().toUpperCase();
-          if (f) rotas[_chaveFrota_(f)] = String(dadosL[i][cRota] || '').trim();
-        }
-      }
-    } catch (ex) { /* sem planilha logística: segue sem rota */ }
-
-    var lista = [];
-    for (var r = 1; r < dadosR.length; r++) {
-      var linha = dadosR[r];
-      var lat = parseFloat(linha[iLat]), lng = parseFloat(linha[iLng]);
-      if (isNaN(lat) || isNaN(lng)) continue;
-
-      var frota = String(linha[iFro] || '').trim().toUpperCase();
-      var rota  = rotas[_chaveFrota_(frota)] || '';
-      var st    = _statusDoVeiculo_(frota, lat, lng, rota);
-
-      // há quanto tempo foi a última posição
-      var tsVal = linha[iTs];
-      var tsIso = (tsVal instanceof Date) ? tsVal.toISOString() : String(tsVal || '');
-      var minAtras = null;
-      try {
-        var tms = (tsVal instanceof Date) ? tsVal.getTime() : new Date(tsIso).getTime();
-        if (!isNaN(tms)) minAtras = Math.round((new Date().getTime() - tms) / 60000);
-      } catch (ex) {}
-
-      lista.push({
-        frota: frota,
-        nome: String(linha[iNome] || ''),
-        rota: rota,
-        status: st.status,
-        detalhe: st.detalhe,
-        sentido: st.sentido,                  // 'indo' | 'voltando' | 'parado' | 'base'
-        eta_garagem: (st.sentido === 'voltando' && st.dist_garagem != null)
-                     ? _etaGaragem_(frota, st.dist_garagem) : null,  // minutos
-        dist_destino: st.dist_destino,        // km até o destino da rota
-        dist_garagem: st.dist_garagem,        // km até a garagem
-        minutos_atras: minAtras,              // idade da última posição
-        online: (minAtras !== null && minAtras <= 5),
-        lat: lat, lng: lng,
-        ts: tsIso
-      });
-    }
-    return out({ ok: true, status: lista });
-  } catch (err) {
-    return out({ ok: false, msg: String(err) });
-  }
-}
-
-// VPL-313 e VP-313 são o mesmo veículo
-function _chaveFrota_(f) {
-  return String(f || '').toUpperCase().replace(/\s+/g, '')
-    .replace(/^VPL/, 'VP').replace(/^RBL/, 'RB').replace('-', '');
-}
-
-/* ── TESTE (roda no editor, não altera nada) ────────────────── */
-function testarStatusFrota() {
-  var r = JSON.parse(getStatusFrota({ parameter: {} }).getContent());
-  if (!r.ok) { Logger.log('❌ ' + r.msg); return; }
-  Logger.log('Veículos com posição: ' + r.status.length);
-  r.status.forEach(function(v) {
-    Logger.log('  ' + v.frota + ' | ' + v.status + ' | ' + v.detalhe);
-  });
-}
-
-/* ── DESCOBRIR COORDENADAS DA GARAGEM ───────────────────────────
-   Rode uma vez informando o endereço para pegar lat/lng da base. */
-function descobrirGaragem() {
-  var ENDERECO = 'COLOQUE AQUI O ENDEREÇO DA GARAGEM';  // ex: 'Rua X, 100, Betim, MG'
-  var c = _coordDaCidade_(ENDERECO);
-  if (c) {
-    Logger.log('✅ Encontrado!');
-    Logger.log('   var GARAGEM_LAT = ' + c.lat + ';');
-    Logger.log('   var GARAGEM_LNG = ' + c.lng + ';');
-    Logger.log('   Confira no mapa: https://www.google.com/maps?q=' + c.lat + ',' + c.lng);
-  } else {
-    Logger.log('❌ Endereço não encontrado. Tente com cidade e estado.');
-  }
-}
+});
