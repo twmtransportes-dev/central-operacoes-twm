@@ -116,6 +116,17 @@ html,body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);mi
 .card-accent.p-normal{background:var(--amber)}
 .card-accent.p-baixa{background:var(--green)}
 .card-top{padding:12px 14px 9px;cursor:pointer}
+/* selo de GPS ao lado da frota — informativo, discreto */
+.gps-selo{
+  display:inline-block;margin-left:7px;padding:1px 6px;border-radius:7px;
+  font-size:10px;font-weight:700;letter-spacing:.2px;vertical-align:middle;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);
+  white-space:nowrap;
+}
+.gps-selo.gps-base  {color:#4ade80}   /* na garagem  */
+.gps-selo.gps-volta {color:#38bdf8}   /* voltando    */
+.gps-selo.gps-indo  {color:#fbbf24}   /* afastando   */
+.gps-selo.gps-parado{color:#94a3b8}   /* parado      */
 .card-frota{font-size:18px;font-weight:800;letter-spacing:.2px;margin-bottom:5px}
 .card-frota.vp{color:var(--amber)}.card-frota.rb{color:var(--cyan)}.card-frota.outro{color:var(--ac)}
 .card-meta{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--tx3);flex-wrap:wrap}
@@ -615,6 +626,67 @@ html,body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);mi
 //  CONFIG
 // ════════════════════════════════════════
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwAGLjEDNVAJk9nGujpVd6hTl3QY9Ss9Wl0Sm14TqCHBhdAFEPglhcXSzoN7ktSQjoa/exec';
+
+/* ══════════════════════════════════════════════════════════
+   GPS: distância da garagem e sentido do caminhão
+   Ajuda a priorizar: quem está chegando pode entrar na fila.
+   ══════════════════════════════════════════════════════════ */
+var GPS_URL = 'https://script.google.com/macros/s/AKfycbxZ5P_l0cBM3g79srBUcxwdpMkKSHeE8d89Ksp9uFjhw4YnD2-m5rH8MVMyB5rDWRX9wQ/exec';
+var gpsPorFrota = {};
+
+// chave que trata VPL-188 e VP-188 como o mesmo veículo
+function _gpsChave(f){
+  return String(f||'').toUpperCase().replace(/\s+/g,'')
+    .replace(/^VPL/,'VP').replace(/^RBL/,'RB').replace(/-/g,'');
+}
+
+function carregarGPS(){
+  return fetch(GPS_URL + '?action=getStatusFrota&_t=' + Date.now(), {
+      method:'GET', redirect:'follow', headers:{'Content-Type':'text/plain'}
+    })
+    .then(function(r){ return r.text(); })
+    .then(function(t){
+      var res = null;
+      try { res = JSON.parse(t); } catch(e){ return; }
+      if(!res || !res.ok || !res.status) return;
+      var novo = {};
+      res.status.forEach(function(v){ novo[_gpsChave(v.frota)] = v; });
+      gpsPorFrota = novo;
+    })
+    .catch(function(){ /* sem GPS: cards seguem normais */ });
+}
+
+// Monta o selo de distância/sentido que aparece ao lado da frota
+function gpsSelo(frota){
+  var g = gpsPorFrota[_gpsChave(frota)];
+  if(!g || g.dist_garagem == null) return '';
+  // posição velha (mais de 15 min) não é confiável
+  if(g.minutos_atras != null && g.minutos_atras > 15) return '';
+
+  var km = g.dist_garagem;
+  var kmTxt = km < 1 ? Math.round(km*1000)+' m' : String(km).replace('.', ',')+' km';
+
+  var seta, cls, titulo;
+  if(g.sentido === 'base'){
+    seta = '🏠'; cls = 'gps-base'; titulo = 'Na garagem';
+  } else if(g.sentido === 'voltando'){
+    seta = '↓';  cls = 'gps-volta'; titulo = 'Voltando para a garagem';
+  } else if(g.sentido === 'indo'){
+    seta = '↑';  cls = 'gps-indo';  titulo = 'Afastando-se da garagem';
+  } else {
+    seta = '⏸';  cls = 'gps-parado'; titulo = 'Parado';
+  }
+
+  // previsão de chegada (só quando está voltando)
+  var eta = '';
+  if(g.sentido === 'voltando' && g.eta_garagem != null){
+    var m = g.eta_garagem;
+    eta = ' • chega em ' + (m < 60 ? m+' min' : Math.floor(m/60)+'h'+String(m%60).padStart(2,'0'));
+  }
+
+  return '<span class="gps-selo '+cls+'" title="'+titulo+'">'+
+         seta+' '+kmTxt+eta+'</span>';
+}
 try { var _c=JSON.parse(localStorage.getItem('twm_config')||'{}'); if(_c.scriptUrl) SCRIPT_URL=_c.scriptUrl; } catch(e){}
 
 var OS_KEY     = 'twm_manutencao_os';
@@ -880,7 +952,7 @@ function renderCard(os){
     '<div class="card-accent p-'+prio+'"></div>' +
     // Header clicável → abre fullcard
     '<div class="card-top" onclick="abrirFC(\''+os.id+'\')">' +
-      '<div class="card-frota '+fCls+'">'+os.frota+'</div>' +
+      '<div class="card-frota '+fCls+'">'+os.frota+gpsSelo(os.frota)+'</div>' +
       '<div class="card-meta">' +
         '<span class="prio-tag '+prio+'">'+prio+'</span>' +
         (atrasado?'<span style="font-size:9px;font-weight:700;color:var(--red)">⚠️ Atrasada</span>':'') +
@@ -1990,6 +2062,10 @@ window.onload=function(){
   atualizarTabPend();
   carregarDoServidor();
   carregarPendenciasServidor().then(atualizarTabPend);  // contador da aba já vem certo
+
+  // GPS: posição/sentido dos caminhões (atualiza os selos dos cards)
+  carregarGPS().then(render);
+  setInterval(function(){ carregarGPS().then(render); }, 30000);
   // Verifica se veio do check list com uma OS específica para destacar
   try {
     var osDestaque = sessionStorage.getItem('twm_abrir_os');
@@ -2158,7 +2234,7 @@ function renderRelatorioBody(manterSelecao){
     var local  = _relLocais[frotaU] || '';
     html += '<div class="rel-oscard st-'+os.status+'">';
     html +=   '<div class="rel-osh">' +
-                '<span class="rel-osfrota">'+(normalizaCod(os.frota)||'—')+'</span>' +
+                '<span class="rel-osfrota">'+(normalizaCod(os.frota)||'—')+gpsSelo(os.frota)+'</span>' +
                 '<span class="rel-osbadge st-'+os.status+'">'+(COLS_LBL[os.status]||os.status)+'</span>' +
                 (local ? '<span class="rel-osloc">📍 '+local+'</span>' : '') +
               '</div>';
