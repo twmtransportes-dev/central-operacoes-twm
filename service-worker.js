@@ -6,7 +6,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 // ⚠️ IMPORTANTE: mude este número a cada deploy para forçar atualização
-const VERSION = 'v20260723-05';
+const VERSION = 'v20260723-06';
 const CACHE_HTML   = 'twm-html-'   + VERSION;
 const CACHE_ASSETS = 'twm-assets-' + VERSION;
 
