@@ -248,11 +248,10 @@ var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxZ5P_l0cBM3g79srBUcxw
    header CORS. Lendo em modo texto e com redirect:follow, o navegador
    segue o redirect sem exigir CORS no destino. */
 function apiGet(qs){
-  return fetch(SCRIPT_URL + qs, {
-    method: 'GET',
-    redirect: 'follow',
-    headers: { 'Content-Type': 'text/plain' }   // text/plain evita preflight
-  })
+  // GET puro, SEM headers customizados: qualquer header extra torna a
+  // requisição "não-simples" e dispara preflight, que o Apps Script
+  // não responde. Ler como texto evita erro quando vem redirect.
+  return fetch(SCRIPT_URL + qs, { method: 'GET', redirect: 'follow' })
   .then(function(r){ return r.text(); })
   .then(function(t){
     try { return JSON.parse(t); }
@@ -335,6 +334,8 @@ function tempoRelativo(iso){
    ============================================================ */
 var map, marcadores = {};
 var clusterFrota = null;   // grupo que agrupa marcadores próximos
+var jaEnquadrou = false;   // evita o mapa "pular" a cada atualização
+var jaCentralizou = false; // idem para a centralização no GPS
 var frotaAtual = [];
 var TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 var TILE_ATTR = '© OpenStreetMap © CARTO';
@@ -392,6 +393,7 @@ function centralizarNoUsuario(){
     // zoom menor quando a posição é aproximada (torre/Wi-Fi)
     var zoom = acc > 300 ? 13 : 15;
     map.setView([lat,lng], zoom, {animate:true});
+    jaCentralizou = true;   // já posicionou; envios seguintes não movem a tela
     if(meMarker) map.removeLayer(meMarker);
     meMarker = L.marker([lat,lng], {icon: iconeMeuPonto(null, _frotaUsuario())}).addTo(map);
     meMarker.bindPopup('<b>Você está aqui</b>' + (aproximada ? '<br><small>posição aproximada (~'+Math.round(acc)+'m)</small>' : ''));
@@ -476,7 +478,8 @@ function iniciarCompartilhamento(){
       var ll0 = [pos.coords.latitude, pos.coords.longitude];
       if(!meMarker) meMarker = L.marker(ll0, {icon: iconeMeuPonto(null, _frotaUsuario())}).addTo(map);
       else meMarker.setLatLng(ll0);
-      map.setView(ll0, 15, {animate:true});   // centraliza ao pegar a 1ª posição
+      // só centraliza na PRIMEIRA posição; depois respeita onde o usuário está
+      if(!jaCentralizou){ map.setView(ll0, 15, {animate:true}); jaCentralizou = true; }
     }
     enviarMinhaPos();
   }, function(err){
@@ -558,10 +561,21 @@ function enviarMinhaPos(){
     precisao: Math.round(ultimaPos.acc||0),
     ts: new Date().toISOString()
   });
-  // envia via apiGet (contorna CORS do redirect)
+  // envia e mostra no status se realmente gravou
   apiGet('?'+params.toString())
-    .then(function(){ /* ok silencioso */ })
-    .catch(function(){ /* rede instável — tenta no próximo ciclo */ });
+    .then(function(res){
+      var st = document.getElementById('meStatus');
+      if(res && res.ok){
+        if(st) st.textContent = 'ao vivo';
+      } else {
+        // servidor respondeu mas recusou (ex: lat/lng inválidos)
+        if(st) st.textContent = 'erro ao enviar';
+      }
+    })
+    .catch(function(){
+      var st = document.getElementById('meStatus');
+      if(st) st.textContent = 'sem conexão';
+    });
 }
 
 /* ============================================================
@@ -651,10 +665,13 @@ function renderFrota(lista){
   cnt.textContent = '('+online+' online / '+lista.length+' total)';
   var tc = document.getElementById('fleetToggleCount');
   if(tc) tc.textContent = String(online);
-  // Só reenquadra se houver posições; senão mantém a centralização no usuário
-  if(bounds.length){
+
+  // Reenquadra APENAS na primeira carga. Depois disso o mapa fica onde o
+  // usuário deixou — o refresh de 30s não puxa mais a tela de volta.
+  if(bounds.length && !jaEnquadrou){
     if(meMarker){ var ll = meMarker.getLatLng(); bounds.push([ll.lat, ll.lng]); }
     map.fitBounds(bounds, {padding:[40,40], maxZoom:15});
+    jaEnquadrou = true;
   }
 }
 
@@ -1114,6 +1131,7 @@ window.addEventListener('DOMContentLoaded', function(){
     if(compartilhando && ultimaPos && navigator.sendBeacon){
       var params = new URLSearchParams({
         action:'salvarLocalizacao', nome:_nomeUsuario(), frota:_frotaUsuario(),
+        placa:_placaUsuario(), device:_deviceId(),
         lat:ultimaPos.lat, lng:ultimaPos.lng, precisao:Math.round(ultimaPos.acc||0),
         ts:new Date().toISOString(), saindo:'1'
       });
