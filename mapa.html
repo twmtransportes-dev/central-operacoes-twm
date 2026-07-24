@@ -2,2478 +2,1132 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="theme-color" content="#6366f1">
-<title>TWM — Manutenção</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<script>(function(){var p=localStorage.getItem('twm_tema')||'auto';var h=new Date().getHours();if(p==='escuro'||(p!=='claro'&&(h<6||h>=18)))document.documentElement.setAttribute('data-theme','dark');}());</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TWM • Mapa</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- plugin de rotação do mapa (gesto de dois dedos) -->
+<script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
+<!-- agrupamento de marcadores próximos (evita ficarem um sobre o outro) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <style>
-/* ── RESET & TOKENS ─────────────────────────────── */
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-:root{
-  --bg:#f1f5f9;--bg2:#ffffff;--bg3:#f8fafc;
-  --bg2-rgb:255,255,255;--bg3-rgb:248,250,252;
-  --tx:#0f172a;--tx2:#475569;--tx3:#94a3b8;
-  --brd:#e2e8f0;--brd2:#cbd5e1;
-  --ac:#6366f1;--ac2:#818cf8;--ac-bg:rgba(99,102,241,.08);
-  --red:#FF6B6B;--red-bg:rgba(255,107,107,.1);
-  --amber:#4ECDC4;--amber-bg:rgba(78,205,196,.1);
-  --cyan:#5B8DEF;--cyan-bg:rgba(91,141,239,.1);
-  --violet:#A78BFA;--violet-bg:rgba(167,139,250,.1);
-  --green:#22c55e;--green-bg:rgba(34,197,94,.08);
-  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
-  --shadow-md:0 4px 16px rgba(0,0,0,.1),0 2px 6px rgba(0,0,0,.06);
-  --shadow-xl:0 20px 60px rgba(0,0,0,.15),0 8px 20px rgba(0,0,0,.08);
-  --r:14px;--r2:9px;--r3:7px;
-}
-[data-theme=dark]{
-  --bg:#0f0f17;--bg2:#13131d;--bg3:#171722;
-  --bg2-rgb:19,19,29;--bg3-rgb:23,23,34;
-  --tx:#f1f5f9;--tx2:#9a9aab;--tx3:#5a5a6e;
-  --brd:#1f1f2c;--brd2:#2a2a3a;
-  --green:#7ED957;--green-bg:rgba(126,217,87,.1);
-  --shadow:0 1px 3px rgba(0,0,0,.3);
-  --shadow-md:0 4px 16px rgba(0,0,0,.4);
-  --shadow-xl:0 20px 60px rgba(0,0,0,.5);
-}
-html,body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;overflow-x:hidden}
+  :root{
+    --bg:#F2F2F7; --card:#FFFFFF; --ink:#1C1C1E; --muted:#8E8E93;
+    --brand:#7C3AED; --brand2:#0A84FF; --line:#E5E5EA;
+    --ok:#30D158; --warn:#FF9F0A; --off:#8E8E93; --radius:16px;
+    --sfont:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{font-family:var(--sfont);background:var(--bg);color:var(--ink);position:fixed;inset:0;width:100%;
+    display:flex;flex-direction:column}
+  .topbar{background:var(--card);border-bottom:1px solid var(--line);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;z-index:1000;flex:none}
+  .brand{display:flex;align-items:center;gap:10px}
+  .logo{width:44px;height:44px;border-radius:12px;background:var(--brand);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px}
+  .brand h1{font-size:20px;letter-spacing:.5px}
+  .back{color:var(--muted);text-decoration:none;font-weight:700;font-size:13px;letter-spacing:1px}
+  .wrap{padding:16px;max-width:900px;margin:0 auto}
+  .card{background:var(--card);border-radius:var(--radius);border:1px solid var(--line);padding:16px;margin-bottom:14px}
+  .card h2{font-size:15px;color:var(--brand2);letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .btn{width:100%;padding:14px;border:none;border-radius:12px;background:var(--brand2);color:#fff;font-weight:700;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn.ghost{background:#EFEFF4;color:var(--ink)}
+  .btn.stop{background:#FF453A}
+  .btn:active{opacity:.85}
+  .btn+.btn{margin-top:10px}
+  /* MAPA EM TELA CHEIA */
+  #tab-frota{position:relative;flex:1;min-height:0;display:flex}
+  #mapFull{position:relative;width:100%;flex:1;min-height:0}
+  #map{position:absolute;inset:0;width:100%;height:100%;z-index:1;touch-action:pan-x pan-y;overscroll-behavior:none}
 
-/* ── PAPEL DE PAREDE ── */
-#wp-layer{position:fixed;inset:0;z-index:-2;background-size:cover;background-position:center;display:none}
-#wp-dim{position:fixed;inset:0;z-index:-1;background:rgba(0,0,0,.55);display:none}
+  /* status minúsculo e discreto no canto inferior esquerdo */
+  #statusChip{position:absolute;bottom:8px;left:8px;z-index:1000;background:rgba(255,255,255,.85);border-radius:12px;
+    box-shadow:0 1px 4px rgba(0,0,0,.15);display:flex;align-items:center;gap:4px;padding:3px 7px;font-size:9px;font-weight:600;color:var(--muted);max-width:120px}
+  #statusChip #meStatus{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #statusChip .dot{width:6px;height:6px}
 
-/* ── HEADER ─────────────────────────────────────── */
-.hd{background:var(--bg2);border-bottom:1px solid var(--brd);padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
-.hd-left{display:flex;align-items:center;gap:10px}
-.hd-logo{width:34px;height:34px;background:linear-gradient(135deg,var(--ac),var(--ac2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;letter-spacing:.5px}
-.hd-title{font-size:15px;font-weight:700;color:var(--tx)}
-.hd-right{display:flex;align-items:center;gap:8px}
-.btn-hd{padding:6px 12px;border-radius:var(--r3);font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--brd2);background:var(--bg);color:var(--tx2);transition:.15s;white-space:nowrap}
-.btn-hd:hover{border-color:var(--ac);color:var(--ac)}
-.btn-hd.primary{background:var(--ac);color:#fff;border-color:var(--ac)}
-.btn-hd.primary:hover{background:var(--ac2)}
-.btn-back{font-size:12px;font-weight:600;color:var(--tx3);text-decoration:none;padding:6px 10px;border-radius:var(--r3);border:1.5px solid var(--brd);background:var(--bg)}
+  /* LUPA: botão pequeno que expande */
+  #searchBar{position:absolute;top:14px;right:14px;z-index:1001;background:#fff;border-radius:26px;
+    box-shadow:0 2px 10px rgba(0,0,0,.22);display:flex;align-items:center;gap:8px;height:48px;
+    transition:width .28s ease, padding .28s ease;overflow:hidden}
+  #searchBar.collapsed{width:48px;padding:0;justify-content:center;cursor:pointer}
+  #searchBar.expanded{width:calc(100vw - 28px);max-width:420px;padding:0 14px}
+  #searchIcon{font-size:18px;opacity:.75;flex:none;cursor:pointer}
+  #searchBar.collapsed #searchIcon{margin:0}
+  #searchInput{flex:1;border:none;outline:none;font-size:15px;font-family:var(--sfont);background:transparent;color:var(--ink);min-width:0;width:0}
+  #searchBar.collapsed #searchInput{display:none}
+  #searchClear{font-size:15px;color:var(--muted);cursor:pointer;flex:none;display:none;padding:4px}
+  #searchResults{position:absolute;top:68px;right:12px;left:12px;max-width:420px;margin-left:auto;z-index:1001;background:#fff;border-radius:14px;
+    box-shadow:0 4px 16px rgba(0,0,0,.18);overflow:hidden;display:none;max-height:50vh;overflow-y:auto}
+  .sr-item{padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;align-items:center;gap:10px}
+  .sr-item:last-child{border-bottom:none}
+  .sr-item:active{background:#F2F2F7}
+  .sr-ic{font-size:16px;flex:none;width:22px;text-align:center}
+  .sr-tx{flex:1;min-width:0}
+  .sr-tx .t1{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sr-tx .t2{font-size:12px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sr-empty{padding:14px 16px;color:var(--muted);font-size:13px;text-align:center}
 
-/* ── TOOLBAR ─────────────────────────────────────── */
-.toolbar{background:var(--bg2);border-bottom:1px solid var(--brd);padding:10px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;position:sticky;top:56px;z-index:99}
-.search-wrap{flex:1;min-width:180px;position:relative}
-.search-inp{width:100%;padding:8px 12px 8px 34px;border:1.5px solid var(--brd2);border-radius:var(--r2);background:var(--bg3);color:var(--tx);font-size:13px;font-family:inherit;outline:none;transition:.15s}
-.search-inp:focus{border-color:var(--ac);background:var(--bg2)}
-.search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--tx3);font-size:14px;pointer-events:none}
-.filter-btn{padding:7px 12px;border-radius:var(--r2);font-size:12px;font-weight:600;border:1.5px solid var(--brd2);background:var(--bg);color:var(--tx2);cursor:pointer;transition:.15s;white-space:nowrap}
-.filter-btn.on{background:var(--ac-bg);border-color:var(--ac);color:var(--ac)}
-.filter-select{padding:7px 10px;border-radius:var(--r2);font-size:12px;border:1.5px solid var(--brd2);background:var(--bg);color:var(--tx2);cursor:pointer;outline:none;font-family:inherit}
-
-/* ── RESUMO ─────────────────────────────────────── */
-.resumo{display:flex;gap:8px;padding:12px 16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.resumo::-webkit-scrollbar{display:none}
-.res-card{flex-shrink:0;background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r);padding:10px 14px;min-width:80px;text-align:center;cursor:pointer;transition:.15s;border-top:3px solid}
-.res-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
-.res-card.r-ab{border-top-color:var(--red)}.res-card.r-an{border-top-color:var(--amber)}
-.res-card.r-ag{border-top-color:var(--cyan)}.res-card.r-ex{border-top-color:var(--violet)}.res-card.r-ok{border-top-color:var(--green)}
-.res-n{font-size:22px;font-weight:800;line-height:1}
-.res-card.r-ab .res-n{color:var(--red)}.res-card.r-an .res-n{color:var(--amber)}
-.res-card.r-ag .res-n{color:var(--cyan)}.res-card.r-ex .res-n{color:var(--violet)}.res-card.r-ok .res-n{color:var(--green)}
-.res-l{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-top:2px}
-
-/* ── BOARD ─────────────────────────────────────── */
-.board-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:12px 16px 80px;display:flex;gap:9px;align-items:flex-start;min-height:calc(100vh - 220px)}
-.board-wrap::-webkit-scrollbar{height:5px}
-.board-wrap::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px}
-@media(max-width:600px){
-  .board-wrap{gap:7px;padding:10px 10px 80px}
-  .col-hd{padding:9px 10px}
-  .col-body{padding:6px}
-  .col-footer{padding:6px}
-}
-.col{width:280px;flex-shrink:0;background:var(--bg3);border-radius:var(--r);border:1px solid var(--brd);display:flex;flex-direction:column;max-height:none}
-@media(max-width:600px){.col{width:172px}}
-.col-hd{padding:12px 14px;border-bottom:1px solid var(--brd);flex-shrink:0;border-radius:var(--r) var(--r) 0 0}
-.col-title{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px}
-.col-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.col-cnt{margin-left:auto;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px}
-.col.ca .col-dot{background:var(--red)}.col.ca .col-title{color:var(--red)}.col.ca .col-cnt{background:var(--red-bg);color:var(--red)}
-.col.an .col-dot{background:var(--amber)}.col.an .col-title{color:var(--amber)}.col.an .col-cnt{background:var(--amber-bg);color:var(--amber)}
-.col.ag .col-dot{background:var(--cyan)}.col.ag .col-title{color:var(--cyan)}.col.ag .col-cnt{background:var(--cyan-bg);color:var(--cyan)}
-.col.ex .col-dot{background:var(--violet)}.col.ex .col-title{color:var(--violet)}.col.ex .col-cnt{background:var(--violet-bg);color:var(--violet)}
-.col.ok .col-dot{background:var(--green)}.col.ok .col-title{color:var(--green)}.col.ok .col-cnt{background:var(--green-bg);color:var(--green)}
-.col-body{flex:1;padding:8px;display:flex;flex-direction:column;gap:7px}
-.col-body::-webkit-scrollbar{width:3px}
-.col-body::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px}
-.col-footer{padding:8px;flex-shrink:0}
-.btn-nova-os{width:100%;padding:9px;border:1.5px dashed var(--brd2);border-radius:var(--r2);background:none;color:var(--tx3);font-size:12px;font-weight:600;cursor:pointer;transition:.15s;font-family:inherit}
-.btn-nova-os:hover{border-color:var(--ac);color:var(--ac);background:var(--ac-bg)}
-/* drag over */
-.col-body.drag-over{background:var(--ac-bg);border-radius:var(--r2)}
-
-/* ── CARD ─────────────────────────────────────── */
-.card{background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .15s,transform .15s;cursor:grab}
-.card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
-.card.dragging{opacity:.5;transform:rotate(2deg)}
-.card.oculto{display:none}
-.card-accent{height:3px}
-.card-accent.p-urgente{background:var(--red)}
-.card-accent.p-normal{background:var(--amber)}
-.card-accent.p-baixa{background:var(--green)}
-.card-top{padding:12px 14px 9px;cursor:pointer}
-/* selo de GPS ao lado da frota — informativo, discreto */
-.gps-selo{
-  display:inline-block;margin-left:7px;padding:1px 6px;border-radius:7px;
-  font-size:10px;font-weight:700;letter-spacing:.2px;vertical-align:middle;
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);
-  white-space:nowrap;
-}
-.gps-selo.gps-base  {color:#4ade80}   /* na garagem  */
-.gps-selo.gps-volta {color:#38bdf8}   /* voltando    */
-.gps-selo.gps-indo  {color:#fbbf24}   /* afastando   */
-.gps-selo.gps-parado{color:#94a3b8}   /* parado      */
-.card-frota{font-size:18px;font-weight:800;letter-spacing:.2px;margin-bottom:5px}
-.card-frota.vp{color:var(--amber)}.card-frota.rb{color:var(--cyan)}.card-frota.outro{color:var(--ac)}
-.card-meta{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--tx3);flex-wrap:wrap}
-.prio-tag{font-size:9px;font-weight:700;padding:2.5px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.3px}
-.prio-tag.urgente{background:var(--red-bg);color:var(--red)}
-.prio-tag.normal{background:var(--amber-bg);color:var(--amber)}
-.prio-tag.baixa{background:var(--green-bg);color:var(--green)}
-.card-tempo{font-size:9px;color:var(--tx3);margin-left:auto}
-.card-origem{font-size:10px;font-weight:600;color:var(--ac);margin-top:4px;display:flex;align-items:center;gap:3px}
-.card-svs{padding:1px 14px 9px;display:flex;flex-direction:column;gap:4px}
-.sv-chip{font-size:12px;color:var(--tx2);padding:3px 0;display:flex;align-items:center;gap:7px}
-.sv-chip.s-concl{color:var(--tx3);text-decoration:line-through;opacity:.75}
-.sv-desc{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sv-status-dot{width:15px;height:15px;border-radius:50%;flex-shrink:0;border:1.6px solid var(--brd2);display:flex;align-items:center;justify-content:center;background:none}
-.sv-status-dot.s-concl{background:var(--green);border-color:var(--green)}
-.sv-status-dot.s-concl::after{content:'✓';color:#fff;font-size:9px;font-weight:800;line-height:1}
-.sv-status-dot.s-aberta{border-color:var(--red)}.sv-status-dot.s-andando{border-color:var(--amber)}
-.sv-status-dot.s-pend{border-color:orange}
-.sv-status-dot.s-agpeca{border-color:var(--cyan)}.sv-status-dot.s-externa{border-color:var(--violet)}
-.card-footer{padding:8px 14px 11px;display:flex;align-items:center;gap:7px;border-top:1px solid var(--brd)}
-.mec-avatar{width:23px;height:23px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;color:#fff;flex-shrink:0}
-.mec-name{font-size:10.5px;font-weight:600;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.card-actions{display:flex;gap:4px;margin-left:auto}
-.btn-card-act{width:27px;height:27px;border-radius:var(--r3);border:1px solid var(--brd);background:var(--bg3);color:var(--tx3);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.12s}
-.btn-card-act:hover{border-color:var(--ac);color:var(--ac);background:var(--ac-bg)}
-.card-comments-badge{font-size:9px;font-weight:700;color:var(--tx3);display:flex;align-items:center;gap:2px}
-
-/* ── FULL CARD MODAL ─────────────────────────────── */
-.fullcard-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;padding:16px;align-items:center;justify-content:center}
-.fullcard-overlay.on{display:flex}
-.fullcard{background:var(--bg2);border-radius:16px;width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow-xl);overflow:hidden}
-.fullcard-accent{height:4px;flex-shrink:0}
-.fullcard-hd{padding:16px 20px 12px;border-bottom:1px solid var(--brd);flex-shrink:0;display:flex;align-items:flex-start;gap:12px}
-.fullcard-frota{font-size:24px;font-weight:800;flex:1}
-.fullcard-frota.vp{color:var(--amber)}.fullcard-frota.rb{color:var(--cyan)}.fullcard-frota.outro{color:var(--ac)}
-.fullcard-close{background:var(--bg3);border:1px solid var(--brd2);border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:var(--tx2);flex-shrink:0;font-weight:600}
-.fullcard-close:hover{background:var(--red-bg);border-color:var(--red);color:var(--red)}
-.fullcard-tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px}
-.fullcard-body{flex:1;overflow-y:auto;padding:0}
-.fullcard-body::-webkit-scrollbar{width:4px}
-.fullcard-body::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px}
-.fc-section{padding:14px 20px;border-bottom:1px solid var(--brd)}
-.fc-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--tx3);margin-bottom:10px}
-/* Serviços no fullcard */
-.fc-sv{background:var(--bg3);border:1px solid var(--brd);border-radius:var(--r2);padding:10px 12px;margin-bottom:7px;border-left:3px solid var(--brd2)}
-.fc-sv.s-aberta{border-left-color:var(--red)}.fc-sv.s-andando{border-left-color:var(--amber)}
-.fc-sv.s-concl{border-left-color:var(--green)}.fc-sv.s-pend{border-left-color:orange}
-.fc-sv.s-agpeca{border-left-color:var(--cyan)}.fc-sv.s-externa{border-left-color:var(--violet)}
-.fc-sv-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
-.fc-sv-tipo{font-size:10px;font-weight:700;color:var(--tx3);flex:1;text-transform:uppercase;letter-spacing:.3px}
-.fc-sv-desc{font-size:13px;font-weight:500;color:var(--tx);margin-bottom:6px}
-.selo-pend{font-size:9px;font-weight:700;color:#c2410c;background:rgba(249,115,22,.12);padding:1px 6px;border-radius:8px;margin-left:4px;white-space:nowrap}
-.fc-pendconj{background:#fff7ed;border:1px solid #fed7aa;border-left:3px solid #f97316;border-radius:8px;padding:9px 11px;margin-bottom:8px}
-[data-theme=dark] .fc-pendconj{background:#1c1408;border-color:#7c2d12}
-.fc-pendconj-top{display:flex;align-items:center;gap:8px;margin-bottom:3px}
-.fc-pendconj-frota{font-size:13px;font-weight:800;color:#c2410c}
-.fc-pendconj-tipo{font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.3px}
-.fc-pendconj-desc{font-size:12.5px;color:var(--tx);margin-bottom:3px}
-.fc-pendconj-nota{font-size:10px;color:#f97316;font-style:italic;margin-bottom:6px}
-.cardpend{background:rgba(249,115,22,.08);border:1px solid #fed7aa;border-radius:8px;padding:6px 8px;margin:6px 0}
-[data-theme=dark] .cardpend{background:rgba(249,115,22,.08);border-color:#7c2d12}
-.cardpend-hd{font-size:10px;font-weight:800;color:#c2410c;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px}
-.cardpend-item{font-size:10px;color:var(--tx2);line-height:1.4}
-.fc-sv-extra{font-size:11px;font-style:italic;margin-bottom:6px}
-.fc-sv-extra.sol{color:var(--green)}.fc-sv-extra.pend{color:orange}.fc-sv-extra.ag{color:var(--cyan)}.fc-sv-extra.ext{color:var(--violet)}
-.fc-sv-acts{display:flex;gap:5px;flex-wrap:wrap}
-.btn-sv-act{padding:5px 10px;border-radius:var(--r3);font-size:11px;font-weight:600;border:1.5px solid;cursor:pointer;font-family:inherit;transition:.12s}
-.btn-sv-act.ok{border-color:var(--green);color:var(--green);background:var(--green-bg)}.btn-sv-act.ok:hover{background:var(--green);color:#fff}
-.btn-sv-act.warn{border-color:orange;color:orange;background:rgba(255,165,0,.08)}.btn-sv-act.warn:hover{background:orange;color:#fff}
-.btn-sv-act.move{border-color:var(--brd2);color:var(--tx2);background:var(--bg)}.btn-sv-act.move:hover{border-color:var(--ac);color:var(--ac)}
-.btn-sv-act.ag{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-bg)}.btn-sv-act.ag:hover{background:var(--cyan);color:#fff}
-.btn-sv-act.ext{border-color:var(--violet);color:var(--violet);background:var(--violet-bg)}.btn-sv-act.ext:hover{background:var(--violet);color:#fff}
-.btn-sv-act.edit{border-color:var(--brd2);color:var(--tx3);background:var(--bg)}.btn-sv-act.edit:hover{border-color:var(--ac);color:var(--ac)}
-.btn-sv-act.pneu{border-color:#F97316;color:#F97316;background:rgba(249,115,22,.1)}.btn-sv-act.pneu:hover{background:#F97316;color:#fff}
-.btn-sv-act.compra{border-color:#3B82F6;color:#3B82F6;background:rgba(59,130,246,.1)}.btn-sv-act.compra:hover{background:#3B82F6;color:#fff}
-/* Mecânico no fullcard */
-.fc-mec-row{display:flex;align-items:center;gap:8px}
-.fc-mec-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff}
-.fc-mec-info{flex:1}.fc-mec-name{font-size:13px;font-weight:600}.fc-mec-tempo{font-size:11px;color:var(--tx3)}
-/* Histórico de movimentações */
-.fc-hist-item{display:flex;gap:10px;margin-bottom:10px}
-.fc-hist-dot{width:8px;height:8px;border-radius:50%;background:var(--brd2);margin-top:4px;flex-shrink:0}
-.fc-hist-txt{font-size:12px;color:var(--tx2)}.fc-hist-time{font-size:10px;color:var(--tx3)}
-/* Comentários */
-.fc-comment{background:var(--bg3);border-radius:var(--r2);padding:10px 12px;margin-bottom:8px}
-.fc-comment-autor{font-size:11px;font-weight:700;color:var(--ac)}.fc-comment-time{font-size:10px;color:var(--tx3);margin-left:6px}
-.fc-comment-txt{font-size:13px;color:var(--tx);margin-top:4px}
-.fc-add-comment{display:flex;gap:8px;margin-top:4px}
-.fc-comment-inp{flex:1;padding:9px 12px;border:1.5px solid var(--brd2);border-radius:var(--r2);background:var(--bg3);color:var(--tx);font-size:13px;font-family:inherit;outline:none}
-.fc-comment-inp:focus{border-color:var(--ac)}
-.fc-comment-btn{padding:9px 14px;background:var(--ac);color:#fff;border:none;border-radius:var(--r2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
-/* Data prevista */
-.fc-data-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.fc-data-inp{padding:7px 10px;border:1.5px solid var(--brd2);border-radius:var(--r2);background:var(--bg3);color:var(--tx);font-size:13px;font-family:inherit;outline:none}
-.fc-data-inp:focus{border-color:var(--ac)}
-.fc-data-badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:10px}
-.fc-data-badge.ok{background:var(--green-bg);color:var(--green)}
-.fc-data-badge.atrasado{background:var(--red-bg);color:var(--red)}
-.fc-data-badge.hoje{background:var(--amber-bg);color:var(--amber)}
-/* Mover OS */
-.fc-mover-opts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.btn-mover-col{padding:7px 14px;border-radius:var(--r2);font-size:12px;font-weight:600;border:1.5px solid var(--brd2);background:var(--bg);color:var(--tx2);cursor:pointer;transition:.12s;font-family:inherit}
-.btn-mover-col:hover{border-color:var(--ac);color:var(--ac);background:var(--ac-bg)}
-/* fullcard footer */
-.fullcard-ft{padding:12px 20px;border-top:1px solid var(--brd);flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap}
-.btn-fc-add{flex:1;padding:10px;background:var(--ac-bg);border:1.5px solid var(--ac);color:var(--ac);border-radius:var(--r2);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center}
-.btn-fc-add:hover{background:var(--ac);color:#fff}
-.btn-fc-del{padding:10px 14px;background:var(--red-bg);border:1.5px solid var(--red);color:var(--red);border-radius:var(--r2);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
-.btn-fc-del:hover{background:var(--red);color:#fff}
-
-/* ── MODAIS SIMPLES ─────────────────────────────── */
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:600;align-items:flex-end;justify-content:center;padding:0}
-.overlay.on{display:flex}
-.modal{background:var(--bg2);border-radius:16px 16px 0 0;padding:20px;width:100%;max-width:520px;max-height:85vh;overflow-y:auto;box-shadow:var(--shadow-xl)}
-.modal-title{font-size:15px;font-weight:700;color:var(--tx);margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
-.modal-x{background:none;border:none;font-size:18px;cursor:pointer;color:var(--tx3);padding:2px 6px;border-radius:6px}
-.modal-x:hover{background:var(--red-bg);color:var(--red)}
-.fld{margin-bottom:12px}
-.lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--tx3);display:block;margin-bottom:5px}
-.inp,.sel,.txa{width:100%;padding:10px 12px;border:1.5px solid var(--brd2);border-radius:var(--r2);background:var(--bg3);color:var(--tx);font-size:13px;font-family:inherit;outline:none;-webkit-appearance:none}
-.inp:focus,.sel:focus,.txa:focus{border-color:var(--ac);background:var(--bg2)}
-.txa{min-height:80px;resize:none}
-.btn-save{width:100%;padding:13px;background:var(--ac);border:none;border-radius:var(--r2);color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;transition:.15s}
-.btn-save:hover{background:var(--ac2)}
-.btn-save:disabled{opacity:.6;cursor:not-allowed}
-.btn-add-manut{width:100%;padding:11px;background:transparent;border:1.5px dashed var(--ac);border-radius:var(--r2);color:var(--ac);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px;transition:.15s}
-.btn-add-manut:hover{background:var(--ac-bg,rgba(99,91,255,.08))}
-.n-chip{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--brd2);border-radius:var(--r2);padding:8px 10px;margin-bottom:6px;font-size:12px}
-.n-chip-num{width:22px;height:22px;border-radius:50%;background:var(--ac);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.n-chip-info{flex:1;min-width:0}
-.n-chip-tipo{font-weight:700;color:var(--tx);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.n-chip-desc{font-size:11px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.n-chip-prio{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;flex-shrink:0}
-.n-chip-prio.urgente{background:var(--red-bg);color:var(--red)}
-.n-chip-prio.normal{background:var(--bg3);color:var(--tx3)}
-.n-chip-prio.baixa{background:rgba(16,185,129,.12);color:#059669}
-.n-chip-del{background:none;border:none;color:var(--tx3);cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px;flex-shrink:0}
-.n-chip-del:hover{color:var(--red)}
-.mopt{padding:12px 14px;border-radius:var(--r2);border:1.5px solid var(--brd);cursor:pointer;font-size:12px;font-weight:600;margin-bottom:7px;color:var(--tx);transition:.12s}
-.mopt:hover{background:var(--bg3)}
-.mopt.danger{border-color:var(--red-bg);color:var(--red)}.mopt.danger:hover{background:var(--red-bg)}
-.mopt.cancel{text-align:center;color:var(--tx3)}
-
-/* ── TOAST ─────────────────────────────────────── */
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(70px);background:var(--tx);color:var(--bg2);padding:10px 20px;border-radius:var(--r);font-size:13px;font-weight:600;z-index:999;transition:.25s;pointer-events:none;white-space:nowrap;max-width:90vw}
-.toast.on{transform:translateX(-50%) translateY(0)}
-.toast.ok{background:var(--green)}.toast.err{background:var(--red)}
-
-/* ── FAB ─────────────────────────────────────── */
-.zoom-btn{position:fixed;bottom:20px;right:16px;width:44px;height:44px;border-radius:50%;background:var(--bg2);border:1.5px solid var(--brd2);color:var(--tx2);font-size:20px;font-weight:700;cursor:pointer;z-index:99;box-shadow:var(--shadow-md);display:flex;align-items:center;justify-content:center;transition:.2s}
-.zoom-btn:hover{border-color:var(--ac);color:var(--ac)}
-.zoom-btn:active{transform:scale(.92)}
-.fab{position:fixed;bottom:20px;right:16px;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));border:none;color:#fff;font-size:24px;cursor:pointer;z-index:99;box-shadow:0 4px 16px rgba(99,102,241,.4);display:flex;align-items:center;justify-content:center;transition:.2s}
-.fab:hover{transform:scale(1.08)}
-.fab:active{transform:scale(.94)}
-
-/* ── NOTIFICAÇÃO ALERTA ─────────────────────────── */
-.alerta-badge{position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--red);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center}
-
-/* Coluna Pendências */
-.col-pend{width:220px;flex-shrink:0;background:#fff7ed;border-radius:var(--r);border:2px solid #f97316;display:flex;flex-direction:column}
-[data-theme=dark] .col-pend{background:#1c1408;border-color:#c2410c}
-.col-pend-hd{padding:12px 14px;border-bottom:2px solid #f97316;flex-shrink:0;background:rgba(249,115,22,.1);border-radius:var(--r) var(--r) 0 0}
-.col-pend-title{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:#c2410c}
-.col-pend-cnt{margin-left:auto;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;background:rgba(249,115,22,.2);color:#c2410c}
-.col-pend-body{flex:1;padding:8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto}
-.pend-row{background:#fff;border-left:3px solid #f97316;border-radius:6px;padding:8px 10px;cursor:pointer;transition:.12s;border:1px solid #fed7aa;border-left-width:3px}
-[data-theme=dark] .pend-row{background:#1e1008;border-color:#7c2d12;border-left-color:#f97316}
-.pend-row:hover{background:#fff7ed;box-shadow:0 2px 8px rgba(249,115,22,.15)}
-[data-theme=dark] .pend-row:hover{background:#2d1500}
-.pend-row-frota{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;color:#f97316;margin-bottom:2px}
-.pend-row-texto{font-size:11px;color:#64748b;line-height:1.4}
-[data-theme=dark] .pend-row-texto{color:#94a3b8}
-.pend-row-nota{font-size:10px;color:#f97316;margin-top:3px;font-style:italic}
-.pend-empty-col{text-align:center;padding:20px 10px;font-size:11px;color:#f97316;opacity:.6;line-height:1.6}
-
-
-/* Abas */
-.tabs-bar{display:flex;background:var(--bg2);border-bottom:1px solid var(--brd);position:sticky;top:56px;z-index:98}
-.tab-btn{flex:1;padding:12px 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;border:none;background:none;color:var(--tx3);cursor:pointer;border-bottom:2.5px solid transparent;transition:.15s;font-family:'Inter',sans-serif}
-.tab-btn.on{color:var(--ac);border-bottom-color:var(--ac)}
-.tab-btn.on.warn{color:#f97316;border-bottom-color:#f97316}
-.tab-pane{display:none}
-.tab-pane.on{display:block}
-
-/* Aba Pendências */
-.pend-list-wrap{padding:12px 12px 80px}
-.pend-list-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.pend-list-title{font-size:13px;font-weight:700;color:var(--tx)}
-.pend-filtros{display:flex;gap:6px}
-.pend-f-btn{padding:5px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid var(--brd2);background:var(--bg);color:var(--tx3);cursor:pointer;transition:.12s}
-.pend-f-btn.on{background:rgba(249,115,22,.1);border-color:#f97316;color:#f97316}
-.pend-card{background:var(--bg2);border-radius:12px;border:1px solid var(--brd);border-left:4px solid #f97316;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:.15s}
-.pend-card:hover{box-shadow:var(--shadow-md)}
-.pend-card.resolvida{border-left-color:var(--green);opacity:.75}
-.pend-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
-.pend-card-frota{font-size:18px;font-weight:800;color:#f97316}
-.pend-card.resolvida .pend-card-frota{color:var(--green)}
-.pend-card-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px}
-.pend-card-badge.pendente{background:rgba(249,115,22,.12);color:#f97316}
-.pend-card-badge.resolvida{background:var(--green-bg);color:var(--green)}
-.pend-card-tipo{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--tx3);margin-bottom:4px}
-.pend-card-desc{font-size:13px;font-weight:600;color:var(--tx);margin-bottom:5px;line-height:1.4}
-.pend-card-motivo{font-size:11px;color:#f97316;font-style:italic;margin-bottom:6px}
-.pend-card-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;color:var(--tx3)}
-.pend-card-acoes{margin-top:10px;display:flex;gap:7px}
-.btn-pend-ac{padding:7px 12px;border-radius:7px;font-size:11px;font-weight:700;border:1.5px solid;cursor:pointer;font-family:inherit;transition:.12s}
-.btn-pend-ver{border-color:var(--brd2);color:var(--tx2);background:var(--bg)}.btn-pend-ver:hover{border-color:var(--ac);color:var(--ac)}
-.btn-pend-ok{border-color:var(--green);color:var(--green);background:var(--green-bg)}.btn-pend-ok:hover{background:var(--green);color:#fff}
-.pend-empty{text-align:center;padding:40px 20px;color:var(--tx3);font-size:13px;line-height:1.8}
-.pend-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
-.pend-stat{background:var(--bg2);border:1px solid var(--brd);border-radius:10px;padding:12px;text-align:center}
-.pend-stat-n{font-size:22px;font-weight:800;line-height:1}
-.pend-stat-l{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-top:2px}
-
-/* ── RELATÓRIO DIÁRIO ─────────────────────────────── */
-.rel-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;padding:16px;align-items:center;justify-content:center}
-.rel-overlay.on{display:flex}
-.rel-modal{background:var(--bg2);border-radius:16px;width:100%;max-width:640px;max-height:88vh;display:flex;flex-direction:column;box-shadow:var(--shadow-xl);overflow:hidden}
-.rel-head{padding:16px;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.rel-head h2{font-size:16px;font-weight:700;color:var(--tx);margin:0}
-.rel-head .rel-x{background:none;border:none;font-size:20px;cursor:pointer;color:var(--tx3);width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:var(--r3)}
-.rel-head .rel-x:hover{background:var(--bg3);color:var(--tx)}
-.rel-body{flex:1;overflow-y:auto;padding:12px 16px}
-.rel-intro{font-size:12px;color:var(--tx2);margin-bottom:12px;padding:9px 12px;background:var(--ac-bg);border-radius:var(--r2);border-left:3px solid var(--ac)}
-.rel-tools{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-.rel-tool-btn{font-size:11px;font-weight:600;padding:5px 12px;border-radius:var(--r2);border:1.5px solid var(--brd2);background:var(--bg);color:var(--tx2);cursor:pointer}
-.rel-tool-btn:hover{border-color:var(--ac);color:var(--ac)}
-.rel-oscard{background:var(--bg3);border:1px solid var(--brd);border-radius:var(--r2);padding:11px 12px;margin-bottom:9px;border-left:4px solid var(--ac)}
-.rel-oscard.st-aberta{border-left-color:var(--red)}
-.rel-oscard.st-andando{border-left-color:var(--amber)}
-.rel-oscard.st-agpeca{border-left-color:var(--cyan)}
-.rel-oscard.st-externa{border-left-color:var(--violet)}
-.rel-osh{display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap}
-.rel-osfrota{font-size:15px;font-weight:800;color:var(--tx)}
-.rel-osbadge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 8px;border-radius:10px}
-.rel-osbadge.st-aberta{background:var(--red-bg);color:var(--red)}
-.rel-osbadge.st-andando{background:var(--amber-bg);color:var(--amber)}
-.rel-osbadge.st-agpeca{background:var(--cyan-bg);color:var(--cyan)}
-.rel-osbadge.st-externa{background:var(--violet-bg);color:var(--violet)}
-.rel-osloc{font-size:10px;font-weight:600;color:var(--ac);margin-left:auto;display:flex;align-items:center;gap:3px}
-.rel-svc{display:flex;align-items:center;gap:9px;padding:7px 6px;border-radius:var(--r3);cursor:pointer;transition:background .12s}
-.rel-svc:hover{background:var(--bg)}
-.rel-svc input{width:18px;height:18px;cursor:pointer;accent-color:var(--ac);flex-shrink:0}
-.rel-svc-desc{font-size:12.5px;color:var(--tx);flex:1}
-.rel-svc-ofnome{font-size:10px;color:var(--violet);font-weight:600;white-space:nowrap}
-.rel-svc-of{font-size:9px;font-weight:800;letter-spacing:.4px;padding:2px 6px;border-radius:8px;flex-shrink:0}
-.rel-svc-of.int{background:var(--amber-bg);color:var(--amber)}
-.rel-svc-of.ext{background:var(--violet-bg);color:var(--violet)}
-.rel-svc-tipo{font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.3px}
-.rel-nosvc{font-size:11px;color:var(--tx3);font-style:italic;padding:4px 6px}
-.rel-empty{text-align:center;padding:40px 20px;color:var(--tx3);font-size:13px;line-height:1.7}
-.rel-foot{padding:12px 16px;border-top:1px solid var(--brd);display:flex;gap:8px;justify-content:space-between;align-items:center;flex-shrink:0}
-.rel-count{font-size:12px;color:var(--tx2);font-weight:600}
-.rel-foot-btns{display:flex;gap:8px}
-.rel-btn{padding:9px 18px;border-radius:var(--r2);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;border:none;font-family:inherit;transition:.15s}
-.rel-btn.cancel{background:var(--bg3);color:var(--tx2);border:1px solid var(--brd)}
-.rel-btn.cancel:hover{background:var(--brd)}
-.rel-btn.gerar{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff}
-.rel-btn.gerar:hover{opacity:.9}
-.rel-btn.print{background:#c00;color:#fff}
-.rel-btn.print:hover{opacity:.9}
-.prev-modal{max-width:900px}
-.prev-body{flex:1;overflow:hidden;background:#e5e5e5;padding:0}
-#prev-frame{width:100%;height:60vh;border:none;display:block;background:#e5e5e5}
-
+  /* BOTÃO E PAINEL DA FROTA (admin) */
+  /* botão recentralizar (meu local) */
+  #recenterBtn{position:absolute;right:14px;bottom:88px;z-index:1200;
+    background:#fff;border:none;border-radius:50%;width:48px;height:48px;font-size:20px;
+    box-shadow:0 2px 10px rgba(0,0,0,.28);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+  #recenterBtn:active{background:#f0f0f0}
+  #statusChip #cfgAbrir{cursor:pointer;font-size:10px;opacity:.75;padding-left:2px}
+  /* modal de configuração do tablet */
+  #cfgOverlay{position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,.5);
+    display:flex;align-items:center;justify-content:center;padding:20px}
+  #cfgBox{background:#fff;border-radius:18px;padding:22px;width:100%;max-width:380px;
+    box-shadow:0 10px 40px rgba(0,0,0,.35);max-height:90vh;overflow-y:auto}
+  #cfgBox h3{font-size:17px;margin-bottom:6px;color:var(--ink)}
+  #cfgBox .cfg-atual{font-size:13px;color:var(--ink);margin-bottom:2px}
+  #cfgBox .cfg-hint{font-size:12px;color:var(--muted);margin-bottom:16px}
+  #cfgBox label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 5px;letter-spacing:.4px}
+  #cfgBox input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;
+    font-size:16px;font-family:var(--sfont);background:#fff;color:var(--ink)}
+  #cfgMsg{font-size:12px;color:#D70015;min-height:16px;margin-top:10px;line-height:1.45;
+    word-break:break-word}
+  .cfg-remover{width:100%;margin-top:12px;padding:11px;border:1px solid #FFD3D0;border-radius:12px;
+    background:#FFF5F5;color:#D70015;font-size:14px;font-weight:600;cursor:pointer}
+  .cfg-remover:active{background:#FFE8E6}
+  .cfg-btns{display:flex;gap:10px;margin-top:14px}
+  .cfg-btns button{flex:1;padding:13px;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer}
+  .cfg-cancel{background:#EFEFF4;color:var(--ink)}
+  .cfg-ok{background:var(--brand2);color:#fff}
+  /* CARTÃO DE DESTINO (estilo Google Maps) */
+  #destCard{position:absolute;left:14px;right:14px;bottom:28px;z-index:1003;background:#fff;border-radius:16px;
+    box-shadow:0 4px 20px rgba(0,0,0,.28);padding:14px 16px;display:flex;align-items:center;gap:12px;max-width:460px;margin:0 auto}
+  #destInfo{flex:1;min-width:0}
+  #destTitulo{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+  #destSub{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #destBtns{display:flex;align-items:center;gap:8px;flex:none}
+  #destNavegar{background:#0A84FF;color:#fff;border:none;border-radius:22px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
+  #destNavegar:active{opacity:.85}
+  #destFechar{background:#EFEFF4;color:var(--muted);border:none;border-radius:50%;width:34px;height:34px;font-size:15px;cursor:pointer;flex:none}
+  #fleetToggle{position:absolute;right:14px;bottom:24px;z-index:1200;
+    background:var(--brand);color:#fff;border:none;
+    border-radius:24px;padding:12px 18px;font-size:14px;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,.3);cursor:pointer}
+  #fleetPanel{position:absolute;left:0;right:0;bottom:0;z-index:1002;background:#fff;border-radius:18px 18px 0 0;
+    box-shadow:0 -4px 20px rgba(0,0,0,.25);max-height:60%;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .3s ease}
+  #fleetPanel.open{transform:translateY(0)}
+  #fleetPanelHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);font-weight:700;font-size:15px;color:var(--brand2)}
+  .fp-btn{background:#EFEFF4;border:none;border-radius:10px;width:36px;height:36px;font-size:15px;cursor:pointer;margin-left:6px}
+  #fleetPanel .fleet-list{overflow-y:auto;padding:12px 14px;min-height:120px}
+  #fleetPanel .empty{text-align:center;color:var(--muted);font-size:13px;padding:24px 16px;line-height:1.6}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.5px}
+  .field input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:15px;font-family:var(--sfont)}
+  .banner{padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.5;margin-bottom:12px;display:flex;gap:10px;align-items:flex-start}
+  .banner.warn{background:#FFF4E5;color:#8A5A00;border:1px solid #FFE0B2}
+  .banner.info{background:#E8F1FF;color:#0A4A8A;border:1px solid #CCE0FF}
+  .banner.live{background:#E9FBEF;color:#1B7A3D;border:1px solid #C3F0D2}
+  .status-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-top:10px}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--off);flex:none}
+  .dot.live{background:var(--ok);animation:pulse 1.6s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(48,209,88,.5)}70%{box-shadow:0 0 0 8px rgba(48,209,88,0)}100%{box-shadow:0 0 0 0 rgba(48,209,88,0)}}
+  .fleet-list{margin-top:12px}
+  .fleet-item{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;cursor:pointer}
+  .fleet-item:active{background:#F7F7FA}
+  .fleet-ava{width:40px;height:40px;border-radius:10px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex:none}
+  .fleet-info{flex:1;min-width:0}
+  .fleet-info .nm{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fleet-info .sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;flex:none}
+  .badge.on{background:#E9FBEF;color:#1B7A3D}
+  .badge.off{background:#F0F0F3;color:#8E8E93}
+  .empty{text-align:center;color:var(--muted);font-size:14px;padding:30px 16px;line-height:1.6}
+  .hidden{display:none!important}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1C1C1E;color:#fff;padding:12px 20px;border-radius:24px;font-size:14px;z-index:5000;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%;text-align:center}
+  .toast.show{opacity:1}
+  .count{font-size:12px;color:var(--muted);font-weight:600}
+  .leaflet-container{font-family:var(--sfont)}
+  /* atribuição do mapa: obrigatória por licença, mas bem discreta */
+  .leaflet-control-attribution{background:rgba(255,255,255,.55)!important;font-size:7px!important;
+    padding:0 4px!important;color:#9a9a9e!important;line-height:12px!important;border-radius:6px 0 0 0;
+    margin:0!important;position:absolute;bottom:0;right:0}
+  .leaflet-control-attribution a{color:#9a9a9e!important;text-decoration:none!important}
+  .leaflet-control-attribution svg{display:none!important}
 </style>
 </head>
 <body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="logo">TWM</div>
+    <h1>MAPA</h1>
+  </div>
+  <a class="back" href="index.html">← CENTRAL</a>
+</div>
+
+<!-- ======================= MAPA ======================= -->
+<div id="tab-frota">
+  <div id="mapFull">
+    <div id="map"></div>
+
+    <!-- status compacto flutuante (canto superior esquerdo) -->
+    <div id="statusChip">
+      <span class="dot" id="meDot"></span>
+      <span id="meStatus">iniciando</span>
+      <span id="cfgAbrir" title="Configurar VP deste tablet">⚙️</span>
+    </div>
+
+    <!-- lupa: botão pequeno que expande ao tocar -->
+    <div id="searchBar" class="collapsed">
+      <span id="searchIcon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Buscar VP, placa ou endereço" autocomplete="off">
+      <span id="searchClear" title="Limpar">✕</span>
+    </div>
+    <div id="searchResults"></div>
+
+    <!-- botão recentralizar no meu local -->
+    <button id="recenterBtn" title="Meu local">🎯</button>
+
+    <!-- cartão de destino (aparece ao escolher um local) -->
+    <div id="destCard" class="hidden">
+      <div id="destInfo">
+        <div id="destTitulo"></div>
+        <div id="destSub"></div>
+      </div>
+      <div id="destBtns">
+        <button id="destNavegar">🧭 Navegar</button>
+        <button id="destFechar">✕</button>
+      </div>
+    </div>
+
+    <!-- botão da frota (só admin) abre painel deslizante -->
+    <button id="fleetToggle" class="hidden">👥 <span id="fleetToggleCount"></span></button>
+
+    <!-- painel deslizante da frota (admin) -->
+    <div id="fleetPanel" class="hidden">
+      <div id="fleetPanelHead">
+        <span>👥 FROTA <span class="count" id="fleetCount"></span></span>
+        <div>
+          <button class="fp-btn" id="btnAtualizarFrota">🔄</button>
+          <button class="fp-btn" id="fleetPanelClose">✕</button>
+        </div>
+      </div>
+      <div class="fleet-list" id="fleetList"></div>
+    </div>
+    <div id="adminControls" class="hidden"></div>
+  </div>
+</div>
+
+<!-- MODAL: configuração da VP deste tablet -->
+<div id="cfgOverlay" class="hidden">
+  <div id="cfgBox">
+    <h3>🚛 VP deste tablet</h3>
+    <p class="cfg-atual">Atual: <b id="cfgVpAtual">—</b></p>
+    <p class="cfg-hint" id="cfgQuem"></p>
+
+    <label>VP do caminhão</label>
+    <input type="text" id="cfgFrota" list="listaFrotas" placeholder="Ex: VP-183" autocomplete="off">
+    <datalist id="listaFrotas"></datalist>
+
+    <div id="cfgMsg"></div>
+    <button class="cfg-remover" id="cfgRemover">🗑️ Remover VP deste tablet</button>
+    <div class="cfg-btns">
+      <button class="cfg-cancel" id="cfgCancelar">Cancelar</button>
+      <button class="cfg-ok" id="cfgSalvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
-<!-- HEADER -->
-<header class="hd">
-  <div class="hd-left">
-    <div class="hd-logo">TWM</div>
-    <div class="hd-title">Manutenção</div>
-  </div>
-  <div class="hd-right">
-    <a class="btn-back" href="index.html">← Central</a>
-  </div>
-</header>
-
-<!-- TOOLBAR -->
-<div class="toolbar">
-  <div class="search-wrap">
-    <span class="search-ico">🔍</span>
-    <input class="search-inp" id="busca" type="text" placeholder="Buscar frota, mecânico, serviço..." oninput="buscar(this.value)" autocomplete="off">
-  </div>
-  <button class="filter-btn" id="btn-alerta" onclick="filtrarAtrasados()" title="OS paradas há mais de 3 dias">⚠️ Atrasadas</button>
-  <button class="filter-btn" id="btn-relatorio" onclick="abrirRelatorioModal()" title="Gerar relatório de manutenção do dia" style="background:var(--ac);color:#fff;border-color:var(--ac)">📊 Relatório Diário</button>
-</div>
-
-<!-- MODAL RELATÓRIO DIÁRIO -->
-<div class="rel-overlay" id="rel-overlay" onclick="if(event.target===this)fecharRelatorioModal()">
-  <div class="rel-modal">
-    <div class="rel-head">
-      <h2>📋 Relatório de Manutenção do Dia</h2>
-      <button class="rel-x" onclick="fecharRelatorioModal()">✕</button>
-    </div>
-    <div class="rel-body" id="rel-body"></div>
-    <div class="rel-foot">
-      <span class="rel-count" id="rel-count">0 serviços selecionados</span>
-      <div class="rel-foot-btns">
-        <button class="rel-btn cancel" onclick="fecharRelatorioModal()">Cancelar</button>
-        <button class="rel-btn gerar" onclick="gerarRelatorio()">👁️ Visualizar Planilha</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL PRÉVIA DA PLANILHA -->
-<div class="rel-overlay" id="prev-overlay" onclick="if(event.target===this)fecharPrevia()">
-  <div class="rel-modal prev-modal">
-    <div class="rel-head">
-      <h2>📄 Prévia — Pendências do Dia</h2>
-      <button class="rel-x" onclick="fecharPrevia()">✕</button>
-    </div>
-    <div class="prev-body">
-      <iframe id="prev-frame" title="Prévia do relatório"></iframe>
-    </div>
-    <div class="rel-foot">
-      <span class="rel-count" id="prev-count"></span>
-      <div class="rel-foot-btns">
-        <button class="rel-btn cancel" onclick="voltarSelecao()">← Voltar</button>
-        <button class="rel-btn print" onclick="imprimirPrevia()">🖨️ Imprimir / Gerar PDF</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ABAS -->
-<div class="tabs-bar">
-  <button class="tab-btn on" id="tab-board-btn" onclick="showTab('board')">🗂 Board</button>
-  <button class="tab-btn warn" id="tab-pend-btn" onclick="showTab('pendencias')">⚠️ Pendências <span id="pend-tab-cnt" style="background:#f97316;color:#fff;border-radius:10px;padding:1px 6px;font-size:9px;margin-left:2px">0</span></button>
-  <button class="tab-btn" id="tab-historico-btn" onclick="showTab('historico')">✅ Histórico</button>
-</div>
-
-<!-- PANE BOARD -->
-<div class="tab-pane on" id="tab-board">
-
-<!-- RESUMO -->
-<div class="resumo">
-  <div class="res-card r-ab" onclick="filtrarCol('aberta')"><div class="res-n" id="cnt-ab">0</div><div class="res-l">Abertas</div></div>
-  <div class="res-card r-an" onclick="filtrarCol('andando')"><div class="res-n" id="cnt-an">0</div><div class="res-l">Andamento</div></div>
-  <div class="res-card r-ag" onclick="filtrarCol('agpeca')"><div class="res-n" id="cnt-ag">0</div><div class="res-l">Ag. Peça</div></div>
-  <div class="res-card r-ex" onclick="filtrarCol('externa')"><div class="res-n" id="cnt-ex">0</div><div class="res-l">Externa</div></div>
-  <div class="res-card r-ok" onclick="filtrarCol('concl')"><div class="res-n" id="cnt-ok">0</div><div class="res-l">Concluídas</div></div>
-  <div class="res-card" style="border-top-color:#6366f1" onclick="filtrarCol('')"><div class="res-n" style="color:#6366f1" id="cnt-all">0</div><div class="res-l">Total</div></div>
-</div>
-
-<!-- BOARD -->
-<div class="board-wrap" id="board">
-  <!-- cols geradas por JS -->
-</div>
-
-<!-- FAB -->
-<button class="zoom-btn" id="zoom-btn" onclick="toggleZoom()" title="Zoom">＋</button>
-
-<!-- ═══ FULL CARD ═══ -->
-<div class="fullcard-overlay" id="fc-overlay" onclick="if(event.target===this)fecharFC()">
-  <div class="fullcard" id="fullcard">
-    <div class="fullcard-accent" id="fc-accent"></div>
-    <div class="fullcard-hd">
-      <div>
-        <div class="fullcard-frota" id="fc-frota"></div>
-        <div class="fullcard-tags" id="fc-tags"></div>
-      </div>
-      <button class="fullcard-close" onclick="fecharFC()">✕</button>
-    </div>
-    <div class="fullcard-body" id="fc-body"></div>
-    <div class="fullcard-ft">
-      <button class="btn-fc-add" id="fc-btn-add" onclick="fcAddSV()">＋ Adicionar serviço</button>
-      <button class="btn-fc-del" onclick="fcApagar()">🗑</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MODAIS SIMPLES ═══ -->
-
-<!-- Nova OS -->
-<div class="overlay" id="m-nova"><div class="modal">
-  <div class="modal-title">Nova Ordem de Serviço <button class="modal-x" onclick="fM('m-nova')">✕</button></div>
-
-  <!-- Frota — preenchida uma vez -->
-  <div class="fld"><label class="lbl">Frota *</label><input class="inp" id="n-frota" type="text" placeholder="VP-183, RB-128..." oninput="this.value=this.value.toUpperCase()"></div>
-  <div class="fld"><label class="lbl">Mecânico</label><input class="inp" id="n-mec" placeholder="Nome do mecânico"></div>
-  <div class="fld"><label class="lbl">Data Prevista</label><input class="inp" id="n-prev" type="date"></div>
-
-  <!-- Lista de manutenções acrescentadas -->
-  <div id="n-lista-wrap" style="display:none;margin-bottom:14px">
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--tx3);margin-bottom:8px">Manutenções Adicionadas</div>
-    <div id="n-lista"></div>
-  </div>
-
-  <!-- Formulário de uma manutenção (reset a cada acréscimo) -->
-  <div style="background:var(--bg3);border:1.5px solid var(--brd2);border-radius:var(--r2);padding:12px;margin-bottom:12px">
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);margin-bottom:10px" id="n-item-label">Manutenção nº 1</div>
-    <div class="fld"><label class="lbl">Prioridade</label>
-      <select class="sel" id="n-prio"><option value="normal">Normal</option><option value="urgente">🔴 Urgente</option><option value="baixa">Baixa</option></select></div>
-    <div class="fld"><label class="lbl">Grupo de Serviço *</label>
-      <select class="sel" id="n-tipo">
-        <option value="[30] CABINE">30 — CABINE</option><option value="[31] MOTOR">31 — MOTOR</option>
-        <option value="[32] CAIXA">32 — CAIXA</option><option value="[33] DIFERENCIAL">33 — DIFERENCIAL</option>
-        <option value="[34] ELÉTRICA">34 — ELÉTRICA</option><option value="[35] PNEUS">35 — PNEUS</option>
-        <option value="[36] RODAS">36 — RODAS</option><option value="[37] CHASSI">37 — CHASSI</option>
-        <option value="[38] EIXOS">38 — EIXOS</option><option value="[39] SUSPENSÃO">39 — SUSPENSÃO</option>
-        <option value="[40] IMPLEMENTO">40 — IMPLEMENTO</option><option value="[41] FREIOS">41 — FREIOS</option>
-        <option value="[42] SISTEMA PNEUMÁTICO">42 — PNEUMÁTICO</option>
-        <option value="[43] SISTEMA DE ARLA">43 — ARLA</option>
-        <option value="[44] OUTROS SERVIÇOS" selected>44 — OUTROS</option>
-      </select></div>
-    <div class="fld" style="margin-bottom:0"><label class="lbl">Descrição do Defeito *</label><textarea class="txa" id="n-desc" placeholder="Descreva o defeito..."></textarea></div>
-  </div>
-
-  <!-- Botão acrescentar -->
-  <button class="btn-add-manut" onclick="acrescentarManutencao()">+ Acrescentar Manutenção</button>
-
-  <!-- Botão finalizar -->
-  <button class="btn-save" onclick="salvarNovaOS()">✓ Abrir O.S.</button>
-</div></div>
-
-<!-- Concluir -->
-<div class="overlay" id="m-concl"><div class="modal">
-  <div class="modal-title">✅ Concluir Serviço <button class="modal-x" onclick="fM('m-concl')">✕</button></div>
-  <div class="fld"><label class="lbl">Solução aplicada *</label><textarea class="txa" id="cl-sol" placeholder="O que foi feito..."></textarea></div>
-  <div class="fld"><label class="lbl">Mecânico</label><input class="inp" id="cl-mec" placeholder="Nome do mecânico"></div>
-  <div class="fld"><label class="lbl">Tempo gasto</label><input class="inp" id="cl-tempo" placeholder="Ex: 2h30"></div>
-  <button class="btn-save" onclick="confirmarConcluir()">✅ Confirmar</button>
-</div></div>
-
-<!-- Pendência -->
-<div class="overlay" id="m-pend"><div class="modal">
-  <div class="modal-title">⏸ Marcar Pendência <button class="modal-x" onclick="fM('m-pend')">✕</button></div>
-  <div class="fld"><label class="lbl">Motivo *</label><textarea class="txa" id="pd-motivo" placeholder="Veículo liberado sem fazer porque..."></textarea></div>
-  <div class="fld"><label class="lbl">Mecânico</label><input class="inp" id="pd-mec" placeholder="Nome do mecânico"></div>
-  <div class="mopt warn" style="border-color:rgba(245,158,11,.3);color:var(--amber)" onclick="confirmarPend()">⏸ Confirmar pendência</div>
-  <div class="mopt cancel" onclick="fM('m-pend')">Cancelar</div>
-</div></div>
-
-<!-- Mecânico -->
-<div class="overlay" id="m-mec"><div class="modal">
-  <div class="modal-title">👤 Atribuir Mecânico <button class="modal-x" onclick="fM('m-mec')">✕</button></div>
-  <div class="fld"><label class="lbl">Nome</label><input class="inp" id="mc-nome" placeholder="Nome do mecânico"></div>
-  <div class="fld"><label class="lbl">Tempo gasto</label><input class="inp" id="mc-tempo" placeholder="Ex: 1h30"></div>
-  <button class="btn-save" onclick="confirmarMec()">✓ Atribuir</button>
-</div></div>
-
-<!-- Ag. Peça -->
-<div class="overlay" id="m-agp"><div class="modal">
-  <div class="modal-title">🔵 Aguardando Peça <button class="modal-x" onclick="fM('m-agp')">✕</button></div>
-  <div class="fld"><label class="lbl">Qual peça? *</label><input class="inp" id="agp-peca" placeholder="Ex: Pneu 295/80, Módulo ECU..."></div>
-  <div class="fld"><label class="lbl">Previsão chegada</label><input class="inp" id="agp-prev" type="date"></div>
-  <button class="btn-save" onclick="confirmarAgP()">✓ Confirmar</button>
-</div></div>
-
-<!-- Oficina Externa -->
-<div class="overlay" id="m-ext"><div class="modal">
-  <div class="modal-title">🏭 Oficina Externa <button class="modal-x" onclick="fM('m-ext')">✕</button></div>
-  <div class="fld"><label class="lbl">Oficina *</label><input class="inp" id="ext-nome" placeholder="Nome da oficina..."></div>
-  <div class="fld"><label class="lbl">Previsão retorno</label><input class="inp" id="ext-prev" type="date"></div>
-  <div class="fld"><label class="lbl">Observação</label><input class="inp" id="ext-obs" placeholder="Detalhes..."></div>
-  <button class="btn-save" onclick="confirmarExt()">🏭 Confirmar</button>
-</div></div>
-
-<!-- Add Serviço (no fullcard) -->
-<div class="overlay" id="m-addsv"><div class="modal">
-  <div class="modal-title">➕ Adicionar Serviço <button class="modal-x" onclick="fM('m-addsv')">✕</button></div>
-  <div class="fld"><label class="lbl">Grupo *</label>
-    <select class="sel" id="as-tipo">
-      <option value="[30] CABINE">30 — CABINE</option><option value="[31] MOTOR">31 — MOTOR</option>
-      <option value="[32] CAIXA">32 — CAIXA</option><option value="[33] DIFERENCIAL">33 — DIFERENCIAL</option>
-      <option value="[34] ELÉTRICA">34 — ELÉTRICA</option><option value="[35] PNEUS">35 — PNEUS</option>
-      <option value="[36] RODAS">36 — RODAS</option><option value="[37] CHASSI">37 — CHASSI</option>
-      <option value="[38] EIXOS">38 — EIXOS</option><option value="[39] SUSPENSÃO">39 — SUSPENSÃO</option>
-      <option value="[40] IMPLEMENTO">40 — IMPLEMENTO</option><option value="[41] FREIOS">41 — FREIOS</option>
-      <option value="[42] SISTEMA PNEUMÁTICO">42 — PNEUMÁTICO</option>
-      <option value="[43] SISTEMA DE ARLA">43 — ARLA</option>
-      <option value="[44] OUTROS SERVIÇOS" selected>44 — OUTROS</option>
-    </select></div>
-  <div class="fld"><label class="lbl">Descrição *</label><textarea class="txa" id="as-desc" placeholder="Descreva o serviço..."></textarea></div>
-  <div class="fld"><label class="lbl">Mecânico</label><input class="inp" id="as-mec" placeholder="Nome do mecânico"></div>
-  <button class="btn-save" onclick="confirmarAddSV()">✓ Adicionar</button>
-</div></div>
-
-<!-- Confirmar exclusão -->
-<div class="overlay" id="m-conf"><div class="modal">
-  <div class="modal-title">🗑 Confirmar exclusão <button class="modal-x" onclick="fM('m-conf')">✕</button></div>
-  <div style="font-size:13px;color:var(--tx2);margin-bottom:14px" id="conf-txt"></div>
-  <div class="mopt danger" onclick="confirmarApagar()">🗑 Sim, apagar</div>
-  <div class="mopt cancel" onclick="fM('m-conf')">Cancelar</div>
-</div></div>
-
-
-<!-- Papel de parede -->
 <script>
-// ════════════════════════════════════════
-//  CONFIG
-// ════════════════════════════════════════
-var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwAGLjEDNVAJk9nGujpVd6hTl3QY9Ss9Wl0Sm14TqCHBhdAFEPglhcXSzoN7ktSQjoa/exec';
+/* ============================================================
+   CONFIG
+   ============================================================ */
+// MESMA URL do Web App da Jornada (que já grava a aba LOCALIZACAO)
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxZ5P_l0cBM3g79srBUcxwdpMkKSHeE8d89Ksp9uFjhw4YnD2-m5rH8MVMyB5rDWRX9wQ/exec';
 
-/* ══════════════════════════════════════════════════════════
-   GPS: distância da garagem e sentido do caminhão
-   Ajuda a priorizar: quem está chegando pode entrar na fila.
-   ══════════════════════════════════════════════════════════ */
-var GPS_URL = 'https://script.google.com/macros/s/AKfycbxZ5P_l0cBM3g79srBUcxwdpMkKSHeE8d89Ksp9uFjhw4YnD2-m5rH8MVMyB5rDWRX9wQ/exec';
-var gpsPorFrota = {};
-
-// chave que trata VPL-188 e VP-188 como o mesmo veículo
-function _gpsChave(f){
-  return String(f||'').toUpperCase().replace(/\s+/g,'')
-    .replace(/^VPL/,'VP').replace(/^RBL/,'RB').replace(/-/g,'');
-}
-
-function carregarGPS(){
-  return fetch(GPS_URL + '?action=getStatusFrota&_t=' + Date.now(), {
-      method:'GET', redirect:'follow', headers:{'Content-Type':'text/plain'}
-    })
-    .then(function(r){ return r.text(); })
-    .then(function(t){
-      var res = null;
-      try { res = JSON.parse(t); } catch(e){ return; }
-      if(!res || !res.ok || !res.status) return;
-      var novo = {};
-      res.status.forEach(function(v){ novo[_gpsChave(v.frota)] = v; });
-      gpsPorFrota = novo;
-    })
-    .catch(function(){ /* sem GPS: cards seguem normais */ });
-}
-
-// Monta o selo de distância/sentido que aparece ao lado da frota
-function gpsSelo(frota){
-  var g = gpsPorFrota[_gpsChave(frota)];
-  if(!g || g.dist_garagem == null) return '';
-  // posição velha (mais de 15 min) não é confiável
-  if(g.minutos_atras != null && g.minutos_atras > 15) return '';
-
-  var km = g.dist_garagem;
-  var kmTxt = km < 1 ? Math.round(km*1000)+' m' : String(km).replace('.', ',')+' km';
-
-  var seta, cls, titulo;
-  if(g.sentido === 'base'){
-    seta = '🏠'; cls = 'gps-base'; titulo = 'Na garagem';
-  } else if(g.sentido === 'voltando'){
-    seta = '↓';  cls = 'gps-volta'; titulo = 'Voltando para a garagem';
-  } else if(g.sentido === 'indo'){
-    seta = '↑';  cls = 'gps-indo';  titulo = 'Afastando-se da garagem';
-  } else {
-    seta = '⏸';  cls = 'gps-parado'; titulo = 'Parado';
-  }
-
-  // previsão de chegada (só quando está voltando)
-  var eta = '';
-  if(g.sentido === 'voltando' && g.eta_garagem != null){
-    var m = g.eta_garagem;
-    eta = ' • chega em ' + (m < 60 ? m+' min' : Math.floor(m/60)+'h'+String(m%60).padStart(2,'0'));
-  }
-
-  return '<span class="gps-selo '+cls+'" title="'+titulo+'">'+
-         seta+' '+kmTxt+eta+'</span>';
-}
-try { var _c=JSON.parse(localStorage.getItem('twm_config')||'{}'); if(_c.scriptUrl) SCRIPT_URL=_c.scriptUrl; } catch(e){}
-
-var OS_KEY     = 'twm_manutencao_os';
-var APAG_KEY   = 'twm_manut_apagados';
-var ordens     = [];
-var COLS       = ['aberta','andando','agpeca','externa','concl'];
-var COLS_LBL   = {aberta:'Aberta',andando:'Andamento',agpeca:'Ag. Peça',externa:'Of. Externa',concl:'Concluída'};
-var COLS_CLASS = {aberta:'ca',andando:'an',agpeca:'ag',externa:'ex',concl:'ok'};
-var PRIO_COLORS= {urgente:'var(--red)',normal:'var(--amber)',baixa:'var(--green)'};
-var _ctxOS=null, _ctxSV=null, _ctxCol='aberta';
-var _fcOsId=null;
-var _filtroBusca='', _filtroMec='', _filtroCol='', _filtroAtrasado=false;
-
-// ════════════════════════════════════════
-//  UTILS
-// ════════════════════════════════════════
-function lerOS(){ try{return JSON.parse(localStorage.getItem(OS_KEY)||'[]');}catch(e){return[];} }
-function salvarOS(){ localStorage.setItem(OS_KEY,JSON.stringify(ordens)); }
-function uid(){ return Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,5).toUpperCase(); }
-function hoje(){
-  var d=new Date(), p=function(n){return String(n).padStart(2,'0');};
-  return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear();
-}
-function tempoDecorrido(ts){
-  if(!ts) return '';
-  var diff=Date.now()-ts, m=Math.floor(diff/60000), h=Math.floor(m/60), d=Math.floor(h/24);
-  if(d>0) return d+'d';
-  if(h>0) return h+'h';
-  if(m>0) return m+'min';
-  return 'agora';
-}
-function ehHoje(ts){
-  if(!ts) return false;
-  var d1=new Date(ts), d2=new Date();
-  return d1.getFullYear()===d2.getFullYear() && d1.getMonth()===d2.getMonth() && d1.getDate()===d2.getDate();
-}
-function dataPrevBadge(prev){
-  if(!prev) return '';
-  var hoje2=new Date(); hoje2.setHours(0,0,0,0);
-  var d=new Date(prev+'T00:00:00'); d.setHours(0,0,0,0);
-  var diff=Math.floor((d-hoje2)/86400000);
-  if(diff<0) return '<span class="fc-data-badge atrasado">'+Math.abs(diff)+'d atrasado</span>';
-  if(diff===0) return '<span class="fc-data-badge hoje">vence hoje</span>';
-  return '<span class="fc-data-badge ok">'+diff+'d restantes</span>';
-}
-function fmtData(ts){
-  if(!ts) return '—';
-  var d=new Date(ts), p=function(n){return String(n).padStart(2,'0');};
-  return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes());
-}
-function iniciais(nome){ if(!nome) return '?'; return nome.trim().split(' ').slice(0,2).map(function(n){return n[0];}).join('').toUpperCase(); }
-function norm(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
-
-// Toast
-var _tt;
-function toast(msg,tipo){
-  var el=document.getElementById('toast');
-  el.textContent=msg; el.className='toast on'+(tipo?' '+tipo:'');
-  clearTimeout(_tt); _tt=setTimeout(function(){el.className='toast';},3000);
-}
-
-// Modal simples
-function oM(id){document.getElementById(id).classList.add('on');}
-function fM(id){document.getElementById(id).classList.remove('on');}
-document.querySelectorAll('.overlay').forEach(function(el){
-  el.addEventListener('click',function(e){if(e.target===el)el.classList.remove('on');});
-});
-
-// Sync servidor
-function sync(os){
-  if(!SCRIPT_URL||!navigator.onLine) return;
-  // Fornecedor = nome da oficina externa (se houver serviço externo nesta OS)
-  var fornecedor='';
-  (os.servicos||[]).forEach(function(s){
-    if(s.status==='externa' && s.oficina_nome && !fornecedor) fornecedor=s.oficina_nome;
+/* Chamada ao Apps Script contornando o CORS do redirect 302.
+   O Apps Script responde 302 → googleusercontent.com, que não manda
+   header CORS. Lendo em modo texto e com redirect:follow, o navegador
+   segue o redirect sem exigir CORS no destino. */
+function apiGet(qs){
+  return fetch(SCRIPT_URL + qs, {
+    method: 'GET',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain' }   // text/plain evita preflight
+  })
+  .then(function(r){ return r.text(); })
+  .then(function(t){
+    try { return JSON.parse(t); }
+    catch(e){ return null; }   // resposta não-JSON
   });
-  var p=new URLSearchParams({action:'salvarManutencao',id_os:os.id,frota:os.frota,
-    prioridade:os.prioridade,status:os.status,origem:os.origem||'manual',
-    fornecedor:fornecedor,
-    motorista:os.motorista||'',data_aber:os.data_aber,servicos:JSON.stringify(os.servicos||[])});
-  fetch(SCRIPT_URL+'?'+p.toString()).catch(function(){});
 }
 
-function atualizarStatusOS(os){
-  var svs=os.servicos||[];
-  var temPend   = svs.some(function(s){return s.status==='pend';});
-  var todosFeitos = svs.every(function(s){return s.status==='concl'||s.status==='pend';});
-  if(todosFeitos && temPend) os.status='pendente'; // sai do board, vai para aba Pendências
-  else if(todosFeitos){
-    if(os.status!=='concl') os.ts_concl = Date.now(); // carimba só na transição para concluído
-    os.status='concl';
-  }
-  else if(svs.some(function(s){return s.status==='externa';})) os.status='externa';
-  else if(svs.some(function(s){return s.status==='agpeca';}))  os.status='agpeca';
-  else if(svs.some(function(s){return s.status==='andando';})) os.status='andando';
-  else os.status='aberta';
+var ENVIO_INTERVALO_MS   = 30000;  // envia a cada 30s
+var REFRESH_INTERVALO_MS = 30000;  // admin recarrega a cada 30s
+var ONLINE_LIMITE_MIN    = 3;      // "online" se reportou nos últimos 3 min
+
+/* ============================================================
+   SESSÃO / PERMISSÕES  (mesmo padrão dos outros módulos)
+   ============================================================ */
+function _sessao(){
+  try { return JSON.parse(localStorage.getItem('twm_sessao') || localStorage.getItem('twm_usuario') || '{}'); }
+  catch(e){ return {}; }
+}
+function _perm(){
+  try { return JSON.parse(localStorage.getItem('twm_permissoes') || '{}'); }
+  catch(e){ return {}; }
+}
+function _isAdmin(){
+  var p = _perm();
+  return !!(p.admin || p.admin_master);
+}
+function _nomeUsuario(){
+  var s = _sessao();
+  return s.nome || s.usuario || s.motorista || s.name || 'Usuário';
+}
+/* A VP vem do APARELHO (tablet fixo no caminhão), configurada uma vez.
+   É a fonte mais confiável: o tablet está no veículo, então se ele se move,
+   aquele veículo se move — independente de quem está dirigindo. */
+function _frotaUsuario(){
+  var doTablet = (localStorage.getItem('twm_vp_tablet') || '').toString().toUpperCase();
+  if(doTablet) return doTablet;
+  var s = _sessao();
+  return (s.frota || s.veiculo || localStorage.getItem('twm_frota') || '').toString().toUpperCase();
+}
+function _placaTablet(){
+  return (localStorage.getItem('twm_placa_tablet') || '').toString().toUpperCase();
+}
+function _placaUsuario(){
+  var pt = _placaTablet();
+  if(pt) return pt;
+  var s = _sessao();
+  return (s.placa || s.placa_cav || localStorage.getItem('twm_placa') || '').toString().toUpperCase();
 }
 
-function addHistorico(os, txt){
-  os.historico = os.historico || [];
-  os.historico.push({txt:txt, ts:Date.now()});
+/* ============================================================
+   UTILS
+   ============================================================ */
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove('show'); }, 2600);
+}
+function iniciais(nome){
+  var p = (nome||'').trim().split(/\s+/);
+  if(p.length===1) return (p[0]||'?').substring(0,2).toUpperCase();
+  return (p[0][0]+p[p.length-1][0]).toUpperCase();
+}
+function minutosDesde(iso){
+  if(!iso) return 99999;
+  var t = new Date(iso).getTime();
+  if(isNaN(t)) return 99999;
+  return (Date.now()-t)/60000;
+}
+function tempoRelativo(iso){
+  var m = minutosDesde(iso);
+  if(m<1) return 'agora mesmo';
+  if(m<60) return Math.floor(m)+' min atrás';
+  var h = Math.floor(m/60);
+  if(h<24) return h+'h atrás';
+  return Math.floor(h/24)+'d atrás';
 }
 
-// Carrega do servidor
-function carregarDoServidor(){
-  if(!SCRIPT_URL||!navigator.onLine) return;
-  fetch(SCRIPT_URL+'?action=getManutencoes&status=all&_='+Date.now())
-    .then(function(r){return r.json();})
-    .then(function(resp){
-      if(!resp.ok) return;
-      // O Apps Script retorna a lista em resp.os (algumas versões usam resp.ordens)
-      var listaServidor = resp.os || resp.ordens || [];
-      var local  = lerOS();
-      var apag   = []; try{apag=JSON.parse(localStorage.getItem(APAG_KEY)||'[]');}catch(e){}
-      var mudou  = false;
+/* ============================================================
+   MAPA  (Leaflet com tiles estilo Google)
+   ============================================================ */
+var map, marcadores = {};
+var clusterFrota = null;   // grupo que agrupa marcadores próximos
+var jaEnquadrou = false;   // evita o mapa "pular" a cada atualização
+var jaCentralizou = false; // idem para a centralização no GPS
+var frotaAtual = [];
+var TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+var TILE_ATTR = '© OpenStreetMap © CARTO';
+var CENTRO_PADRAO = [-19.9668, -44.1985]; // Betim/MG (ajuste se quiser)
 
-      // IDs que existem no servidor (exceto os apagados localmente)
-      var idsServidor = listaServidor
-        .filter(function(o){ return apag.indexOf(o.id)<0; })
-        .map(function(o){ return o.id; });
+function initMapaFrota(){
+  if(map) return;
+  map = L.map('map', {
+    zoomControl:false,
+    attributionControl:false,
+    rotate:true,              // habilita rotação do mapa
+    touchRotate:true,         // girar com dois dedos na tela
+    rotateControl:false       // sem botão de bússola (só o gesto)
+  }).setView(CENTRO_PADRAO, 12);
+  L.control.attribution({prefix:false, position:'bottomright'}).addTo(map);
+  L.tileLayer(TILE_URL, {attribution:TILE_ATTR, maxZoom:20, subdomains:'abcd'}).addTo(map);
 
-      // Remove locais que NÃO existem mais no servidor
-      // (foram apagados na planilha)
-      var localFiltrado = local.filter(function(o){
-        // Mantém se: existe no servidor OU foi criado há menos de 2 min (ainda sincronizando)
-        // OU está na lista de apagados localmente (já tratado)
-        var noServidor = idsServidor.indexOf(o.id) >= 0;
-        var recente    = o.ts && (Date.now() - o.ts) < 120000;
-        if (!noServidor && !recente) { mudou = true; return false; }
-        return true;
-      });
-
-      // Adiciona/atualiza do servidor
-      var idsLocal = localFiltrado.map(function(o){ return o.id; });
-      listaServidor.forEach(function(o){
-        if(apag.indexOf(o.id)>=0) return;
-        if(idsLocal.indexOf(o.id)<0){
-          o.ts=o.ts||Date.now(); localFiltrado.unshift(o); mudou=true;
-        } else {
-          var idx=localFiltrado.findIndex(function(l){return l.id===o.id;});
-          if(idx>=0 && localFiltrado[idx].status!==o.status){
-            localFiltrado[idx].status=o.status; mudou=true;
-          }
-        }
-      });
-
-      if(mudou){ ordens=localFiltrado; salvarOS(); render(); }
-    }).catch(function(){});
-}
-
-// ════════════════════════════════════════
-//  RENDER BOARD
-// ════════════════════════════════════════
-function render(){
-  ordens = lerOS();
-  // Remove OS sem frota que tenham mais de 10 minutos (são resíduos)
-  var antes = ordens.length;
-  ordens = ordens.filter(function(o){
-    var temFrota = o.frota && o.frota.trim() && o.frota !== '—';
-    var velha = !o.ts || (Date.now() - o.ts) > 600000; // mais de 10min
-    return temFrota || !velha;
-  });
-  if(ordens.length < antes){ salvarOS(); }
-  var cnt={aberta:0,andando:0,agpeca:0,externa:0,concl:0};
-  ordens.forEach(function(o){ if(cnt[o.status]!==undefined) cnt[o.status]++; });
-  document.getElementById('cnt-ab').textContent=cnt.aberta;
-  document.getElementById('cnt-an').textContent=cnt.andando;
-  document.getElementById('cnt-ag').textContent=cnt.agpeca;
-  document.getElementById('cnt-ex').textContent=cnt.externa;
-  document.getElementById('cnt-ok').textContent=cnt.concl;
-  document.getElementById('cnt-all').textContent=ordens.length;
-
-  var board = document.getElementById('board');
-
-  // Coleta todas as pendências de todas as OS
-  var todasPend = [];
-  ordens.forEach(function(os){
-    (os.servicos||[]).forEach(function(sv){
-      if(sv.status === 'pend'){
-        todasPend.push({
-          os_id:    os.id,
-          sv_id:    sv.id,
-          frota:    os.frota || '—',
-          descricao:sv.descricao || '',
-          tipo:     sv.tipo || '',
-          pend_nota:sv.pend_nota || ''
+  // Agrupa marcadores próximos para não ficarem um sobre o outro.
+  // Ao aproximar o zoom, eles se separam sozinhos.
+  if(typeof L.markerClusterGroup === 'function'){
+    clusterFrota = L.markerClusterGroup({
+      maxClusterRadius: 45,          // só agrupa o que está bem perto
+      spiderfyOnMaxZoom: true,       // no zoom máximo, abre em leque
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      iconCreateFunction: function(cluster){
+        var n = cluster.getChildCount();
+        return L.divIcon({
+          html: '<div style="width:38px;height:38px;border-radius:50%;'+
+                'background:#7C3AED;color:#fff;border:2.5px solid #fff;'+
+                'box-shadow:0 2px 8px rgba(0,0,0,.35);display:flex;'+
+                'align-items:center;justify-content:center;'+
+                'font-weight:800;font-size:14px;font-family:var(--sfont)">'+n+'</div>',
+          className: '',
+          iconSize: [38,38]
         });
       }
     });
-  });
+    map.addLayer(clusterFrota);
+  }
 
-  board.innerHTML = COLS.map(function(col){
-    var lista = ordens.filter(function(o){
-      if(o.status!==col) return false;
-      // Coluna "Concluída" do board só mostra o que foi concluído HOJE —
-      // o resto fica disponível na aba Histórico, pra não acumular.
-      // OS antigas sem ts_concl (de antes dessa mudança) não aparecem
-      // mais aqui, mas continuam visíveis no Histórico normalmente.
-      if(col==='concl') return ehHoje(o.ts_concl);
-      return true;
-    });
-    return '<div class="col '+COLS_CLASS[col]+'" id="col-wrap-'+col+'" data-col="'+col+'">' +
-      '<div class="col-hd"><div class="col-title">' +
-        '<div class="col-dot"></div>'+COLS_LBL[col]+
-        '<span class="col-cnt" id="lbl-'+col+'">'+lista.length+'</span>'+
-      '</div></div>' +
-      '<div class="col-body" id="col-'+col+'" ondragover="dragOver(event,\''+col+'\')" ondrop="drop(event,\''+col+'\')">' +
-        lista.map(renderCard).join('') +
-        '<div class="empty-msg" style="display:'+(lista.length?'none':'block')+';text-align:center;padding:20px 10px;font-size:12px;color:var(--tx3)">Nenhuma O.S.</div>' +
-      '</div>' +
-      '<div class="col-footer"><button class="btn-nova-os" data-col="'+col+'" onclick="abrirNovaOS(this.dataset.col)">＋ Nova O.S.</button></div>' +
+  centralizarNoUsuario();
+}
+
+// Centraliza o mapa na posição atual do usuário (igual Google Maps ao abrir).
+// Tenta GPS preciso; se falhar/demorar, aceita a posição APROXIMADA que o
+// próprio navegador calcula por Wi-Fi e torres de celular (GSM).
+var meMarker = null;
+function centralizarNoUsuario(){
+  if(!navigator.geolocation) return;
+
+  function mostrar(pos, aproximada){
+    var lat = pos.coords.latitude, lng = pos.coords.longitude;
+    var acc = pos.coords.accuracy || 0;
+    // zoom menor quando a posição é aproximada (torre/Wi-Fi)
+    var zoom = acc > 300 ? 13 : 15;
+    map.setView([lat,lng], zoom, {animate:true});
+    jaCentralizou = true;   // já posicionou; envios seguintes não movem a tela
+    if(meMarker) map.removeLayer(meMarker);
+    meMarker = L.marker([lat,lng], {icon: iconeMeuPonto(null, _frotaUsuario())}).addTo(map);
+    meMarker.bindPopup('<b>Você está aqui</b>' + (aproximada ? '<br><small>posição aproximada (~'+Math.round(acc)+'m)</small>' : ''));
+    setTimeout(function(){ map.invalidateSize(); }, 200);
+  }
+
+  // 1ª tentativa: GPS preciso
+  navigator.geolocation.getCurrentPosition(function(pos){
+    mostrar(pos, false);
+  }, function(){
+    // 2ª tentativa: posição APROXIMADA (Wi-Fi / torres de celular)
+    navigator.geolocation.getCurrentPosition(function(pos){
+      mostrar(pos, true);
+    }, function(){
+      // sem nenhuma fonte disponível — mantém o centro padrão, sem travar
+    }, {enableHighAccuracy:false, timeout:12000, maximumAge:60000});
+  }, {enableHighAccuracy:true, timeout:7000, maximumAge:15000});
+}
+
+// Ícone customizado (pin com iniciais) estilo rastreador
+function iconePessoa(vp, online){
+  var cor = online ? '#30D158' : '#8E8E93';
+  var vpTxt = vp || '?';
+  var html =
+    '<div style="position:relative;display:flex;flex-direction:column;align-items:center;width:auto">'+
+      // bolinha com caminhãozinho
+      '<div style="width:30px;height:30px;border-radius:50%;background:'+cor+';'+
+        'border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);'+
+        'display:flex;align-items:center;justify-content:center;font-size:14px">🚚</div>'+
+      // etiqueta com a VP
+      '<div style="margin-top:2px;background:'+cor+';color:#fff;font-weight:800;'+
+        'font-size:11px;font-family:var(--sfont);padding:1px 7px;border-radius:8px;'+
+        'white-space:nowrap;border:1.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)">'+vpTxt+'</div>'+
     '</div>';
-  }).join('');
-
-  // Aplica filtros ativos
-  aplicarFiltros();
-
-  // Reaplica drag listeners
-  document.querySelectorAll('.card').forEach(addDragListeners);
+  return L.divIcon({html:html, className:'', iconSize:[60,50], iconAnchor:[30,15], popupAnchor:[0,-16]});
 }
 
-// Extrai as unidades (cavalo + carretas) de um código de frota.
-// "VP-520" → ["VP-520"];  "VPL-185 RB-185" → ["VP-185","RB-185"];
-// "VP-456 RB-98/99" → ["VP-456","RB-98","RB-99"]
-function unidadesDaFrota(frotaCod){
-  var out=[];
-  String(normalizaCod(frotaCod)).trim().split(/\s+/).forEach(function(tok){
-    var m=tok.match(/^([A-Za-z]+)[-\s]*([\d\/]+)$/);
-    if(!m){ if(tok) out.push(tok.toUpperCase()); return; }
-    var pref=m[1].toUpperCase();
-    m[2].split('/').forEach(function(n){ if(n) out.push(pref+'-'+n); });
-  });
-  return out;
+// Ponto azul estilo Google Maps para "minha posição", com a VP embaixo
+function iconeMeuPonto(heading, vp){
+  var rot = (heading!=null && !isNaN(heading)) ? heading : 0;
+  var etiqueta = vp ? (
+    '<div style="position:absolute;top:44px;left:50%;transform:translateX(-50%);'+
+      'background:#4285F4;color:#fff;font-weight:800;font-size:11px;'+
+      'font-family:var(--sfont);padding:2px 7px;border-radius:8px;white-space:nowrap;'+
+      'border:1.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)">'+vp+'</div>'
+  ) : '';
+  var html =
+    '<div style="position:relative;width:44px;height:44px">'+
+      '<div style="position:absolute;top:2px;left:2px;width:40px;height:40px;border-radius:50%;'+
+        'background:rgba(66,133,244,.18)"></div>'+
+      '<div style="position:absolute;top:8px;left:8px;width:28px;height:28px;border-radius:50%;'+
+        'background:#4285F4;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);'+
+        'display:flex;align-items:center;justify-content:center;font-size:15px;'+
+        'transform:rotate('+rot+'deg);transition:transform .3s ease">🚚</div>'+
+      etiqueta+
+    '</div>';
+  return L.divIcon({html:html, className:'', iconSize:[44,44], iconAnchor:[22,22], popupAnchor:[0,-20]});
 }
 
-// Retorna as pendências abertas de OUTRAS OS que envolvem alguma unidade
-// deste conjunto (mesmo cavalo ou mesma carreta).
-function pendenciasDoConjunto(os){
-  var minhasUnid = unidadesDaFrota(os.frota);
-  var lista = lerPendencias();
-  return lista.filter(function(p){
-    if(p.status!=='pendente') return false;
-    if(p.os_id===os.id) return false; // não conta as da própria OS
-    var pUnid = unidadesDaFrota(p.frota);
-    // Há interseção de unidade?
-    return pUnid.some(function(u){ return minhasUnid.indexOf(u)>=0; });
-  });
-}
+/* ============================================================
+   ENVIO DA MINHA LOCALIZAÇÃO  (tempo real, a cada 30s)
+   ============================================================ */
+var watchId = null, envioTimer = null, ultimaPos = null, compartilhando = false;
 
-function renderCard(os){
-  var fv=os.frota||''; var fCls=fv.match(/^VP/i)?'vp':fv.match(/^RB/i)?'rb':'outro';
-  var prio=os.prioridade||'normal';
-  var svs=os.servicos||[];
-  var svAbertos=svs.filter(function(s){return s.status!=='concl'&&s.status!=='pend';}).length;
-  var svTotal=svs.length;
-  var mecPrincipal=svs.find(function(s){return s.mecanico;});
-  var tempo=tempoDecorrido(os.ts);
-  var comentarios=(os.comentarios||[]).length;
-  var atrasado=os.status!=='concl'&&os.ts&&(Date.now()-os.ts)>3*86400000;
-  var prevBadge=os.data_prev?dataPrevBadge(os.data_prev):'';
-
-  return '<div class="card" id="card-'+os.id+'" draggable="true" data-id="'+os.id+'">' +
-    '<div class="card-accent p-'+prio+'"></div>' +
-    // Header clicável → abre fullcard
-    '<div class="card-top" onclick="abrirFC(\''+os.id+'\')">' +
-      '<div class="card-frota '+fCls+'">'+os.frota+gpsSelo(os.frota)+'</div>' +
-      '<div class="card-meta">' +
-        '<span class="prio-tag '+prio+'">'+prio+'</span>' +
-        (atrasado?'<span style="font-size:9px;font-weight:700;color:var(--red)">⚠️ Atrasada</span>':'') +
-        prevBadge +
-        '<span class="card-tempo">'+tempo+'</span>' +
-      '</div>' +
-      (os.origem==='checklist'?'<div class="card-origem">📋 '+(os.motorista||'Check List')+'</div>':'') +
-    '</div>' +
-    // Aviso: pendências abertas de OUTRAS OS no mesmo cavalo/carreta
-    (function(){
-      var pc = pendenciasDoConjunto(os);
-      if(!pc.length) return '';
-      var lis = pc.slice(0,3).map(function(p){
-        return '<div class="cardpend-item">⏸ '+esc(p.frota)+': '+esc(String(p.descricao||'').replace(/^\s*\[[^\]]*\]\s*/,''))+'</div>';
-      }).join('');
-      var mais = pc.length>3 ? '<div class="cardpend-item">+'+(pc.length-3)+' pendência(s)…</div>' : '';
-      return '<div class="cardpend" onclick="event.stopPropagation();showTab(\'pendencias\')" title="Pendências abertas neste conjunto">' +
-             '<div class="cardpend-hd">⚠ '+pc.length+' pendência(s) neste conjunto</div>'+lis+mais+'</div>';
-    })() +
-    // Serviços
-    '<div class="card-svs">' +
-      svs.slice(0,3).map(function(sv){
-        return '<div class="sv-chip '+sv.status+'">' +
-          '<div class="sv-status-dot '+sv.status+'"></div>' +
-          '<div class="sv-desc">'+sv.descricao+'</div>' +
-        '</div>';
-      }).join('') +
-      (svs.length>3?'<div style="font-size:10px;color:var(--tx3);padding:2px 4px">+' +(svs.length-3)+' serviços</div>':'') +
-    '</div>' +
-    // Footer
-    '<div class="card-footer">' +
-      (mecPrincipal?
-        '<div class="mec-avatar" title="'+mecPrincipal.mecanico+'">'+iniciais(mecPrincipal.mecanico)+'</div>' +
-        '<div class="mec-name">'+mecPrincipal.mecanico+'</div>' :
-        '<div style="font-size:11px;color:var(--tx3);flex:1">Sem mecânico</div>') +
-      '<div class="card-actions">' +
-        (comentarios?'<span class="card-comments-badge">💬'+comentarios+'</span>':'') +
-        '<span style="font-size:10px;color:var(--tx3)">'+svAbertos+'/'+svTotal+' svs</span>' +
-      '</div>' +
-    '</div>' +
-  '</div>';
-}
-
-// ════════════════════════════════════════
-//  FILTROS
-// ════════════════════════════════════════
-function aplicarFiltros(){
-  var q = norm(_filtroBusca);
-  var mec = (_filtroMec||'').toLowerCase();
-  ordens.forEach(function(os){
-    var card=document.getElementById('card-'+os.id); if(!card) return;
-    var txt = norm(os.frota+' '+(os.motorista||'')+' '+
-      (os.servicos||[]).map(function(s){return s.descricao+' '+(s.mecanico||'');}).join(' '));
-    var matchQ = !q || txt.includes(q);
-    var matchM = !mec || (os.servicos||[]).some(function(s){return s.mecanico&&s.mecanico.toLowerCase().includes(mec);});
-    var matchC = !_filtroCol || os.status===_filtroCol;
-    var atrasado=os.status!=='concl'&&os.ts&&(Date.now()-os.ts)>3*86400000;
-    var matchAt = !_filtroAtrasado || atrasado;
-    card.classList.toggle('oculto', !(matchQ&&matchM&&matchC&&matchAt));
-  });
-}
-
-function buscar(q){
-  _filtroBusca=q||'';
-  _filtroMec='';
-  var bx=document.getElementById('busca');
-  bx.style.borderColor=q?'var(--ac)':'';
-  aplicarFiltros();
-}
-
-function filtrarCol(col){
-  _filtroCol=col; _filtroAtrasado=false;
-  document.querySelectorAll('.res-card').forEach(function(el){el.style.boxShadow='';});
-  aplicarFiltros();
-}
-
-function filtrarAtrasados(){
-  _filtroAtrasado=!_filtroAtrasado; _filtroCol='';
-  document.getElementById('btn-alerta').classList.toggle('on',_filtroAtrasado);
-  aplicarFiltros();
-}
-
-// ════════════════════════════════════════
-//  DRAG & DROP
-// ════════════════════════════════════════
-var _dragId=null;
-function addDragListeners(card){
-  card.addEventListener('dragstart',function(e){
-    _dragId=card.dataset.id;
-    card.classList.add('dragging');
-    e.dataTransfer.effectAllowed='move';
-  });
-  card.addEventListener('dragend',function(){
-    card.classList.remove('dragging');
-    document.querySelectorAll('.col-body').forEach(function(c){c.classList.remove('drag-over');});
-  });
-  // Touch drag
-  var startY=0,startX=0,moving=false;
-  card.addEventListener('touchstart',function(e){startY=e.touches[0].clientY;startX=e.touches[0].clientX;_dragId=card.dataset.id;},{ passive:true });
-  card.addEventListener('touchmove',function(e){
-    if(!moving){moving=true;card.style.opacity='.5';}
-    var el=document.elementFromPoint(e.touches[0].clientX,e.touches[0].clientY);
-    document.querySelectorAll('.col-body').forEach(function(c){c.classList.remove('drag-over');});
-    var colBody=el&&el.closest('.col-body');
-    if(colBody) colBody.classList.add('drag-over');
-  },{ passive:true });
-  card.addEventListener('touchend',function(e){
-    card.style.opacity='';moving=false;
-    var el=document.elementFromPoint(e.changedTouches[0].clientX,e.changedTouches[0].clientY);
-    var colBody=el&&el.closest('.col-body');
-    if(colBody){var col=colBody.id.replace('col-','');moverOS(_dragId,col);}
-    document.querySelectorAll('.col-body').forEach(function(c){c.classList.remove('drag-over');});
-  });
-}
-function dragOver(e,col){
-  e.preventDefault();e.dataTransfer.dropEffect='move';
-  document.querySelectorAll('.col-body').forEach(function(c){c.classList.remove('drag-over');});
-  document.getElementById('col-'+col).classList.add('drag-over');
-}
-function drop(e,col){
-  e.preventDefault();
-  document.querySelectorAll('.col-body').forEach(function(c){c.classList.remove('drag-over');});
-  if(_dragId) moverOS(_dragId,col);
-}
-function moverOS(osId,novoStatus){
-  ordens=lerOS();
-  var os=ordens.find(function(o){return o.id===osId;}); if(!os) return;
-  if(os.status===novoStatus) return;
-  var oldStatus=os.status;
-  os.status=novoStatus;
-  (os.servicos||[]).forEach(function(sv){if(sv.status!=='concl'&&sv.status!=='pend')sv.status=novoStatus;});
-  addHistorico(os,'Movido: '+COLS_LBL[oldStatus]+' → '+COLS_LBL[novoStatus]);
-  sync(os); salvarOS(); render();
-  toast('Movido para '+COLS_LBL[novoStatus],'ok');
-  if(_fcOsId===osId) abrirFC(osId);
-}
-
-// ════════════════════════════════════════
-//  FULL CARD
-// ════════════════════════════════════════
-// ── Integração com outros módulos do TWM DataLink ──────────────
-
-// Detecta se um serviço é relacionado a pneu, pela palavra-chave
-// na descrição OU pelo grupo Globus já atribuído ([35] PNEUS).
-function ehServicoPneu(sv){
-  var tipo = String(sv.tipo||'');
-  if (tipo.indexOf('[35]') === 0 || tipo.toUpperCase().indexOf('PNEU') >= 0) return true;
-  var desc = String(sv.descricao||'').toLowerCase();
-  return /pneu|borracha|estepe|calibr/.test(desc);
-}
-
-// Abre o módulo de Pneus já com o veículo da OS selecionado.
-// O parâmetro vai na URL (?frota=XXX); pneus.html lê esse parâmetro
-// no carregamento e chama abrirVeiculo(frota) automaticamente.
-function abrirModuloPneus(frota){
-  window.location.href = 'pneus.html?frota=' + encodeURIComponent(frota);
-}
-
-// Abre o módulo de Solicitação de Compras já com a frota preenchida,
-// data/hora atual e pronto para o encarregado digitar a peça.
-function abrirModuloCompras(frota){
-  window.location.href = 'solicitacao_compras.html?novo=1&frota=' + encodeURIComponent(frota);
-}
-
-function abrirFC(osId){
-  _fcOsId=osId;
-  ordens=lerOS();
-  var os=ordens.find(function(o){return o.id===osId;}); if(!os) return;
-  var prio=os.prioridade||'normal';
-  var fv=os.frota||''; var fCls=fv.match(/^VP/i)?'vp':fv.match(/^RB/i)?'rb':'outro';
-
-  // Accent
-  document.getElementById('fc-accent').style.background=PRIO_COLORS[prio]||'var(--amber)';
-
-  // Frota
-  var fcFrota=document.getElementById('fc-frota');
-  fcFrota.textContent=os.frota;
-  fcFrota.className='fullcard-frota '+fCls;
-
-  // Tags
-  var atrasado=os.status!=='concl'&&os.ts&&(Date.now()-os.ts)>3*86400000;
-  document.getElementById('fc-tags').innerHTML=
-    '<span class="prio-tag '+prio+'">'+prio+'</span>'+
-    '<span style="font-size:10px;color:var(--tx3)">'+COLS_LBL[os.status]+'</span>'+
-    '<span style="font-size:10px;color:var(--tx3)">📅 '+os.data_aber+'</span>'+
-    (os.ts?'<span style="font-size:10px;color:var(--tx3)">⏱ '+tempoDecorrido(os.ts)+'</span>':'')+
-    (atrasado?'<span style="font-size:10px;font-weight:700;color:var(--red)">⚠️ Atrasada</span>':'')+
-    (os.origem==='checklist'?'<span style="font-size:10px;color:var(--ac)">📋 Check List</span>':'');
-
-  // Body
-  var html='';
-
-  // Serviços
-  html+='<div class="fc-section"><div class="fc-section-title">Serviços ('+( os.servicos||[]).length+')</div>';
-  (os.servicos||[]).forEach(function(sv){
-    var stLbls={aberta:'Aberta',andando:'Em Andamento',concl:'Concluído',pend:'Pendência',agpeca:'Ag. Peça',externa:'Of. Externa'};
-    html+='<div class="fc-sv '+sv.status+'">' +
-      '<div class="fc-sv-top">' +
-        '<div class="fc-sv-tipo">'+sv.tipo+'</div>' +
-        '<span class="prio-tag" style="font-size:9px">'+( stLbls[sv.status]||sv.status)+'</span>' +
-        '<button class="btn-sv-act edit" style="padding:3px 8px;font-size:11px" data-oid="'+osId+'" data-sid="'+sv.id+'" onclick="abrirEditSV(this.dataset.oid,this.dataset.sid)">✎</button>' +
-      '</div>' +
-      '<div class="fc-sv-desc">'+sv.descricao+(sv.de_pendencia?' <span class="selo-pend">↩ de pendência</span>':'')+'</div>' +
-      (sv.solucao?'<div class="fc-sv-extra sol">✅ '+sv.solucao+'</div>':'')+
-      (sv.status==='pend'&&sv.pend_nota?'<div class="fc-sv-extra pend">⏸ '+sv.pend_nota+'</div>':'')+
-      (sv.status==='agpeca'&&sv.ag_peca?'<div class="fc-sv-extra ag">⏳ Peça: '+sv.ag_peca+(sv.ag_prev?' · '+sv.ag_prev:'')+'</div>':'')+
-      (sv.status==='externa'?'<div class="fc-sv-extra ext">🏭 '+(sv.oficina_nome||'Oficina')+(sv.oficina_prev?' · '+sv.oficina_prev:'')+'</div>':'')+
-      (sv.mecanico?'<div style="font-size:11px;color:var(--tx3);margin-bottom:6px">👤 '+sv.mecanico+(sv.tempo?' · ⏱ '+sv.tempo:'')+'</div>':'')+
-      '<div class="fc-sv-acts">';
-    if(sv.status==='aberta'||sv.status==='andando'){
-      html+='<button class="btn-sv-act ok" data-oid="'+osId+'" data-sid="'+sv.id+'" onclick="abrirConcluir(this.dataset.oid,this.dataset.sid)">Concluir</button>'+
-            '<button class="btn-sv-act warn" data-oid="'+osId+'" data-sid="'+sv.id+'" onclick="abrirPend(this.dataset.oid,this.dataset.sid)">Pendência</button>'+
-            (sv.status==='aberta'?'<button class="btn-sv-act move" data-oid="'+osId+'" data-sid="'+sv.id+'" data-st="andando" onclick="moverSV(this.dataset.oid,this.dataset.sid,this.dataset.st)">Andamento</button>':'')+
-            '<button class="btn-sv-act ag" data-oid="'+osId+'" data-sid="'+sv.id+'" onclick="abrirAgP(this.dataset.oid,this.dataset.sid)">Ag. Peça</button>'+
-            '<button class="btn-sv-act ext" data-oid="'+osId+'" data-sid="'+sv.id+'" onclick="abrirExt(this.dataset.oid,this.dataset.sid)">Of. Externa</button>'+
-            '<button class="btn-sv-act move" data-oid="'+osId+'" data-sid="'+sv.id+'" onclick="abrirMec(this.dataset.oid,this.dataset.sid)">'+(sv.mecanico?'✎ Mecânico':'+ Mecânico')+'</button>';
-    } else if(sv.status==='agpeca'||sv.status==='pend'){
-      html+='<button class="btn-sv-act ok" data-oid="'+osId+'" data-sid="'+sv.id+'" onclick="abrirConcluir(this.dataset.oid,this.dataset.sid)">Concluir</button>';
-      if(sv.status==='pend'){
-        html+='<button class="btn-sv-act move" data-oid="'+osId+'" data-sid="'+sv.id+'" onclick="reabrirSV(this.dataset.oid,this.dataset.sid)">↻ Reabrir</button>';
-      }
-    } else if(sv.status==='externa'){
-      html+='<button class="btn-sv-act ok" data-oid="'+osId+'" data-sid="'+sv.id+'" onclick="abrirConcluir(this.dataset.oid,this.dataset.sid)">Retornou</button>'+
-            '<button class="btn-sv-act move" data-oid="'+osId+'" data-sid="'+sv.id+'" data-st="andando" onclick="moverSV(this.dataset.oid,this.dataset.sid,this.dataset.st)">Voltar</button>';
-    }
-    // ── Atalhos para outros módulos — independem do status do serviço ──
-    if(ehServicoPneu(sv)){
-      html+='<button class="btn-sv-act pneu" data-frota="'+os.frota+'" onclick="abrirModuloPneus(this.dataset.frota)">🔧 Abrir Pneus</button>';
-    }
-    html+='<button class="btn-sv-act compra" data-frota="'+os.frota+'" onclick="abrirModuloCompras(this.dataset.frota)">🛒 Solicitar Compra</button>';
-    html+='</div></div>';
-  });
-  html+='</div>';
-
-  // ── Pendências deste conjunto (de outras OS) — decidir se ativa ──
-  var pendConj = pendenciasDoConjunto(os);
-  if(pendConj.length){
-    html+='<div class="fc-section"><div class="fc-section-title" style="color:#c2410c">⏸ Pendências deste conjunto ('+pendConj.length+')</div>';
-    html+='<div style="font-size:11px;color:var(--tx3);margin-bottom:8px">Ative para trazer a pendência para esta O.S. e resolvê-la. Se não ativar, ela continua no quadro de Pendências.</div>';
-    pendConj.forEach(function(p){
-      var descLimpa = String(p.descricao||'').replace(/^\s*\[[^\]]*\]\s*/,'');
-      html+='<div class="fc-pendconj">' +
-        '<div class="fc-pendconj-top">' +
-          '<span class="fc-pendconj-frota">'+esc(p.frota)+'</span>' +
-          (p.tipo?'<span class="fc-pendconj-tipo">'+esc(p.tipo)+'</span>':'') +
-        '</div>' +
-        '<div class="fc-pendconj-desc">'+esc(descLimpa)+'</div>' +
-        (p.pend_nota?'<div class="fc-pendconj-nota">⏸ '+esc(p.pend_nota)+'</div>':'') +
-        '<button class="btn-sv-act ok" data-oid="'+osId+'" data-pid="'+p.id+'" onclick="ativarPendencia(this.dataset.oid,this.dataset.pid)">✓ Ativar (vamos fazer)</button>' +
-      '</div>';
-    });
-    html+='</div>';
-  }
-
-  // Data prevista
-  html+='<div class="fc-section"><div class="fc-section-title">Data Prevista de Conclusão</div>';
-  html+='<div class="fc-data-row">' +
-    '<input class="fc-data-inp" type="date" id="fc-data-prev" value="'+(os.data_prev||'')+'" onchange="salvarDataPrev(\''+osId+'\',this.value)">' +
-    (os.data_prev?dataPrevBadge(os.data_prev):'<span style="font-size:11px;color:var(--tx3)">Sem data definida</span>')+
-  '</div></div>';
-
-  // Mover OS
-  html+='<div class="fc-section"><div class="fc-section-title">Mover O.S. para...</div>';
-  html+='<div class="fc-mover-opts">'+COLS.filter(function(c){return c!==os.status;}).map(function(c){
-    return '<button class="btn-mover-col" data-col="'+c+'" onclick="moverOS(\''+osId+'\',this.dataset.col)">'+COLS_LBL[c]+'</button>';
-  }).join('')+'</div></div>';
-
-  // Histórico de movimentações
-  var hist=os.historico||[];
-  if(hist.length){
-    html+='<div class="fc-section"><div class="fc-section-title">Histórico ('+hist.length+')</div>';
-    hist.slice().reverse().forEach(function(h){
-      html+='<div class="fc-hist-item"><div class="fc-hist-dot"></div>' +
-        '<div><div class="fc-hist-txt">'+h.txt+'</div><div class="fc-hist-time">'+fmtData(h.ts)+'</div></div></div>';
-    });
-    html+='</div>';
-  }
-
-  // Comentários
-  var coms=os.comentarios||[];
-  html+='<div class="fc-section"><div class="fc-section-title">Comentários ('+coms.length+')</div>';
-  if(coms.length){
-    coms.slice().reverse().forEach(function(cm){
-      html+='<div class="fc-comment">' +
-        '<span class="fc-comment-autor">'+cm.autor+'</span>' +
-        '<span class="fc-comment-time">'+fmtData(cm.ts)+'</span>' +
-        '<div class="fc-comment-txt">'+cm.txt+'</div></div>';
-    });
-  }
-  html+='<div class="fc-add-comment">' +
-    '<input class="fc-comment-inp" id="fc-com-inp" placeholder="Adicionar comentário..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();enviarComentario(\''+osId+'\')}">' +
-    '<button class="fc-comment-btn" onclick="enviarComentario(\''+osId+'\')">Enviar</button>' +
-  '</div></div>';
-
-  document.getElementById('fc-body').innerHTML=html;
-  document.getElementById('fc-overlay').classList.add('on');
-}
-
-function fecharFC(){
-  document.getElementById('fc-overlay').classList.remove('on');
-  _fcOsId=null;
-}
-
-function salvarDataPrev(osId, val){
-  ordens=lerOS();
-  var os=ordens.find(function(o){return o.id===osId;}); if(!os) return;
-  os.data_prev=val;
-  sync(os); salvarOS(); render();
-  abrirFC(osId);
-}
-
-function enviarComentario(osId){
-  var inp=document.getElementById('fc-com-inp');
-  var txt=(inp?inp.value:'').trim(); if(!txt) return;
-  ordens=lerOS();
-  var os=ordens.find(function(o){return o.id===osId;}); if(!os) return;
-  os.comentarios=os.comentarios||[];
-  var user='';
-  try{var s=JSON.parse(localStorage.getItem('twm_session')||'{}');user=s.motorista?s.motorista.nome||s.motorista.email:'Usuário';}catch(e){user='Usuário';}
-  os.comentarios.push({autor:user,txt:txt,ts:Date.now()});
-  sync(os); salvarOS(); render();
-  abrirFC(osId);
-}
-
-function fcAddSV(){ _ctxOS=_fcOsId; fM('m-addsv'); setTimeout(function(){oM('m-addsv');},10); }
-function fcApagar(){ _ctxOS=_fcOsId; fecharFC();
-  var os=lerOS().find(function(o){return o.id===_ctxOS;});
-  document.getElementById('conf-txt').textContent='Apagar a O.S. de '+(os?os.frota:'')+'?';
-  oM('m-conf');
-}
-
-// ════════════════════════════════════════
-//  NOVA OS — múltiplas manutenções
-// ════════════════════════════════════════
-
-// Buffer de manutenções acrescentadas antes de abrir a O.S.
-var _novaOSItens = [];
-
-function abrirNovaOS(col){
-  _ctxCol = col;
-  _novaOSItens = [];
-  // Limpa campos
-  ['n-frota','n-mec','n-desc','n-prev'].forEach(function(id){
-    var e = document.getElementById(id); if(e) e.value='';
-  });
-  var sp = document.getElementById('n-prio'); if(sp) sp.value='normal';
-  var st = document.getElementById('n-tipo'); if(st) st.selectedIndex=14; // OUTROS
-  // Reseta lista
-  _renderNovaLista();
-  document.getElementById('n-item-label').textContent = 'Manutenção nº 1';
-  oM('m-nova');
-}
-
-function _renderNovaLista(){
-  var wrap = document.getElementById('n-lista-wrap');
-  var lista = document.getElementById('n-lista');
-  if(!wrap || !lista) return;
-  if(_novaOSItens.length === 0){ wrap.style.display='none'; lista.innerHTML=''; return; }
-  wrap.style.display = 'block';
-  lista.innerHTML = _novaOSItens.map(function(item, idx){
-    var prioLabel = item.prio === 'urgente' ? '🔴 Urgente' : item.prio === 'baixa' ? 'Baixa' : 'Normal';
-    var tipoShort = item.tipo.replace(/^\[\d+\]\s*/,'');
-    return '<div class="n-chip">'
-      + '<div class="n-chip-num">'+(idx+1)+'</div>'
-      + '<div class="n-chip-info">'
-      +   '<div class="n-chip-tipo">'+tipoShort+'</div>'
-      +   '<div class="n-chip-desc">'+item.desc+'</div>'
-      + '</div>'
-      + '<span class="n-chip-prio '+item.prio+'">'+prioLabel+'</span>'
-      + '<button class="n-chip-del" onclick="_removerNovaItem('+idx+')" title="Remover">✕</button>'
-      + '</div>';
-  }).join('');
-}
-
-function _removerNovaItem(idx){
-  _novaOSItens.splice(idx,1);
-  _renderNovaLista();
-  document.getElementById('n-item-label').textContent = 'Manutenção nº '+(_novaOSItens.length+1);
-}
-
-function acrescentarManutencao(){
-  var prio = document.getElementById('n-prio').value;
-  var tipo = document.getElementById('n-tipo').value;
-  var desc = (document.getElementById('n-desc').value||'').trim();
-  if(!desc){ toast('Descreva o defeito para acrescentar','err'); return; }
-  _novaOSItens.push({prio:prio, tipo:tipo, desc:desc});
-  // Reseta campos de manutenção para o próximo item
-  document.getElementById('n-desc').value = '';
-  document.getElementById('n-prio').value = 'normal';
-  document.getElementById('n-tipo').selectedIndex = 14; // OUTROS
-  document.getElementById('n-item-label').textContent = 'Manutenção nº '+(_novaOSItens.length+1);
-  _renderNovaLista();
-  // Scroll para o formulário de próxima manutenção
-  document.getElementById('n-desc').scrollIntoView({behavior:'smooth', block:'center'});
-  toast('Manutenção '+_novaOSItens.length+' adicionada','ok');
-}
-
-function salvarNovaOS(){
-  var frota = (document.getElementById('n-frota').value||'').trim().toUpperCase();
-  var mec   = (document.getElementById('n-mec').value||'').trim();
-  var prev  = document.getElementById('n-prev').value;
-  // Captura o item atual do formulário (se preenchido)
-  var descAtual = (document.getElementById('n-desc').value||'').trim();
-  var prioAtual = document.getElementById('n-prio').value;
-  var tipoAtual = document.getElementById('n-tipo').value;
-  if(!frota){ toast('Informe a frota','err'); return; }
-  // Deve ter ao menos um item (acrescentado OU preenchido agora)
-  var itensFinal = _novaOSItens.slice();
-  if(descAtual) itensFinal.push({prio:prioAtual, tipo:tipoAtual, desc:descAtual});
-  if(itensFinal.length === 0){ toast('Descreva pelo menos um defeito','err'); return; }
-
-  ordens = lerOS();
-  // Usa a prioridade mais alta entre os itens como prioridade geral da OS
-  var prioGeral = itensFinal.some(function(i){return i.prio==='urgente';}) ? 'urgente'
-                : itensFinal.some(function(i){return i.prio==='normal';})  ? 'normal' : 'baixa';
-
-  var os = {
-    id:'OS-'+uid(), frota:frota, prioridade:prioGeral,
-    status:_ctxCol, origem:'manual', motorista:'',
-    data_aber:hoje(), ts:Date.now(), data_prev:prev||'',
-    ts_concl: _ctxCol==='concl' ? Date.now() : undefined,
-    servicos: itensFinal.map(function(item){
-      return {id:'SV-'+uid(), tipo:item.tipo, descricao:item.desc,
-              mecanico:mec, tempo:'',
-              status:_ctxCol==='concl'?'concl':'aberta',
-              solucao:'', prioridade:item.prio, ts:Date.now()};
-    }),
-    historico:[{txt:'OS criada com '+itensFinal.length+' manutenção(ões)',ts:Date.now()}],
-    comentarios:[]
-  };
-  ordens.unshift(os); salvarOS(); sync(os); fM('m-nova'); render();
-  toast('✅ O.S. '+frota+' aberta com '+itensFinal.length+' manutenção(ões)','ok');
-}
-
-
-// ════════════════════════════════════════
-//  AÇÕES DE SERVIÇO
-// ════════════════════════════════════════
-function moverSV(osId,svId,novoSt){
-  ordens=lerOS();
-  var os=ordens.find(function(o){return o.id===osId;});
-  var sv=os&&os.servicos.find(function(s){return s.id===svId;});
-  if(!sv) return;
-  var old=sv.status; sv.status=novoSt;
-  addHistorico(os,'Serviço ['+sv.tipo+']: '+old+' → '+novoSt);
-  atualizarStatusOS(os); sync(os); salvarOS(); render();
-  toast('Status atualizado','ok');
-  if(_fcOsId===osId) abrirFC(osId);
-}
-
-function abrirConcluir(osId,svId){
-  _ctxOS=osId;_ctxSV=svId;
-  var os=lerOS().find(function(o){return o.id===osId;});
-  var sv=os&&os.servicos.find(function(s){return s.id===svId;});
-  if(!sv) return;
-  document.getElementById('cl-sol').value=sv.solucao||'';
-  document.getElementById('cl-mec').value=sv.mecanico||'';
-  document.getElementById('cl-tempo').value=sv.tempo||'';
-  oM('m-concl');
-}
-function confirmarConcluir(){
-  var sol=(document.getElementById('cl-sol').value||'').trim();
-  var mec=(document.getElementById('cl-mec').value||'').trim();
-  var tempo=(document.getElementById('cl-tempo').value||'').trim();
-  if(!sol){toast('Informe a solução','err');return;}
-  ordens=lerOS();
-  var os=ordens.find(function(o){return o.id===_ctxOS;});
-  var sv=os&&os.servicos.find(function(s){return s.id===_ctxSV;});
-  if(!sv) return;
-  sv.status='concl';sv.solucao=sol;if(mec)sv.mecanico=mec;if(tempo)sv.tempo=tempo;
-  addHistorico(os,'Serviço concluído: '+sv.descricao.slice(0,40));
-  resolverPendencia(sv.id);
-  atualizarStatusOS(os); sync(os); salvarOS(); fM('m-concl'); render();
-  toast('✅ Concluído!','ok');
-  if(_fcOsId===_ctxOS) abrirFC(_ctxOS);
-}
-
-function abrirPend(osId,svId){
-  _ctxOS=osId;_ctxSV=svId;
-  document.getElementById('pd-motivo').value='';
-  var os=lerOS().find(function(o){return o.id===osId;});
-  var sv=os&&os.servicos.find(function(s){return s.id===svId;});
-  document.getElementById('pd-mec').value=sv&&sv.mecanico||'';
-  oM('m-pend');
-}
-function confirmarPend(){
-  var motivo=(document.getElementById('pd-motivo').value||'').trim();
-  var mec=(document.getElementById('pd-mec').value||'').trim();
-  if(!motivo){toast('Informe o motivo','err');return;}
-  ordens=lerOS();
-  var os=ordens.find(function(o){return o.id===_ctxOS;});
-  var sv=os&&os.servicos.find(function(s){return s.id===_ctxSV;});
-  if(!sv) return;
-  sv.status='pend';sv.pend_nota=motivo;if(mec)sv.mecanico=mec;
-  addHistorico(os,'Pendência: '+motivo.slice(0,50));
-  atualizarStatusOS(os); // define os.status='pendente' → remove do board
-  registrarPendencia(os, sv);
-  sync(os); salvarOS(); fM('m-pend'); fecharFC(); render();
-  showTab('pendencias'); // abre a aba Pendências automaticamente
-  toast('⏸ Pendência registrada — card removido do board','');
-}
-
-// Traz uma pendência do conjunto para DENTRO desta OS como serviço ativo.
-// Remove do quadro de Pendências. Marca origem para o selo no histórico.
-function ativarPendencia(osId, pendId){
-  ordens=lerOS();
-  var os=ordens.find(function(o){return o.id===osId;});
-  if(!os) return;
-  var lista=lerPendencias();
-  var p=lista.find(function(x){return x.id===pendId && x.status==='pendente';});
-  if(!p){ toast('Pendência não encontrada','err'); return; }
-
-  // Cria o serviço dentro desta OS (ativo, marcado como vindo de pendência)
-  var novoSV={
-    id:'SV-'+uid(),
-    tipo:p.tipo||'',
-    descricao:p.descricao||'',
-    status:'aberta',
-    mecanico:p.mecanico||'',
-    de_pendencia:true,          // selo p/ histórico
-    pend_origem:p.pend_nota||'',
-    ts:Date.now()
-  };
-  os.servicos=os.servicos||[];
-  os.servicos.push(novoSV);
-  addHistorico(os,'Pendência ativada nesta O.S.: '+String(p.descricao||'').replace(/^\s*\[[^\]]*\]\s*/,'').slice(0,40));
-
-  // Baixa a pendência do quadro (resolvida = "puxada para O.S.")
-  resolverPendencia(p.sv_id);
-
-  atualizarStatusOS(os);
-  sync(os); salvarOS(); render();
-  if(_fcOsId===osId) abrirFC(osId);
-  toast('✓ Pendência ativada nesta O.S.','ok');
-}
-
-function reabrirSV(osId,svId){
-  ordens=lerOS();
-  var os=ordens.find(function(o){return o.id===osId;});
-  var sv=os&&os.servicos.find(function(s){return s.id===svId;});
-  if(!sv) return;
-  sv.status='aberta';
-  sv.pend_nota='';
-  addHistorico(os,'Pendência reaberta: '+String(sv.descricao||'').slice(0,40));
-  resolverPendencia(sv.id);        // baixa a pendência no servidor (aba Pendências)
-  atualizarStatusOS(os);           // card pode voltar ao board (aberta/andamento)
-  sync(os); salvarOS(); render();
-  if(_fcOsId===osId) abrirFC(osId);
-  toast('↻ Pendência reaberta','ok');
-}
-
-function abrirMec(osId,svId){
-  _ctxOS=osId;_ctxSV=svId;
-  var os=lerOS().find(function(o){return o.id===osId;});
-  var sv=os&&os.servicos.find(function(s){return s.id===svId;});
-  document.getElementById('mc-nome').value=sv&&sv.mecanico||'';
-  document.getElementById('mc-tempo').value=sv&&sv.tempo||'';
-  oM('m-mec');
-}
-function confirmarMec(){
-  var nome=(document.getElementById('mc-nome').value||'').trim();
-  var tempo=(document.getElementById('mc-tempo').value||'').trim();
-  ordens=lerOS();
-  var os=ordens.find(function(o){return o.id===_ctxOS;});
-  var sv=os&&os.servicos.find(function(s){return s.id===_ctxSV;});
-  if(!sv) return;
-  sv.mecanico=nome;sv.tempo=tempo;
-  if(sv.status==='aberta'&&nome)sv.status='andando';
-  addHistorico(os,'Mecânico atribuído: '+nome);
-  atualizarStatusOS(os); sync(os); salvarOS(); fM('m-mec'); render();
-  toast('👤 Mecânico atribuído','ok');
-  if(_fcOsId===_ctxOS) abrirFC(_ctxOS);
-}
-
-function abrirAgP(osId,svId){
-  _ctxOS=osId;_ctxSV=svId;
-  document.getElementById('agp-peca').value='';
-  document.getElementById('agp-prev').value='';
-  oM('m-agp');
-}
-function confirmarAgP(){
-  var peca=(document.getElementById('agp-peca').value||'').trim();
-  var prev=document.getElementById('agp-prev').value;
-  if(!peca){toast('Informe a peça','err');return;}
-  ordens=lerOS();
-  var os=ordens.find(function(o){return o.id===_ctxOS;});
-  var sv=os&&os.servicos.find(function(s){return s.id===_ctxSV;});
-  if(!sv) return;
-  sv.status='agpeca';sv.ag_peca=peca;
-  if(prev){var p=prev.split('-');sv.ag_prev=p[2]+'/'+p[1]+'/'+p[0];}
-  os.status='agpeca';
-  addHistorico(os,'Aguardando peça: '+peca);
-  sync(os); salvarOS(); fM('m-agp'); render();
-  toast('🔵 Aguardando peça','');
-  if(_fcOsId===_ctxOS) abrirFC(_ctxOS);
-}
-
-function abrirExt(osId,svId){
-  _ctxOS=osId;_ctxSV=svId;
-  var os=lerOS().find(function(o){return o.id===osId;});
-  var sv=os&&os.servicos.find(function(s){return s.id===svId;});
-  document.getElementById('ext-nome').value=sv&&sv.oficina_nome||'';
-  document.getElementById('ext-prev').value='';
-  document.getElementById('ext-obs').value='';
-  oM('m-ext');
-}
-function confirmarExt(){
-  var nome=(document.getElementById('ext-nome').value||'').trim();
-  var prev=document.getElementById('ext-prev').value;
-  var obs=(document.getElementById('ext-obs').value||'').trim();
-  if(!nome){toast('Informe a oficina','err');return;}
-  ordens=lerOS();
-  var os=ordens.find(function(o){return o.id===_ctxOS;});
-  var sv=os&&os.servicos.find(function(s){return s.id===_ctxSV;});
-  if(!sv) return;
-
-  // Preenche os dados de oficina externa no serviço
-  sv.status='externa';sv.oficina_nome=nome;sv.oficina_obs=obs;
-  if(prev){var p=prev.split('-');sv.oficina_prev=p[2]+'/'+p[1]+'/'+p[0];}
-
-  // Quantos serviços "ativos" (não concluídos/pendência) a OS tem além deste?
-  var outrosAtivos=(os.servicos||[]).filter(function(s){
-    return s.id!==sv.id && s.status!=='concl' && s.status!=='pend';
-  });
-
-  if(outrosAtivos.length===0){
-    // OS só tem este serviço ativo → vai inteira para externa (comportamento simples)
-    atualizarStatusOS(os);
-    addHistorico(os,'Enviado para oficina: '+nome);
-    sync(os); salvarOS(); fM('m-ext'); render();
-    toast('🏭 Enviado para '+nome,'ok');
-    if(_fcOsId===_ctxOS) abrirFC(_ctxOS);
+function iniciarCompartilhamento(){
+  if(!navigator.geolocation){
+    document.getElementById('meStatus').textContent = 'GPS não suportado neste aparelho';
     return;
   }
+  if(compartilhando) return;   // evita iniciar duas vezes
+  compartilhando = true;
+  document.getElementById('meDot').classList.add('live');
+  document.getElementById('meStatus').textContent = 'iniciando';
 
-  // DESMEMBRA: cria uma NOVA OS só com o serviço externo.
-  // O cabeçalho da nova OS = unidade da etiqueta [..] do serviço (ex: [RB-185]),
-  // ou a frota original se o serviço não tiver etiqueta.
-  var mUnid=String(sv.descricao||'').match(/^\s*\[([^\]]+)\]/);
-  var frotaNova=mUnid ? normalizaCod(mUnid[1].trim()) : os.frota;
-
-  var novaOS={
-    id:'OS-'+uid(),
-    frota:frotaNova,
-    prioridade:sv.prioridade||os.prioridade||'normal',
-    status:'externa',
-    origem:os.origem||'manual',
-    motorista:os.motorista||'',
-    data_aber:os.data_aber||hoje(),
-    ts:Date.now(),
-    data_prev:sv.oficina_prev||'',
-    servicos:[sv],
-    historico:[{txt:'Desmembrado de '+os.id+' → enviado para oficina: '+nome,ts:Date.now()}],
-    comentarios:[]
-  };
-
-  // Remove o serviço da OS original e recalcula o status dela
-  os.servicos=os.servicos.filter(function(s){return s.id!==sv.id;});
-  addHistorico(os,'Serviço "'+String(sv.descricao||'').slice(0,40)+'" movido p/ oficina externa (OS '+novaOS.id+')');
-  atualizarStatusOS(os);
-
-  ordens.push(novaOS);
-  salvarOS();
-  sync(os);       // atualiza a OS original (sem o serviço)
-  sync(novaOS);   // grava a nova OS externa
-  fM('m-ext'); render();
-  toast('🏭 '+frotaNova+' enviado para '+nome,'ok');
-  if(_fcOsId===_ctxOS) abrirFC(_ctxOS);
-}
-
-function abrirEditSV(osId,svId){
-  _ctxOS=osId;_ctxSV=svId;
-  var os=lerOS().find(function(o){return o.id===osId;});
-  var sv=os&&os.servicos.find(function(s){return s.id===svId;});
-  if(!sv) return;
-  document.getElementById('as-desc').value=sv.descricao||'';
-  document.getElementById('as-mec').value=sv.mecanico||'';
-  var sel=document.getElementById('as-tipo');
-  for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===sv.tipo){sel.selectedIndex=i;break;}}
-  oM('m-addsv');
-}
-
-function confirmarAddSV(){
-  var tipo=document.getElementById('as-tipo').value;
-  var desc=(document.getElementById('as-desc').value||'').trim();
-  var mec=(document.getElementById('as-mec').value||'').trim();
-  if(!desc){toast('Descreva o serviço','err');return;}
-  ordens=lerOS();
-  var os=ordens.find(function(o){return o.id===_ctxOS;}); if(!os) return;
-  // Verifica se é edição ou adição
-  var svExist=os.servicos&&os.servicos.find(function(s){return s.id===_ctxSV;});
-  if(svExist){
-    svExist.tipo=tipo;svExist.descricao=desc;if(mec)svExist.mecanico=mec;
-    addHistorico(os,'Serviço editado: '+desc.slice(0,40));
-  } else {
-    os.servicos=os.servicos||[];
-    os.servicos.push({id:'SV-'+uid(),tipo:tipo,descricao:desc,mecanico:mec,
-      tempo:'',status:'aberta',solucao:'',ts:Date.now()});
-    addHistorico(os,'Serviço adicionado: '+desc.slice(0,40));
-  }
-  atualizarStatusOS(os); sync(os); salvarOS(); fM('m-addsv'); render();
-  toast('✅ Serviço salvo','ok');
-  _ctxSV=null;
-  if(_fcOsId===_ctxOS) abrirFC(_ctxOS);
-}
-
-// ════════════════════════════════════════
-//  APAGAR
-// ════════════════════════════════════════
-function confirmarApagar(){
-  if(!_ctxOS) return;
-  var idA=_ctxOS;
-  var os=lerOS().find(function(o){return o.id===idA;});
-  ordens=lerOS().filter(function(o){return o.id!==idA;});
-  salvarOS();
-  try{var bl=JSON.parse(localStorage.getItem(APAG_KEY)||'[]');
-    if(bl.indexOf(idA)<0)bl.push(idA);
-    localStorage.setItem(APAG_KEY,JSON.stringify(bl));}catch(e){}
-  if(SCRIPT_URL&&navigator.onLine)
-    fetch(SCRIPT_URL+'?'+new URLSearchParams({action:'apagarManutencao',id_os:idA}).toString()).catch(function(){});
-  fM('m-conf');fecharFC();render();
-  toast('O.S. '+(os?os.frota:'')+ ' apagada','err');
-  _ctxOS=null;
-}
-
-// ════════════════════════════════════════
-//  CONFIG
-// ════════════════════════════════════════
-function isAdminMaster(){
-  try{var p=JSON.parse(localStorage.getItem('twm_permissoes')||'{}');
-    if(p.admin_master)return true;
-    var u=JSON.parse(localStorage.getItem('twm_user_cache')||'{}');
-    return !!(u.permissoes&&(u.permissoes.admin_master||u.permissoes.ADMIN_MASTER));}
-  catch(e){return false;}
-}
-function limparCache(){
-  localStorage.removeItem(OS_KEY);localStorage.removeItem(APAG_KEY);
-  ordens=[];render();toast('Cache limpo','ok');
-  setTimeout(carregarDoServidor,500)
-}
-
-
-// INIT
-
-// ── ABAS ─────────────────────────────────────────
-function showTab(tab) {
-  document.querySelectorAll('.tab-pane').forEach(function(p){ p.classList.remove('on'); });
-  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('on'); });
-  document.getElementById('tab-'+tab).classList.add('on');
-  document.getElementById('tab-'+tab+'-btn').classList.add('on');
-  if (tab === 'pendencias') {
-    renderPendList();                    // mostra o que já tem (local) na hora
-    carregarPendenciasServidor().then(renderPendList);  // e atualiza com o servidor
-  }
-  if (tab === 'historico') renderHistorico();
-}
-
-// ── HISTÓRICO DE PENDÊNCIAS ───────────────────────
-var _pendFiltro = 'todas';
-var PEND_KEY    = 'twm_manut_pendencias';
-
-function lerPendencias() {
-  try { return JSON.parse(localStorage.getItem(PEND_KEY) || '[]'); } catch(e) { return []; }
-}
-function salvarPendencias(lista) {
-  localStorage.setItem(PEND_KEY, JSON.stringify(lista));
-}
-
-// Busca pendências da PLANILHA (servidor) e mescla com as locais.
-// Assim aparecem em qualquer dispositivo e também as digitadas direto
-// na planilha. Chave de deduplicação: sv_id (ou os_id+frota).
-var _pendServidor = [];   // cache da última resposta do servidor
-function carregarPendenciasServidor() {
-  if (!SCRIPT_URL || !navigator.onLine) return Promise.resolve();
-  return fetch(SCRIPT_URL + '?action=getPendencias&_=' + Date.now(), { cache:'no-store' })
-    .then(function(r){ return r.json(); })
-    .then(function(res){
-      if (res && res.ok && Array.isArray(res.pendencias)) {
-        _pendServidor = res.pendencias;
-      }
-    })
-    .catch(function(){ /* offline: fica só com as locais */ });
-}
-
-// Junta local + servidor sem duplicar
-function pendenciasMescladas() {
-  var locais = lerPendencias();
-  var vistos = {};
-  var out = [];
-
-  function chave(p){
-    return (p.sv_id || '') + '|' + (p.os_id || '') + '|' + (p.frota || '');
-  }
-  // primeiro as locais (têm mais dados: mecânico, ts, status resolvida)
-  locais.forEach(function(p){
-    out.push(p);
-    vistos[chave(p)] = true;
-  });
-  // depois as do servidor que ainda não estão
-  _pendServidor.forEach(function(p){
-    var k = chave(p);
-    if (vistos[k]) return;
-    // normaliza para o formato usado no render
-    out.push({
-      id:        p.id || ('S-' + k),
-      os_id:     p.os_id || '',
-      sv_id:     p.sv_id || '',
-      frota:     p.frota || '—',
-      tipo:      p.tipo || '',
-      descricao: p.descricao || '',
-      pend_nota: p.pend_nota || '',
-      mecanico:  p.mecanico || '',
-      motorista: p.motorista || '',
-      data_pend: p.data_pend || '',
-      status:    'pendente',
-      data_resol:'',
-      _doServidor: true
-    });
-    vistos[k] = true;
-  });
-  return out;
-}
-
-// Chamado ao confirmar pendência — registra no histórico
-function registrarPendencia(os, sv) {
-  var lista = lerPendencias();
-  // Evita duplicata
-  var existe = lista.find(function(p){ return p.sv_id === sv.id && p.status === 'pendente'; });
-  if (!existe) {
-    var novaP = {
-      id:       'P-'+ uid(),
-      os_id:    os.id,
-      sv_id:    sv.id,
-      frota:    os.frota || '—',
-      tipo:     sv.tipo  || '',
-      descricao:sv.descricao || '',
-      pend_nota:sv.pend_nota || '',
-      mecanico: sv.mecanico  || '',
-      motorista:os.motorista || '',
-      data_pend:hoje(),
-      ts_pend:  Date.now(),
-      status:   'pendente',
-      data_resol: '',
-    };
-    lista.unshift(novaP);
-    salvarPendencias(lista);
-    // Envia para planilha
-    if (SCRIPT_URL && navigator.onLine) {
-      var p = new URLSearchParams({
-        action:    'salvarPendencia',
-        id:        novaP.id,
-        data:      novaP.data_pend,
-        frota:     novaP.frota,
-        servico:   novaP.tipo,
-        descricao: novaP.descricao,
-        motivo:    novaP.pend_nota,
-        mecanico:  novaP.mecanico,
-        motorista: novaP.motorista,
-        status:    'Pendente',
-        data_resol:''
-      });
-      fetch(SCRIPT_URL + '?' + p.toString()).catch(function(){});
+  // Pede a permissão de GPS logo de cara. getCurrentPosition dispara o
+  // popup de permissão de forma mais confiável que o watchPosition sozinho
+  // (alguns Android não mostram o popup no watch automático).
+  navigator.geolocation.getCurrentPosition(function(pos){
+    ultimaPos = {lat:pos.coords.latitude, lng:pos.coords.longitude, acc:pos.coords.accuracy};
+    document.getElementById('meStatus').textContent = 'ao vivo';
+    if(map){
+      var ll0 = [pos.coords.latitude, pos.coords.longitude];
+      if(!meMarker) meMarker = L.marker(ll0, {icon: iconeMeuPonto(null, _frotaUsuario())}).addTo(map);
+      else meMarker.setLatLng(ll0);
+      // só centraliza na PRIMEIRA posição; depois respeita onde o usuário está
+      if(!jaCentralizou){ map.setView(ll0, 15, {animate:true}); jaCentralizou = true; }
     }
-  }
-  atualizarTabPend();
-}
-
-// Chamado ao concluir um serviço — marca pendência como resolvida
-function resolverPendencia(svId) {
-  var lista = lerPendencias();
-  var p = lista.find(function(x){ return x.sv_id === svId && x.status === 'pendente'; });
-  if (p) {
-    p.status = 'resolvida';
-    p.data_resol = hoje();
-    salvarPendencias(lista);
-    atualizarTabPend();
-    // Atualiza na planilha
-    if (SCRIPT_URL && navigator.onLine) {
-      var pR = new URLSearchParams({
-        action:    'resolverPendencia',
-        id:        p.id,
-        data_resol:p.data_resol
-      });
-      fetch(SCRIPT_URL + '?' + pR.toString()).catch(function(){});
-    }
-  }
-}
-
-function atualizarTabPend() {
-  var lista  = pendenciasMescladas();
-  var qtPend = lista.filter(function(p){ return p.status === 'pendente'; }).length;
-  var cnt    = document.getElementById('pend-tab-cnt');
-  if (cnt) cnt.textContent = qtPend;
-  document.getElementById('ps-total').textContent = lista.length;
-  document.getElementById('ps-pend').textContent  = qtPend;
-  document.getElementById('ps-resol').textContent  = lista.filter(function(p){ return p.status==='resolvida'; }).length;
-}
-
-function filtrarPend(filtro) {
-  _pendFiltro = filtro;
-  document.querySelectorAll('.pend-f-btn').forEach(function(b){ b.classList.remove('on'); });
-  var btn = document.getElementById('pf-' + (filtro==='pendente'?'pend':filtro==='resolvida'?'resol':'todas'));
-  if (btn) btn.classList.add('on');
-  renderPendList();
-}
-
-function renderPendList() {
-  var lista = pendenciasMescladas();
-  atualizarTabPend();
-
-  if (_pendFiltro !== 'todas') lista = lista.filter(function(p){ return p.status === _pendFiltro; });
-
-  var div = document.getElementById('lista-pend');
-  if (!div) return;
-
-  if (!lista.length) {
-    div.innerHTML = '<div class="pend-empty">'+
-      (_pendFiltro==='resolvida' ? '🎉 Nenhuma pendência resolvida ainda' :
-       _pendFiltro==='pendente'  ? '✅ Sem pendências em aberto!' :
-       '⚠️ Nenhuma pendência registrada') +
-    '</div>';
-    return;
-  }
-
-  div.innerHTML = lista.map(function(p){
-    var resolvida = p.status === 'resolvida';
-    return '<div class="pend-card'+(resolvida?' resolvida':'')+'">' +
-      '<div class="pend-card-top">' +
-        '<div class="pend-card-frota">🚛 '+p.frota+'</div>' +
-        '<span class="pend-card-badge '+(resolvida?'resolvida':'pendente')+'">'+(resolvida?'✅ Resolvida':'⏸ Pendente')+'</span>' +
-      '</div>' +
-      '<div class="pend-card-tipo">'+p.tipo+'</div>' +
-      '<div class="pend-card-desc">'+p.descricao+'</div>' +
-      (p.pend_nota?'<div class="pend-card-motivo">⏸ '+p.pend_nota+'</div>':'') +
-      '<div class="pend-card-meta">' +
-        '<span>📅 Aberta: '+p.data_pend+'</span>' +
-        (p.mecanico?'<span>🔧 '+p.mecanico+'</span>':'') +
-        (p.motorista?'<span>👤 '+p.motorista+'</span>':'') +
-        (resolvida&&p.data_resol?'<span style="color:var(--green)">✅ Resolvida: '+p.data_resol+'</span>':'') +
-      '</div>' +
-      (!resolvida?'<div class="pend-card-acoes">' +
-        '<button class="btn-pend-ac btn-pend-ver" data-oid="'+p.os_id+'" data-sid="'+p.sv_id+'" onclick="reabrirOS(this.dataset.oid,this.dataset.sid)">🔄 Reabrir O.S.</button>' +
-        '<button class="btn-pend-ac btn-pend-ok" data-svid="'+p.sv_id+'" onclick="marcarResolvida(this.dataset.svid)">Resolvida</button>' +
-        (isAdminMaster()?'<button class="btn-pend-ac" style="border-color:var(--red);color:var(--red);background:var(--red-bg)" data-pid="'+p.id+'" onclick="apagarPendencia(this.dataset.pid)">🗑</button>':'') +
-      '</div>':'<div class="pend-card-acoes">'+
-        (isAdminMaster()?'<button class="btn-pend-ac" style="border-color:var(--red);color:var(--red);background:var(--red-bg)" data-pid="'+p.id+'" onclick="apagarPendencia(this.dataset.pid)">🗑 Apagar</button>':'') +
-      '</div>') +
-    '</div>';
-  }).join('');
-}
-
-// ── HISTÓRICO DE O.S. CONCLUÍDAS ──────────────────
-// Mantém o board limpo (só mostra concluídas de HOJE na coluna),
-// mas guarda TODAS as concluídas aqui, com busca por frota.
-function renderHistorico() {
-  ordens = lerOS();
-  var todasConcl = ordens.filter(function(o){ return o.status === 'concl'; });
-
-  // Stats
-  var hoje = todasConcl.filter(function(o){ return ehHoje(o.ts_concl); }).length;
-  var inicioMes = new Date(); inicioMes.setDate(1); inicioMes.setHours(0,0,0,0);
-  var esteMes = todasConcl.filter(function(o){ return o.ts_concl && o.ts_concl >= inicioMes.getTime(); }).length;
-  var elTotal = document.getElementById('hs-total'); if(elTotal) elTotal.textContent = todasConcl.length;
-  var elHoje  = document.getElementById('hs-hoje');  if(elHoje)  elHoje.textContent  = hoje;
-  var elMes   = document.getElementById('hs-mes');   if(elMes)   elMes.textContent   = esteMes;
-
-  // Busca por frota
-  var busca = norm((document.getElementById('hist-busca')||{}).value || '');
-  var lista = busca ? todasConcl.filter(function(o){ return norm(o.frota||'').indexOf(busca) >= 0; }) : todasConcl;
-
-  // Mais recente primeiro
-  lista = lista.slice().sort(function(a,b){ return (b.ts_concl||b.ts||0) - (a.ts_concl||a.ts||0); });
-
-  var div = document.getElementById('lista-historico');
-  if (!div) return;
-
-  if (!lista.length) {
-    div.innerHTML = '<div class="pend-empty">'+(busca?'🔍 Nenhuma O.S. encontrada para "'+busca+'"':'📋 Nenhuma O.S. concluída ainda')+'</div>';
-    return;
-  }
-
-  div.innerHTML = lista.map(function(os){
-    var svs = os.servicos||[];
-    var dataConcl = os.ts_concl ? new Date(os.ts_concl).toLocaleDateString('pt-BR') : '—';
-    var mecs = Array.from(new Set(svs.map(function(s){return s.mecanico;}).filter(Boolean)));
-    return '<div class="pend-card resolvida">' +
-      '<div class="pend-card-top">' +
-        '<div class="pend-card-frota">🚛 '+os.frota+'</div>' +
-        '<span class="pend-card-badge resolvida">✅ Concluída</span>' +
-      '</div>' +
-      '<div class="pend-card-desc">'+svs.map(function(s){return s.descricao+(s.de_pendencia?' ↩':'');}).filter(Boolean).join(' · ')+'</div>' +
-      '<div class="pend-card-meta">' +
-        '<span style="color:var(--green)">✅ Concluída: '+dataConcl+'</span>' +
-        (mecs.length?'<span>🔧 '+mecs.join(', ')+'</span>':'') +
-        '<span>'+svs.length+' serviço'+(svs.length!==1?'s':'')+'</span>' +
-      '</div>' +
-      '<div class="pend-card-acoes">' +
-        '<button class="btn-pend-ac" data-osid="'+os.id+'" onclick="histVerOS(this)">Ver detalhes</button>' +
-      '</div>' +
-    '</div>';
-  }).join('');
-}
-
-function histVerOS(btn) {
-  var osId = btn.dataset.osid;
-  showTab('board');
-  setTimeout(function(){ abrirFC(osId); }, 80);
-}
-
-function reabrirOS(osId, svId) {
-  // Encontra a pendência para pegar o id antes de remover
-  var lista = lerPendencias();
-  var pend = lista.find(function(p){ return p.sv_id === svId; });
-
-  // Remove do localStorage
-  salvarPendencias(lista.filter(function(p){ return p.sv_id !== svId; }));
-  atualizarTabPend();
-
-  // Remove da planilha (backend)
-  if (pend && SCRIPT_URL && navigator.onLine) {
-    fetch(SCRIPT_URL + '?' + new URLSearchParams({
-      action: 'apagarPendencia',
-      id:     pend.id
-    }).toString()).catch(function(){});
-  }
-
-  // Move o serviço de volta para "aberta"
-  moverSV(osId, svId, 'aberta');
-  renderPendList();
-  toast('🔄 O.S. reaberta','ok');
-}
-
-function apagarPendencia(pid) {
-  if (!isAdminMaster()) { toast('Sem permissão', 'err'); return; }
-  if (!confirm('Apagar este registro de pendência?')) return;
-  var lista = lerPendencias().filter(function(p){ return p.id !== pid; });
-  salvarPendencias(lista);
-  atualizarTabPend();
-  renderPendList();
-  toast('Registro apagado', 'ok');
-}
-
-function pendVerOS(btn) {
-  var tab   = btn.dataset.tab;
-  var osid  = btn.dataset.osid;
-  showTab(tab);
-  setTimeout(function(){ abrirFC(osid); }, 200);
-}
-
-function marcarResolvida(svId) {
-  resolverPendencia(svId);
-  ordens = lerOS();
-  ordens.forEach(function(os){
-    (os.servicos||[]).forEach(function(sv){
-      if(sv.id === svId && sv.status === 'pend'){
-        sv.status = 'andando'; // Volta para andamento (reabre no board)
-        addHistorico(os, 'Pendência reaberta via aba Pendências');
-        atualizarStatusOS(os);
-        sync(os);
-      }
-    });
-  });
-  salvarOS();
-  render();
-  renderPendList();
-  toast('🔧 Serviço reaberto no board','ok');
-}
-
-// ZOOM — muda tamanho das colunas (sem transform, sem travar scroll)
-(function(){
-  var zoomed = localStorage.getItem('twm_manut_zoom')==='1';
-  var COL_NORMAL = 280, COL_ZOOM = 360;
-  var FONT_SCALE  = zoomed ? 1.15 : 1;
-
-  function apZoom(){
-    var btn = document.getElementById('zoom-btn');
-    // Aplica largura nas colunas
-    document.querySelectorAll('.col').forEach(function(col){
-      col.style.width = (zoomed ? COL_ZOOM : COL_NORMAL) + 'px';
-      col.style.minWidth = (zoomed ? COL_ZOOM : COL_NORMAL) + 'px';
-    });
-    // Escala fonte dos cards
-    document.querySelectorAll('.card').forEach(function(card){
-      card.style.fontSize = zoomed ? '115%' : '';
-    });
-    if(btn) btn.textContent = zoomed ? '－' : '＋';
-    localStorage.setItem('twm_manut_zoom', zoomed ? '1' : '0');
-  }
-
-  window.toggleZoom = function(){
-    zoomed = !zoomed;
-    apZoom();
-  };
-
-  // Aplica após cada render
-  var _origRender = window.render;
-  window.render = function(){
-    if(_origRender) _origRender();
-    setTimeout(apZoom, 30);
-  };
-
-  document.addEventListener('DOMContentLoaded', apZoom);
-}());
-
-window.onload=function(){
-  render();
-  atualizarTabPend();
-  carregarDoServidor();
-  carregarPendenciasServidor().then(atualizarTabPend);  // contador da aba já vem certo
-
-  // GPS: posição/sentido dos caminhões (atualiza os selos dos cards)
-  carregarGPS().then(render);
-  setInterval(function(){ carregarGPS().then(render); }, 30000);
-  // Verifica se veio do check list com uma OS específica para destacar
-  try {
-    var osDestaque = sessionStorage.getItem('twm_abrir_os');
-    if (osDestaque) {
-      sessionStorage.removeItem('twm_abrir_os');
-      setTimeout(function(){
-        var card = document.getElementById('card-' + osDestaque);
-        if (card) {
-          card.style.outline = '3px solid #f97316';
-          card.style.boxShadow = '0 0 0 6px rgba(249,115,22,.2)';
-          card.scrollIntoView({ behavior:'smooth', block:'center' });
-          setTimeout(function(){ card.style.outline=''; card.style.boxShadow=''; }, 4000);
-          // Abre o full card automaticamente
-          abrirFC(osDestaque);
-        }
-      }, 600);
-    }
-  } catch(e) {}
-  setInterval(carregarDoServidor,10000);
-};
-</script>
-</div><!-- /tab-board -->
-
-<!-- PANE PENDÊNCIAS -->
-<div class="tab-pane" id="tab-pendencias">
-  <div class="pend-list-wrap">
-    <!-- Stats -->
-    <div class="pend-stats">
-      <div class="pend-stat"><div class="pend-stat-n" id="ps-total" style="color:#f97316">0</div><div class="pend-stat-l">Total</div></div>
-      <div class="pend-stat"><div class="pend-stat-n" id="ps-pend" style="color:#f97316">0</div><div class="pend-stat-l">Pendentes</div></div>
-      <div class="pend-stat"><div class="pend-stat-n" id="ps-resol" style="color:var(--green)">0</div><div class="pend-stat-l">Resolvidas</div></div>
-    </div>
-    <!-- Filtros -->
-    <div class="pend-list-header">
-      <div class="pend-list-title">Histórico de Pendências</div>
-      <div class="pend-filtros">
-        <button class="pend-f-btn on" id="pf-todas" onclick="filtrarPend('todas')">Todas</button>
-        <button class="pend-f-btn" id="pf-pend" onclick="filtrarPend('pendente')">Pendentes</button>
-        <button class="pend-f-btn" id="pf-resol" onclick="filtrarPend('resolvida')">Resolvidas</button>
-      </div>
-    </div>
-    <!-- Lista -->
-    <div id="lista-pend"></div>
-  </div>
-</div><!-- /tab-pendencias -->
-
-<!-- PANE HISTÓRICO -->
-<div class="tab-pane" id="tab-historico">
-  <div class="pend-list-wrap">
-    <!-- Stats -->
-    <div class="pend-stats">
-      <div class="pend-stat"><div class="pend-stat-n" id="hs-total" style="color:var(--green)">0</div><div class="pend-stat-l">Concluídas</div></div>
-      <div class="pend-stat"><div class="pend-stat-n" id="hs-hoje" style="color:var(--green)">0</div><div class="pend-stat-l">Hoje</div></div>
-      <div class="pend-stat"><div class="pend-stat-n" id="hs-mes" style="color:var(--green)">0</div><div class="pend-stat-l">Este mês</div></div>
-    </div>
-    <!-- Busca -->
-    <div class="pend-list-header">
-      <div class="pend-list-title">O.S. Concluídas</div>
-    </div>
-    <div class="search-box" style="margin:0 14px 10px">
-      <input type="text" class="search-inp" id="hist-busca" placeholder="🔍 Buscar por frota..." oninput="renderHistorico()">
-    </div>
-    <!-- Lista -->
-    <div id="lista-historico"></div>
-  </div>
-</div><!-- /tab-historico -->
-
-<script>
-// ════════════════════════════════════════════════════════════════
-//  RELATÓRIO DE MANUTENÇÃO DO DIA
-//  - Lista OS pendentes (aberta/andando/agpeca/externa)
-//  - Marca-se os serviços que SERÃO feitos hoje
-//  - Gera folha imprimível (PDF) só com os selecionados
-//  - Puxa a localização do veículo do módulo Jornada
-// ════════════════════════════════════════════════════════════════
-
-// URL do Apps Script da JORNADA (para puxar localização do veículo).
-// Deixe vazio se ainda não tiver — o relatório funciona sem, só não mostra local.
-var JORNADA_URL = '';
-try { var _cj = JSON.parse(localStorage.getItem('twm_config')||'{}'); if(_cj.jornadaUrl) JORNADA_URL = _cj.jornadaUrl; } catch(e){}
-
-var _relLocais = {};   // { "VP-307": "Indo Entregar", ... }
-
-// Normaliza código: VPL→VP e RBL→RB (a "L" de alugado é ignorada).
-// NÃO mistura prefixos diferentes: VP-185 e RB-185 continuam distintos.
-// Funciona no conjunto inteiro: "VPL-456 RBL-98/99" → "VP-456 RB-98/99".
-function normalizaCod(cod){
-  return String(cod||'')
-    .replace(/VPL-/gi, 'VP-').replace(/RBL-/gi, 'RB-')
-    .replace(/\bVPL\b/gi, 'VP').replace(/\bRBL\b/gi, 'RB')
-    .trim();
-}
-
-// Decide se o serviço vai para OFICINA EXTERNA.
-// Táticas:
-//   (1) status 'externa'  OU  (2) tem nome de oficina preenchido.
-// Exceção: se o nome da oficina contiver "TWM", "interno" ou "interna",
-//   é oficina PRÓPRIA → conta como INTERNO.
-function _nomeEhInterno(nome){
-  var n = String(nome||'').toLowerCase();
-  return n.indexOf('twm') >= 0 || n.indexOf('interno') >= 0 || n.indexOf('interna') >= 0;
-}
-function ehExterno(sv){
-  if(!sv) return false;
-  var ofNome = String(sv.oficina_nome||'').trim();
-  // Nome de oficina própria (TWM/interno/interna) força INTERNO.
-  if(ofNome && _nomeEhInterno(ofNome)) return false;
-  if(sv.status === 'externa') return true;
-  if(ofNome !== '') return true;
-  return false;
-}
-
-function abrirRelatorioModal(){
-  document.getElementById('rel-overlay').classList.add('on');
-  _relLocais = {};
-  renderRelatorioBody();       // mostra já, mesmo sem localização
-  buscarLocaisJornada();       // atualiza local em segundo plano
-}
-
-function fecharRelatorioModal(){
-  document.getElementById('rel-overlay').classList.remove('on');
-}
-
-// Busca localização de cada frota no módulo Jornada (opcional)
-function buscarLocaisJornada(){
-  if(!JORNADA_URL || !navigator.onLine) return;
-  fetch(JORNADA_URL + '?action=getViagens&_=' + Date.now())
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if(d && d.ok && d.viagens){
-        d.viagens.forEach(function(v){
-          if(v.frota) _relLocais[String(v.frota).toUpperCase()] = v.local || '';
-        });
-        renderRelatorioBody(true); // re-render mantendo seleção
-      }
-    }).catch(function(){});
-}
-
-// Monta a lista de OS + serviços com checkbox
-function renderRelatorioBody(manterSelecao){
-  var selAntes = {};
-  if(manterSelecao){
-    document.querySelectorAll('.rel-svc input:checked').forEach(function(cb){ selAntes[cb.value] = true; });
-  }
-
-  var pend = (ordens||[]).filter(function(o){
-    return o.status==='aberta' || o.status==='andando' || o.status==='agpeca' || o.status==='externa';
-  });
-
-  var body = document.getElementById('rel-body');
-
-  if(!pend.length){
-    body.innerHTML = '<div class="rel-empty">Nenhuma O.S. em aberto no momento.<br>Todas as manutenções estão concluídas. ✅</div>';
-    atualizaContador();
-    return;
-  }
-
-  var html = '<div class="rel-intro">Marque os serviços que <b>serão realizados hoje</b>. Só os selecionados vão para a folha da diretoria.</div>';
-  html += '<div class="rel-tools">' +
-            '<button class="rel-tool-btn" onclick="relMarcarTodos(true)">☑ Marcar todos</button>' +
-            '<button class="rel-tool-btn" onclick="relMarcarTodos(false)">☐ Desmarcar todos</button>' +
-          '</div>';
-
-  pend.forEach(function(os){
-    var frotaU = String(os.frota||'').toUpperCase();
-    var local  = _relLocais[frotaU] || '';
-    html += '<div class="rel-oscard st-'+os.status+'">';
-    html +=   '<div class="rel-osh">' +
-                '<span class="rel-osfrota">'+(normalizaCod(os.frota)||'—')+gpsSelo(os.frota)+'</span>' +
-                '<span class="rel-osbadge st-'+os.status+'">'+(COLS_LBL[os.status]||os.status)+'</span>' +
-                (local ? '<span class="rel-osloc">📍 '+local+'</span>' : '') +
-              '</div>';
-
-    var svs = (os.servicos||[]).filter(function(sv){ return sv.status!=='concl'; });
-    if(svs.length){
-      svs.forEach(function(sv){
-        var val = os.id + '::' + sv.id;
-        var checked = selAntes[val] ? ' checked' : '';
-        var ext = ehExterno(sv);
-        var ofNome = ext ? String(sv.oficina_nome||'').trim() : '';
-        var descNorm = normalizaCod(String(sv.descricao||''));
-        html += '<label class="rel-svc">' +
-                  '<input type="checkbox" value="'+val+'" ' +
-                    'data-frota="'+normalizaCod(os.frota||'').replace(/"/g,'&quot;')+'" ' +
-                    'data-desc="'+descNorm.replace(/"/g,'&quot;')+'" ' +
-                    'data-local="'+String(local).replace(/"/g,'&quot;')+'" ' +
-                    'data-ext="'+(ext?'1':'0')+'" ' +
-                    'data-resp="'+ofNome.replace(/"/g,'&quot;')+'" ' +
-                    'onchange="atualizaContador()"'+checked+'>' +
-                  '<span class="rel-svc-desc">'+(descNorm||'(sem descrição)') +
-                    (ofNome ? ' <span class="rel-svc-ofnome">🏭 '+ofNome+'</span>' : '') +
-                  '</span>' +
-                  '<span class="rel-svc-of '+(ext?'ext':'int')+'">'+(ext?'EXT':'INT')+'</span>' +
-                  (sv.tipo ? '<span class="rel-svc-tipo">'+sv.tipo+'</span>' : '') +
-                '</label>';
-      });
+    enviarMinhaPos();
+  }, function(err){
+    if(err.code === 1){
+      document.getElementById('meDot').classList.remove('live');
+      document.getElementById('meStatus').textContent = 'GPS bloqueado';
     } else {
-      html += '<div class="rel-nosvc">Nenhum serviço pendente nesta O.S.</div>';
+      document.getElementById('meStatus').textContent = 'buscando GPS';
     }
-    html += '</div>';
+  }, {enableHighAccuracy:true, maximumAge:0, timeout:20000});
+
+  // watchPosition mantém a posição sempre atualizada.
+  // enableHighAccuracy:false deixa o navegador usar GPS, Wi-Fi OU torre de
+  // celular (o que estiver disponível) — não trava se o GPS estiver desligado.
+  watchId = navigator.geolocation.watchPosition(function(pos){
+    ultimaPos = {lat:pos.coords.latitude, lng:pos.coords.longitude, acc:pos.coords.accuracy};
+    document.getElementById('meStatus').textContent = 'ao vivo';
+    // move e gira o caminhãozinho no mapa
+    if(map){
+      var ll = [pos.coords.latitude, pos.coords.longitude];
+      var head = pos.coords.heading; // graus (pode vir null se parado)
+      if(!meMarker){
+        meMarker = L.marker(ll, {icon: iconeMeuPonto(head, _frotaUsuario())}).addTo(map);
+      } else {
+        meMarker.setLatLng(ll);
+        if(head!=null && !isNaN(head)) meMarker.setIcon(iconeMeuPonto(head, _frotaUsuario()));
+      }
+    }
+  }, function(err){
+    if(err.code === 1){ // permissão negada
+      document.getElementById('meDot').classList.remove('live');
+      document.getElementById('meStatus').textContent = 'GPS bloqueado';
+    } else {
+      document.getElementById('meStatus').textContent = 'buscando GPS';
+    }
+  }, {enableHighAccuracy:true, maximumAge:15000, timeout:25000});
+
+  // primeiro envio rápido + timer de 30s
+  setTimeout(enviarMinhaPos, 3000);
+  envioTimer = setInterval(enviarMinhaPos, ENVIO_INTERVALO_MS);
+  localStorage.setItem('twm_compartilhar_loc', '1');
+}
+
+function pararCompartilhamento(silencioso){
+  compartilhando = false;
+  if(watchId!=null){ navigator.geolocation.clearWatch(watchId); watchId=null; }
+  if(envioTimer){ clearInterval(envioTimer); envioTimer=null; }
+  document.getElementById('meDot').classList.remove('live');
+  document.getElementById('meStatus').textContent = 'Compartilhamento desligado';
+  localStorage.removeItem('twm_compartilhar_loc');
+  if(!silencioso) toast('Compartilhamento parado');
+}
+
+// ID único e permanente deste aparelho (identifica o tablet físico).
+// Gerado uma vez e guardado no próprio aparelho — não muda com rede/operadora.
+function _deviceId(){
+  var id = localStorage.getItem('twm_device_id');
+  if(!id){
+    var r = Math.random().toString(36).slice(2, 8) +
+            Date.now().toString(36).slice(-4);
+    id = 'TBL-' + r.toUpperCase();
+    localStorage.setItem('twm_device_id', id);
+  }
+  return id;
+}
+
+function enviarMinhaPos(){
+  if(!ultimaPos) return;
+  var nome  = _nomeUsuario();
+  var frota = _frotaUsuario();
+  var params = new URLSearchParams({
+    action:'salvarLocalizacao',
+    nome: nome,
+    frota: frota,
+    placa: _placaUsuario(),
+    device: _deviceId(),
+    lat: ultimaPos.lat,
+    lng: ultimaPos.lng,
+    precisao: Math.round(ultimaPos.acc||0),
+    ts: new Date().toISOString()
+  });
+  // envia via apiGet (contorna CORS do redirect)
+  apiGet('?'+params.toString())
+    .then(function(){ /* ok silencioso */ })
+    .catch(function(){ /* rede instável — tenta no próximo ciclo */ });
+}
+
+/* ============================================================
+   ADMIN: CARREGAR POSIÇÕES DA FROTA
+   ============================================================ */
+var refreshTimer = null;
+
+function carregarFrota(){
+  if(!_isAdmin()) return;
+  apiGet('?action=getLocalizacoes&_t='+Date.now())
+    .then(function(res){
+      var lista = (res && res.ok && res.localizacoes) ? res.localizacoes : [];
+      renderFrota(lista);
+    })
+    .catch(function(){ toast('Falha ao carregar posições'); });
+}
+
+function renderFrota(lista){
+  frotaAtual = lista || [];
+  var box = document.getElementById('fleetList');
+  var cnt = document.getElementById('fleetCount');
+  box.innerHTML = '';
+
+  // remove marcadores antigos (do grupo agrupado)
+  if(clusterFrota) clusterFrota.clearLayers();
+  marcadores = {};
+
+  if(!lista.length){
+    box.innerHTML = '<div class="empty">Ninguém compartilhando localização no momento.<br><br>As posições aparecem automaticamente quando alguém abre o app com o GPS liberado.</div>';
+    cnt.textContent = '';
+    var tc0 = document.getElementById('fleetToggleCount');
+    if(tc0) tc0.textContent = '0';
+    return;
+  }
+
+  var online = 0;
+  var bounds = [];
+  lista.sort(function(a,b){ return minutosDesde(a.ts)-minutosDesde(b.ts); });
+
+  lista.forEach(function(p){
+    var lat = parseFloat(p.lat), lng = parseFloat(p.lng);
+    if(isNaN(lat)||isNaN(lng)) return;
+    var on = minutosDesde(p.ts) <= ONLINE_LIMITE_MIN;
+    if(on) online++;
+
+    // cruza com o cadastro (EQUIPAMENTOS) para mostrar placa/modelo corretos
+    var cad = equipPorFrota[chaveFrota(p.frota)] || {};
+    var placa = p.placa || cad.placa || '';
+    var modelo = cad.modelo || '';
+
+    var rotulo = (p.nome||'—') + (p.frota ? ' • '+p.frota : '');
+    var chave = (p.nome||'')+'|'+(p.frota||'');
+
+    // marcador vai para o grupo agrupado (separa quando estão sobrepostos)
+    var mk = L.marker([lat,lng], {icon: iconePessoa(frotaLabel(p.frota) || '?', on)});
+    mk.bindPopup('<b>'+rotulo+'</b>'+
+                 (placa?'<br>Placa: '+placa:'')+
+                 (modelo?'<br>'+modelo:'')+
+                 '<br>'+tempoRelativo(p.ts)+'<br>precisão ~'+(p.precisao||'?')+'m');
+    if(clusterFrota) clusterFrota.addLayer(mk);
+    else mk.addTo(map);
+    marcadores[chave] = mk;
+    bounds.push([lat,lng]);
+
+    // item na lista
+    var item = document.createElement('div');
+    item.className = 'fleet-item';
+    item.innerHTML =
+      '<div class="fleet-ava">'+iniciais(p.nome||p.frota||'?')+'</div>'+
+      '<div class="fleet-info">'+
+        '<div class="nm">'+(p.nome||'Sem nome')+'</div>'+
+        '<div class="sub">'+(p.frota?p.frota+' • ':'')+(placa?placa+' • ':'')+tempoRelativo(p.ts)+'</div>'+
+      '</div>'+
+      '<span class="badge '+(on?'on':'off')+'">'+(on?'ONLINE':'offline')+'</span>';
+    item.onclick = function(){
+      map.setView([lat,lng], 16, {animate:true});
+      // se estiver agrupado, abre o grupo antes de mostrar o popup
+      if(clusterFrota && clusterFrota.hasLayer(mk)){
+        clusterFrota.zoomToShowLayer(mk, function(){ mk.openPopup(); });
+      } else {
+        mk.openPopup();
+      }
+    };
+    box.appendChild(item);
   });
 
-  body.innerHTML = html;
-  atualizaContador();
+  cnt.textContent = '('+online+' online / '+lista.length+' total)';
+  var tc = document.getElementById('fleetToggleCount');
+  if(tc) tc.textContent = String(online);
+
+  // Reenquadra APENAS na primeira carga. Depois disso o mapa fica onde o
+  // usuário deixou — o refresh de 30s não puxa mais a tela de volta.
+  if(bounds.length && !jaEnquadrou){
+    if(meMarker){ var ll = meMarker.getLatLng(); bounds.push([ll.lat, ll.lng]); }
+    map.fitBounds(bounds, {padding:[40,40], maxZoom:15});
+    jaEnquadrou = true;
+  }
 }
 
-function relMarcarTodos(estado){
-  document.querySelectorAll('.rel-svc input').forEach(function(cb){ cb.checked = estado; });
-  atualizaContador();
+/* ============================================================
+   BUSCA (lupa): VP / RB / placa / nome (cadastro) + endereço
+   ============================================================ */
+var buscaTimer = null;
+var equipamentos = [];      // cadastro completo da frota (aba EQUIPAMENTOS)
+var equipPorFrota = {};     // índice frota->dados para cruzar rápido
+
+function normaliza(s){
+  return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+}
+// normaliza frota p/ comparação: VPL-185 -> VP-185, RBL-202 -> RB-202, tira espaços
+function chaveFrota(f){
+  return normaliza(f).replace(/\s+/g,'').replace(/^vpl/,'vp').replace(/^rbl/,'rb').replace('-','');
 }
 
-function atualizaContador(){
-  var n = document.querySelectorAll('.rel-svc input:checked').length;
-  var el = document.getElementById('rel-count');
-  if(el) el.textContent = n + (n===1 ? ' serviço selecionado' : ' serviços selecionados');
+// Rótulo da frota para exibir no mapa: maiúsculo, VPL->VP, RBL->RB
+function frotaLabel(f){
+  var s = String(f||'').toUpperCase().trim().replace(/\s+/g,'');
+  s = s.replace(/^VPL/,'VP').replace(/^RBL/,'RB');
+  return s;
 }
 
-// Gera a folha e mostra na PRÉVIA (iframe dentro do modal)
-function gerarRelatorio(){
-  var marcados = document.querySelectorAll('.rel-svc input:checked');
-  if(!marcados.length){ toast('Selecione ao menos um serviço','err'); return; }
+// carrega o cadastro da frota uma vez (fica em cache)
+function carregarEquipamentos(){
+  return apiGet('?action=getEquipamentos&_t='+Date.now())
+    .then(function(res){
+      equipamentos = (res && res.ok && res.equipamentos) ? res.equipamentos : [];
+      equipPorFrota = {};
+      equipamentos.forEach(function(e){ equipPorFrota[chaveFrota(e.frota)] = e; });
+      return equipamentos;
+    })
+    .catch(function(){ return equipamentos; });
+}
 
-  var itens = [];
-  marcados.forEach(function(cb){
-    itens.push({
-      frota: cb.getAttribute('data-frota') || '',
-      // Remove a etiqueta [VP-456]/[RB-98] do início — a coluna VP/RB já mostra o conjunto
-      desc:  (cb.getAttribute('data-desc')  || '').replace(/^\s*\[[^\]]*\]\s*/, ''),
-      local: cb.getAttribute('data-local') || '',
-      ext:   cb.getAttribute('data-ext') === '1',
-      resp:  cb.getAttribute('data-resp') || ''
+/* ============================================================
+   CONFIGURAÇÃO DO TABLET (qual VP este aparelho representa)
+   Só pode ser alterada com login e senha de administrador.
+   ============================================================ */
+function abrirConfigTablet(){
+  var atual = _frotaUsuario();
+  document.getElementById('cfgVpAtual').textContent = atual || '(não configurado)';
+  document.getElementById('cfgFrota').value = atual;      // já vem preenchido
+  document.getElementById('cfgMsg').textContent = '';
+
+  // só admin ou administrativo master pode configurar
+  var ehAdmin = _isAdmin();
+  var quem = document.getElementById('cfgQuem');
+  var frotaInput = document.getElementById('cfgFrota');
+  var btnSalvar = document.getElementById('cfgSalvar');
+  var btnRem = document.getElementById('cfgRemover');
+
+  if(ehAdmin){
+    var nome = _nomeUsuario();
+    quem.innerHTML = '✓ Liberado para ' + (nome && nome !== 'Usuário' ? nome : 'administrador') +
+                     '<br><span style="color:#8E8E93">Este aparelho: <b>' + _deviceId() + '</b></span>';
+    quem.style.color = '#1B7A3D';
+    frotaInput.disabled = false;
+    btnSalvar.style.display = 'block';
+    btnRem.style.display = atual ? 'block' : 'none';
+  } else {
+    quem.textContent = '🔒 Apenas administrador pode configurar a VP. Faça login como admin.';
+    quem.style.color = '#D70015';
+    frotaInput.disabled = true;
+    btnSalvar.style.display = 'none';
+    btnRem.style.display = 'none';
+  }
+
+  document.getElementById('cfgOverlay').classList.remove('hidden');
+  montarListaFrotas();
+  // se o cadastro ainda não chegou, busca agora para preencher a lista
+  if(!equipamentos.length){
+    carregarEquipamentos().then(montarListaFrotas);
+  }
+}
+function fecharConfigTablet(){
+  document.getElementById('cfgOverlay').classList.add('hidden');
+}
+// preenche o datalist com as VPs do cadastro
+function montarListaFrotas(){
+  var dl = document.getElementById('listaFrotas');
+  if(!dl) return;
+  dl.innerHTML = '';
+  equipamentos.forEach(function(e){
+    if(!/^VP|^VA/.test(e.frota)) return;           // só cavalos
+    var o = document.createElement('option');
+    o.value = e.frota;
+    o.label = (e.placa||'') + (e.modelo? ' • '+e.modelo : '');
+    dl.appendChild(o);
+  });
+}
+// valida no servidor (planilha MOTORISTAS) e salva a VP no aparelho
+function salvarConfigTablet(){
+  var frota = document.getElementById('cfgFrota').value.trim().toUpperCase();
+  var msg   = document.getElementById('cfgMsg');
+
+  if(!_isAdmin()){ msg.textContent = 'Apenas administrador pode configurar.'; return; }
+  if(!frota){ msg.textContent = 'Escolha a VP deste caminhão.'; return; }
+
+  // Se o cadastro ainda não chegou (abriu a config antes de carregar),
+  // busca agora e só então valida — em vez de recusar.
+  if(!equipamentos.length){
+    msg.style.color = '#8E8E93';
+    msg.textContent = 'Carregando cadastro da frota...';
+    carregarEquipamentos().then(function(){
+      if(!equipamentos.length){
+        msg.style.color = '#D70015';
+        msg.textContent = 'Não consegui carregar o cadastro da frota. Verifique a conexão.';
+        return;
+      }
+      salvarConfigTablet();   // agora com o cadastro na mão
+    });
+    return;
+  }
+
+  // A VP precisa existir no cadastro da frota (aba EQUIPAMENTOS)
+  msg.style.color = '#D70015';
+  var cadastro = equipPorFrota[chaveFrota(frota)];
+  if(!cadastro){
+    msg.textContent = frota + ' não existe no cadastro da frota. Escolha uma VP da lista.';
+    return;
+  }
+  // só cavalos (VP/VPL/VA) — carreta não carrega tablet
+  if(!/^(VP|VA)/.test(chaveFrota(frota).toUpperCase())){
+    msg.textContent = frota + ' não é um cavalo. Configure apenas VP ou VA.';
+    return;
+  }
+  frota = cadastro.frota;   // usa a grafia oficial do cadastro
+
+  // Verifica no servidor se essa VP já está em outro tablet
+  msg.style.color = '#8E8E93';
+  msg.textContent = 'Verificando...';
+  apiGet('?action=checarVpTablet'
+        +'&frota='+encodeURIComponent(frota)
+        +'&device='+encodeURIComponent(_deviceId())
+        +'&_t='+Date.now())
+    .then(function(res){
+      msg.style.color = '#D70015';
+      if(res && res.ok && res.livre === false){
+        // VP já usada por outro aparelho — bloqueia e mostra qual
+        var det = 'Esta VP já está cadastrada no aparelho ' + (res.device || '?');
+        if(res.nome)   det += ' (' + res.nome + ')';
+        if(res.quando) det += ', última posição em ' + res.quando;
+        det += '. Remova a VP daquele tablet antes de usar aqui.';
+        msg.textContent = det;
+        return;
+      }
+      // livre (ou o servidor não conseguiu checar): salva
+      _gravarVpTablet(frota, msg);
+    })
+    .catch(function(){
+      // sem conexão: não trava o trabalho, mas avisa
+      msg.style.color = '#B45309';
+      msg.textContent = 'Sem conexão para verificar duplicidade. Salvando mesmo assim.';
+      setTimeout(function(){ _gravarVpTablet(frota, msg); }, 1200);
+    });
+}
+
+// grava a VP no aparelho (usado depois da verificação)
+function _gravarVpTablet(frota, msg){
+  localStorage.setItem('twm_vp_tablet', frota);
+  var cad = equipPorFrota[chaveFrota(frota)];
+  if(cad && cad.placa) localStorage.setItem('twm_placa_tablet', cad.placa);
+  if(msg){ msg.textContent = ''; msg.style.color = '#D70015'; }
+  fecharConfigTablet();
+  toast('Tablet configurado como ' + frota);
+  if(compartilhando) enviarMinhaPos();   // reenvia já com a VP certa
+}
+
+
+// remove a VP deste tablet (também exige admin)
+function removerConfigTablet(){
+  var msg = document.getElementById('cfgMsg');
+  if(!_isAdmin()){ msg.textContent = 'Apenas administrador pode remover.'; return; }
+
+  localStorage.removeItem('twm_vp_tablet');
+  localStorage.removeItem('twm_placa_tablet');
+  msg.textContent = '';
+  fecharConfigTablet();
+  toast('VP removida deste tablet');
+  var st = document.getElementById('meStatus');
+  if(st) st.textContent = 'sem VP';
+  var chip = document.getElementById('statusChip');
+  if(chip) chip.style.background = '#FFF4E5';
+}
+
+// posição reportada (se houver) para uma frota
+function posicaoDaFrota(frota){
+  var k = chaveFrota(frota);
+  for(var i=0;i<frotaAtual.length;i++){
+    if(chaveFrota(frotaAtual[i].frota)===k) return frotaAtual[i];
+  }
+  return null;
+}
+
+function buscarFrotaLocal(termo){
+  var t = normaliza(termo);
+  if(!t) return [];
+  var vistos = {};
+  var res = [];
+
+  // 1) procura no CADASTRO completo (VP/RB/placa/modelo/motorista)
+  equipamentos.forEach(function(e){
+    var alvo = normaliza(e.frota)+' '+normaliza(e.placa)+' '+normaliza(e.modelo)+' '+normaliza(e.motorista);
+    if(alvo.indexOf(t)<0) return;
+    var k = chaveFrota(e.frota);
+    if(vistos[k]) return; vistos[k]=1;
+
+    var pos = posicaoDaFrota(e.frota);
+    var online = pos ? (minutosDesde(pos.ts)<=ONLINE_LIMITE_MIN) : false;
+    res.push({
+      tipo:'frota',
+      titulo: e.frota + (e.placa?' • '+e.placa:''),
+      sub: (e.modelo||'') + (pos ? ' • '+tempoRelativo(pos.ts) : ' • sem localização recente'),
+      lat: pos?parseFloat(pos.lat):NaN,
+      lng: pos?parseFloat(pos.lng):NaN,
+      temPos: !!pos,
+      icon: pos ? (online?'🟢':'⚪') : '🚚'
     });
   });
 
-  // Agrupa por frota: uma linha por VP/RB, serviços juntos por vírgula.
-  // Mantém a ordem em que as frotas apareceram.
-  // Normaliza VPL→VP / RBL→RB antes de agrupar (função global normalizaCod)
-  var grupos = [];       // [{frota, servicos:[], local, temInt, temExt, resps:[]}]
-  var idxFrota = {};     // frota normalizada -> posição em grupos
-  itens.forEach(function(it){
-    var frotaNorm = normalizaCod(it.frota);
-    var chave = frotaNorm.toUpperCase();
-    if(idxFrota[chave] === undefined){
-      idxFrota[chave] = grupos.length;
-      grupos.push({ frota: frotaNorm, servicos: [], local: it.local, temInt: false, temExt: false, resps: [] });
-    }
-    var g = grupos[idxFrota[chave]];
-    if(it.desc && g.servicos.indexOf(it.desc) < 0) g.servicos.push(it.desc);
-    if(it.ext) g.temExt = true; else g.temInt = true;
-    if(!g.local && it.local) g.local = it.local; // pega a localização se ainda não tiver
-    if(it.resp && g.resps.indexOf(it.resp) < 0) g.resps.push(it.resp); // nomes de oficina
+  // 2) fallback: quem está reportando mas não está no cadastro
+  frotaAtual.forEach(function(p){
+    var k = chaveFrota(p.frota);
+    if(vistos[k]) return;
+    var alvo = normaliza(p.nome)+' '+normaliza(p.frota)+' '+normaliza(p.placa);
+    if(alvo.indexOf(t)<0) return;
+    vistos[k]=1;
+    res.push({
+      tipo:'frota',
+      titulo:(p.frota||p.nome||'—')+(p.placa?' • '+p.placa:''),
+      sub:(p.nome?p.nome+' • ':'')+tempoRelativo(p.ts),
+      lat:parseFloat(p.lat), lng:parseFloat(p.lng), temPos:true,
+      icon: minutosDesde(p.ts)<=ONLINE_LIMITE_MIN?'🟢':'⚪'
+    });
   });
 
-  var hoje = new Date();
-  var dia = ('0'+hoje.getDate()).slice(-2)+'/'+('0'+(hoje.getMonth()+1)).slice(-2)+'/'+hoje.getFullYear();
+  return res.slice(0, 8);
+}
 
-  // Ordena para a diretoria:
-  //   1) VP/VPL (cavalos)  2) RB/RBL sozinhos  3) VA  4) RA
-  //   dentro de cada grupo, ordem crescente pelo número.
-  // O conjunto "VP-456 RB-98/99" classifica pelo 1º token (o cavalo).
-  function chaveOrdem(frotaCod){
-    var token = String(frotaCod||'').trim().split(/\s+/)[0]; // primeiro código
-    var m = token.match(/^([A-Za-z]+)[-\s]*(\d+)/);
-    var pref = m ? m[1].toUpperCase() : 'ZZZ';
-    var num  = m ? parseInt(m[2],10) : 999999;
-    // VPL conta como VP; RBL conta como RB (a "L" é só "alugado")
-    if(pref === 'VPL') pref = 'VP';
-    if(pref === 'RBL') pref = 'RB';
-    var ordemGrupo = { VP:1, RB:2, VA:3, RA:4 };
-    var g = ordemGrupo[pref] || 9; // prefixos desconhecidos vão pro fim
-    return g * 1000000 + num;
+function buscarEndereco(termo, cb){
+  var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=br&q='+encodeURIComponent(termo);
+  fetch(url, {headers:{'Accept':'application/json'}})
+    .then(function(r){ return r.json(); })
+    .then(function(arr){
+      cb((arr||[]).map(function(a){
+        return {tipo:'endereco', titulo:a.display_name.split(',').slice(0,2).join(','),
+                sub:a.display_name, lat:parseFloat(a.lat), lng:parseFloat(a.lon), icon:'📍'};
+      }));
+    })
+    .catch(function(){ cb([]); });
+}
+
+var destMarker = null, destAtual = null;
+
+// mostra o cartão de destino com botão Navegar
+function abrirDestino(it){
+  destAtual = it;
+  document.getElementById('destTitulo').textContent = it.titulo;
+  document.getElementById('destSub').textContent = it.sub || 'Toque em Navegar para iniciar a rota';
+  document.getElementById('destCard').classList.remove('hidden');
+  // esconde botões flutuantes para não sobrepor o cartão
+  document.getElementById('recenterBtn').style.display = 'none';
+  var ft = document.getElementById('fleetToggle');
+  if(ft) ft.style.visibility = 'hidden';
+}
+function fecharDestino(){
+  document.getElementById('destCard').classList.add('hidden');
+  if(destMarker){ map.removeLayer(destMarker); destMarker=null; }
+  destAtual = null;
+  document.getElementById('recenterBtn').style.display = 'flex';
+  var ft = document.getElementById('fleetToggle');
+  if(ft) ft.style.visibility = 'visible';
+}
+// abre o Google Maps com a rota do local do motorista até o destino
+function navegarPara(){
+  if(!destAtual) return;
+  var dst = (!isNaN(destAtual.lat)&&!isNaN(destAtual.lng)) ? (destAtual.lat+','+destAtual.lng)
+            : encodeURIComponent(destAtual.titulo);
+  function abrir(origem){
+    var url = 'https://www.google.com/maps/dir/?api=1'
+            + (origem?'&origin='+origem:'')
+            + '&destination='+dst+'&travelmode=driving';
+    window.open(url,'_blank');
   }
-  grupos.sort(function(a,b){ return chaveOrdem(a.frota) - chaveOrdem(b.frota); });
-
-  var linhas = grupos.map(function(g, i){
-    return '<tr>' +
-      '<td class="c-num">'+(i+1)+'</td>' +
-      '<td class="c-frota">'+esc(g.frota)+'</td>' +
-      '<td class="c-of">'+(g.temInt ? 'x' : '')+'</td>' +
-      '<td class="c-of">'+(g.temExt ? 'x' : '')+'</td>' +
-      '<td class="c-ent">'+dia+'</td>' +
-      '<td class="c-serv">'+esc(g.servicos.join(', '))+'</td>' +
-      '<td class="c-prev"></td>' +
-      '<td class="c-resp">'+esc(g.resps.join(', '))+'</td>' +
-      '<td class="c-loc">'+esc(g.local)+'</td>' +
-    '</tr>';
-  }).join('');
-
-  var folha =
-'<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
-'<title>Pendências de Manutenção do Dia — '+dia+'</title><style>' +
-'*{margin:0;padding:0;box-sizing:border-box}' +
-'body{font-family:Arial,Helvetica,sans-serif;background:#e5e5e5;padding:16px;color:#000}' +
-'.folha{background:#fff;max-width:1100px;margin:0 auto;padding:14px 18px;border:2px solid #000}' +
-'.top{display:flex;align-items:center;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:8px}' +
-'.top .logo{font-weight:bold;font-size:20px;letter-spacing:1px;border:2px solid #c00;color:#c00;padding:3px 8px}' +
-'.top .logo small{display:block;font-size:8px;color:#333;letter-spacing:.5px;font-weight:normal}' +
-'.top .titulo{flex:1;text-align:center;font-size:17px;font-weight:bold;letter-spacing:.5px}' +
-'.top .dia{text-align:right;font-size:12px;font-weight:bold}' +
-'.top .dia b{font-size:15px}' +
-'table{width:100%;border-collapse:collapse;font-size:12px}' +
-'th,td{border:1px solid #000;padding:4px 6px;vertical-align:middle}' +
-'thead th{background:#fff;font-weight:bold;text-align:center;font-size:11px}' +
-'.sub th{font-size:10px}' +
-'.c-num{width:26px;text-align:center}' +
-'.c-frota{width:90px;text-align:center;font-weight:bold}' +
-'.c-of{width:34px;text-align:center}' +
-'.c-ent{width:78px;text-align:center}' +
-'.c-serv{}' +
-'.c-prev{width:70px}' +
-'.c-resp{width:100px}' +
-'.c-loc{width:100px;text-align:center;font-size:11px}' +
-'tbody tr{height:26px}' +
-'@media print{body{background:#fff;padding:0}.folha{border:2px solid #000;max-width:100%}}' +
-'</style></head><body><div class="folha">' +
-'<div class="top">' +
-  '<div class="logo">TWM<small>TRANSPORTES ESPECIAIS LTDA</small></div>' +
-  '<div class="titulo">PENDÊNCIAS DE MANUTENÇÃO DO DIA</div>' +
-  '<div class="dia">DIA:<br><b>'+dia+'</b></div>' +
-'</div>' +
-'<table><thead>' +
-  '<tr><th rowspan="2" class="c-num"></th><th rowspan="2" class="c-frota">VP / RB</th>' +
-      '<th colspan="2">OFICINA</th><th rowspan="2" class="c-ent">ENTRADA</th>' +
-      '<th rowspan="2">SERVIÇO PENDENTE</th><th rowspan="2" class="c-prev">PREVISÃO</th>' +
-      '<th rowspan="2" class="c-resp">RESPONSÁVEL</th><th rowspan="2" class="c-loc">LOCALIZAÇÃO</th></tr>' +
-  '<tr class="sub"><th class="c-of">INT.</th><th class="c-of">EXT.</th></tr>' +
-'</thead><tbody>'+linhas+'</tbody></table>' +
-'</div>' +
-'</body></html>';
-
-  // Renderiza dentro do iframe da PRÉVIA (sem abrir aba nova)
-  var frame = document.getElementById('prev-frame');
-  var doc = frame.contentDocument || frame.contentWindow.document;
-  doc.open(); doc.write(folha); doc.close();
-
-  document.getElementById('prev-count').textContent =
-    grupos.length + (grupos.length===1 ? ' frota · ' : ' frotas · ') +
-    itens.length + (itens.length===1 ? ' serviço' : ' serviços');
-
-  // Esconde seleção, mostra prévia
-  document.getElementById('rel-overlay').classList.remove('on');
-  document.getElementById('prev-overlay').classList.add('on');
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(function(pos){
+      abrir(pos.coords.latitude+','+pos.coords.longitude);
+    }, function(){ abrir(null); }, {enableHighAccuracy:true, timeout:6000});
+  } else { abrir(null); }
 }
 
-// Volta da prévia para a tela de seleção (mantém as marcações)
-function voltarSelecao(){
-  document.getElementById('prev-overlay').classList.remove('on');
-  document.getElementById('rel-overlay').classList.add('on');
+function renderResultados(itens){
+  var box = document.getElementById('searchResults');
+  if(!itens.length){ box.style.display='none'; box.innerHTML=''; return; }
+  box.innerHTML = '';
+  itens.forEach(function(it){
+    var el = document.createElement('div');
+    el.className = 'sr-item';
+    el.innerHTML =
+      '<span class="sr-ic">'+it.icon+'</span>'+
+      '<div class="sr-tx"><div class="t1">'+it.titulo+'</div><div class="t2">'+(it.sub||'')+'</div></div>';
+    el.onclick = function(){
+      if(!isNaN(it.lat) && !isNaN(it.lng)){
+        map.setView([it.lat,it.lng], 16, {animate:true});
+        if(destMarker) map.removeLayer(destMarker);
+        destMarker = L.marker([it.lat,it.lng]).addTo(map);
+        abrirDestino(it);
+      } else if(it.tipo==='frota' && !it.temPos){
+        toast(it.titulo.split('•')[0].trim()+' está sem localização recente');
+      }
+      box.style.display='none';
+      document.getElementById('searchInput').blur();
+    };
+    box.appendChild(el);
+  });
+  box.style.display = 'block';
 }
 
-// Fecha a prévia por completo
-function fecharPrevia(){
-  document.getElementById('prev-overlay').classList.remove('on');
+function onBusca(){
+  var termo = document.getElementById('searchInput').value.trim();
+  var clear = document.getElementById('searchClear');
+  clear.style.display = termo ? 'block' : 'none';
+
+  clearTimeout(buscaTimer);
+  if(!termo){ renderResultados([]); return; }
+
+  // 1) resultados imediatos da frota (local, sem esperar rede)
+  var locais = buscarFrotaLocal(termo);
+  renderResultados(locais);
+
+  // 2) depois de uma pausa, busca endereço e junta
+  buscaTimer = setTimeout(function(){
+    buscarEndereco(termo, function(enderecos){
+      renderResultados(locais.concat(enderecos));
+    });
+  }, 500);
 }
 
-// Manda o conteúdo do iframe para impressão / PDF
-function imprimirPrevia(){
-  var frame = document.getElementById('prev-frame');
-  frame.contentWindow.focus();
-  frame.contentWindow.print();
+/* ============================================================
+   INIT DO MAPA
+   ============================================================ */
+function abrirMapa(){
+  initMapaFrota();
+  setTimeout(function(){ map.invalidateSize(); }, 200);
+  if(_isAdmin()) carregarFrota();
 }
 
-function esc(s){
-  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-</script>
-
-<script>
-// ══ SERVICE WORKER + AUTO-ATUALIZAÇÃO SILENCIOSA ══
-// Garante que o usuário SEMPRE tenha a versão mais recente,
-// sem precisar limpar cache ou fechar o app.
-if ('serviceWorker' in navigator) {
-  var _swReloaded = false;
-
-  // Quando um novo SW assume o controle, recarrega 1x automaticamente
-  navigator.serviceWorker.addEventListener('controllerchange', function() {
-    if (_swReloaded) return;
-    _swReloaded = true;
-    window.location.reload();
+/* ============================================================
+   INIT
+   ============================================================ */
+window.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('btnAtualizarFrota').addEventListener('click', carregarFrota);
+  document.getElementById('destNavegar').addEventListener('click', navegarPara);
+  document.getElementById('destFechar').addEventListener('click', fecharDestino);
+  document.getElementById('cfgAbrir').addEventListener('click', abrirConfigTablet);
+  // tocar no status quando bloqueado tenta pedir a permissão de novo
+  document.getElementById('meStatus').addEventListener('click', function(){
+    var t = this.textContent || '';
+    if(t.indexOf('bloqueado') >= 0 || t.indexOf('suportado') >= 0){
+      compartilhando = false;         // permite reiniciar
+      iniciarCompartilhamento();
+    }
+  });
+  document.getElementById('cfgCancelar').addEventListener('click', fecharConfigTablet);
+  document.getElementById('cfgSalvar').addEventListener('click', salvarConfigTablet);
+  document.getElementById('cfgRemover').addEventListener('click', removerConfigTablet);
+  document.getElementById('recenterBtn').addEventListener('click', function(){
+    if(meMarker){ map.setView(meMarker.getLatLng(), 16, {animate:true}); }
+    else { centralizarNoUsuario(); }
   });
 
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('service-worker.js').then(function(reg) {
-      // Força verificação de atualização toda vez que abre
-      reg.update();
-
-      // Se já existe um SW esperando, ativa na hora
-      if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
-
-      // Detecta quando uma nova versão termina de baixar
-      reg.addEventListener('updatefound', function() {
-        var nw = reg.installing;
-        if (!nw) return;
-        nw.addEventListener('statechange', function() {
-          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-            nw.postMessage('SKIP_WAITING'); // ativa → dispara controllerchange → reload
-          }
-        });
-      });
-
-      // Verifica atualização também quando o app volta ao foco
-      document.addEventListener('visibilitychange', function() {
-        if (!document.hidden) reg.update();
-      });
-    }).catch(function(){});
+  // ---- LUPA expansível ----
+  var bar = document.getElementById('searchBar');
+  var si = document.getElementById('searchInput');
+  function expandirLupa(){
+    bar.classList.remove('collapsed'); bar.classList.add('expanded');
+    setTimeout(function(){ si.focus(); }, 120);
+  }
+  function colapsarLupa(){
+    bar.classList.remove('expanded'); bar.classList.add('collapsed');
+    si.value=''; document.getElementById('searchClear').style.display='none';
+    renderResultados([]); si.blur();
+  }
+  // toca na barra colapsada -> expande
+  bar.addEventListener('click', function(){
+    if(bar.classList.contains('collapsed')) expandirLupa();
   });
-}
-</script>
+  si.addEventListener('input', onBusca);
+  si.addEventListener('focus', function(){ if(si.value.trim()) onBusca(); });
+  document.getElementById('searchClear').addEventListener('click', function(ev){
+    ev.stopPropagation();
+    si.value=''; document.getElementById('searchClear').style.display='none';
+    renderResultados([]); si.focus();
+  });
+  // toca fora -> fecha resultados e colapsa (se vazio)
+  document.addEventListener('click', function(ev){
+    var res = document.getElementById('searchResults');
+    if(!bar.contains(ev.target) && !res.contains(ev.target)){
+      res.style.display='none';
+      if(bar.classList.contains('expanded') && !si.value.trim()) colapsarLupa();
+    }
+  });
 
+  // ---- PAINEL DA FROTA (admin) ----
+  var painel = document.getElementById('fleetPanel');
+  var toggle = document.getElementById('fleetToggle');
+  toggle.addEventListener('click', function(){
+    painel.classList.remove('hidden');   // sem isso o painel fica display:none
+    // pequeno atraso para a animação de subida funcionar
+    setTimeout(function(){ painel.classList.add('open'); }, 10);
+    carregarFrota();                     // atualiza a lista ao abrir
+  });
+  document.getElementById('fleetPanelClose').addEventListener('click', function(){
+    painel.classList.remove('open');
+    setTimeout(function(){ painel.classList.add('hidden'); }, 300); // espera a animação
+  });
+
+  // admin vê o botão da frota (painel deslizante); motorista não
+  if(_isAdmin()){
+    document.getElementById('fleetToggle').classList.remove('hidden');
+    refreshTimer = setInterval(function(){
+      carregarFrota();
+    }, REFRESH_INTERVALO_MS);
+  }
+
+  abrirMapa();
+  carregarEquipamentos();  // cadastro da frota (VP/RB/placa/modelo) para a lupa
+
+  // avisa se este tablet ainda não tem VP configurada
+  if(!_frotaUsuario()){
+    var chip = document.getElementById('statusChip');
+    if(chip) chip.style.background = '#FFF4E5';
+    var st = document.getElementById('meStatus');
+    if(st) st.textContent = 'sem VP';
+    setTimeout(function(){ toast('Este tablet ainda não tem VP configurada — toque na engrenagem'); }, 1500);
+  }
+
+  // Compartilhamento AUTOMÁTICO: começa sozinho ao abrir o mapa.
+  // (o navegador ainda pede a permissão de GPS na primeira vez — obrigatório)
+  iniciarCompartilhamento();
+
+  // pausa/retoma quando o app sai/volta pra tela
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden){
+      // mantém watch, apenas não força envio extra
+    } else {
+      if(compartilhando) enviarMinhaPos();
+      if(_isAdmin()) carregarFrota();
+    }
+  });
+
+  // envia uma última posição ao fechar
+  window.addEventListener('pagehide', function(){
+    if(compartilhando && ultimaPos && navigator.sendBeacon){
+      var params = new URLSearchParams({
+        action:'salvarLocalizacao', nome:_nomeUsuario(), frota:_frotaUsuario(),
+        lat:ultimaPos.lat, lng:ultimaPos.lng, precisao:Math.round(ultimaPos.acc||0),
+        ts:new Date().toISOString(), saindo:'1'
+      });
+      navigator.sendBeacon(SCRIPT_URL+'?'+params.toString());
+    }
+  });
+});
+</script>
 </body>
 </html>
