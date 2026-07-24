@@ -395,7 +395,7 @@ function centralizarNoUsuario(){
     map.setView([lat,lng], zoom, {animate:true});
     jaCentralizou = true;   // já posicionou; envios seguintes não movem a tela
     if(meMarker) map.removeLayer(meMarker);
-    meMarker = L.marker([lat,lng], {icon: iconeMeuPonto(null, _frotaUsuario())}).addTo(map);
+    meMarker = L.marker([lat,lng], {icon: iconeMeuPonto(null, frotaLabel(_frotaUsuario()))}).addTo(map);
     meMarker.bindPopup('<b>Você está aqui</b>' + (aproximada ? '<br><small>posição aproximada (~'+Math.round(acc)+'m)</small>' : ''));
     setTimeout(function(){ map.invalidateSize(); }, 200);
   }
@@ -476,7 +476,7 @@ function iniciarCompartilhamento(){
     document.getElementById('meStatus').textContent = 'ao vivo';
     if(map){
       var ll0 = [pos.coords.latitude, pos.coords.longitude];
-      if(!meMarker) meMarker = L.marker(ll0, {icon: iconeMeuPonto(null, _frotaUsuario())}).addTo(map);
+      if(!meMarker) meMarker = L.marker(ll0, {icon: iconeMeuPonto(null, frotaLabel(_frotaUsuario()))}).addTo(map);
       else meMarker.setLatLng(ll0);
       // só centraliza na PRIMEIRA posição; depois respeita onde o usuário está
       if(!jaCentralizou){ map.setView(ll0, 15, {animate:true}); jaCentralizou = true; }
@@ -502,10 +502,10 @@ function iniciarCompartilhamento(){
       var ll = [pos.coords.latitude, pos.coords.longitude];
       var head = pos.coords.heading; // graus (pode vir null se parado)
       if(!meMarker){
-        meMarker = L.marker(ll, {icon: iconeMeuPonto(head, _frotaUsuario())}).addTo(map);
+        meMarker = L.marker(ll, {icon: iconeMeuPonto(head, frotaLabel(_frotaUsuario()))}).addTo(map);
       } else {
         meMarker.setLatLng(ll);
-        if(head!=null && !isNaN(head)) meMarker.setIcon(iconeMeuPonto(head, _frotaUsuario()));
+        if(head!=null && !isNaN(head)) meMarker.setIcon(iconeMeuPonto(head, frotaLabel(_frotaUsuario())));
       }
     }
   }, function(err){
@@ -623,6 +623,15 @@ function renderFrota(lista){
     if(isNaN(lat)||isNaN(lng)) return;
     var on = minutosDesde(p.ts) <= ONLINE_LIMITE_MIN;
     if(on) online++;
+
+    // Não desenha o marcador da frota para ESTE aparelho: ele já tem o
+    // próprio ponto azul (meMarker). Sem isso apareceria duplicado.
+    var souEu = false;
+    if(p.device && String(p.device).toUpperCase() === _deviceId()) souEu = true;
+    if(!souEu && _frotaUsuario() &&
+       chaveFrota(p.frota) === chaveFrota(_frotaUsuario()) &&
+       (p.nome||'') === _nomeUsuario()) souEu = true;
+    if(souEu){ bounds.push([lat,lng]); return; }
 
     // cruza com o cadastro (EQUIPAMENTOS) para mostrar placa/modelo corretos
     var cad = equipPorFrota[chaveFrota(p.frota)] || {};
