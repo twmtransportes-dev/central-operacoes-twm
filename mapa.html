@@ -335,8 +335,6 @@ function tempoRelativo(iso){
    ============================================================ */
 var map, marcadores = {};
 var clusterFrota = null;   // grupo que agrupa marcadores próximos
-var jaEnquadrou = false;   // evita o mapa "pular" a cada atualização
-var jaCentralizou = false; // idem para a centralização no GPS
 var frotaAtual = [];
 var TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 var TILE_ATTR = '© OpenStreetMap © CARTO';
@@ -394,7 +392,6 @@ function centralizarNoUsuario(){
     // zoom menor quando a posição é aproximada (torre/Wi-Fi)
     var zoom = acc > 300 ? 13 : 15;
     map.setView([lat,lng], zoom, {animate:true});
-    jaCentralizou = true;   // já posicionou; envios seguintes não movem a tela
     if(meMarker) map.removeLayer(meMarker);
     meMarker = L.marker([lat,lng], {icon: iconeMeuPonto(null, _frotaUsuario())}).addTo(map);
     meMarker.bindPopup('<b>Você está aqui</b>' + (aproximada ? '<br><small>posição aproximada (~'+Math.round(acc)+'m)</small>' : ''));
@@ -479,8 +476,7 @@ function iniciarCompartilhamento(){
       var ll0 = [pos.coords.latitude, pos.coords.longitude];
       if(!meMarker) meMarker = L.marker(ll0, {icon: iconeMeuPonto(null, _frotaUsuario())}).addTo(map);
       else meMarker.setLatLng(ll0);
-      // só centraliza na PRIMEIRA posição; depois respeita onde o usuário está
-      if(!jaCentralizou){ map.setView(ll0, 15, {animate:true}); jaCentralizou = true; }
+      map.setView(ll0, 15, {animate:true});   // centraliza ao pegar a 1ª posição
     }
     enviarMinhaPos();
   }, function(err){
@@ -655,13 +651,10 @@ function renderFrota(lista){
   cnt.textContent = '('+online+' online / '+lista.length+' total)';
   var tc = document.getElementById('fleetToggleCount');
   if(tc) tc.textContent = String(online);
-
-  // Reenquadra APENAS na primeira carga. Depois disso o mapa fica onde o
-  // usuário deixou — o refresh de 30s não puxa mais a tela de volta.
-  if(bounds.length && !jaEnquadrou){
+  // Só reenquadra se houver posições; senão mantém a centralização no usuário
+  if(bounds.length){
     if(meMarker){ var ll = meMarker.getLatLng(); bounds.push([ll.lat, ll.lng]); }
     map.fitBounds(bounds, {padding:[40,40], maxZoom:15});
-    jaEnquadrou = true;
   }
 }
 
