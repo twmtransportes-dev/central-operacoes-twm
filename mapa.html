@@ -550,6 +550,9 @@ function enviarMinhaPos(){
   if(!ultimaPos) return;
   var nome  = _nomeUsuario();
   var frota = _frotaUsuario();
+  // sem VP configurada não envia: evita criar linha órfã no RASTREIO
+  // (era o que fazia o caminhão "voltar" ao mapa depois de removido)
+  if(!frota) return;
   var params = new URLSearchParams({
     action:'salvarLocalizacao',
     nome: nome,
@@ -840,7 +843,9 @@ function _gravarVpTablet(frota, msg){
   if(msg){ msg.textContent = ''; msg.style.color = '#D70015'; }
   fecharConfigTablet();
   toast('Tablet configurado como ' + frota);
-  if(compartilhando) enviarMinhaPos();   // reenvia já com a VP certa
+  // se estava parado (ex: acabou de remover a VP anterior), religa
+  if(compartilhando) enviarMinhaPos();
+  else iniciarCompartilhamento();
 }
 
 
@@ -849,15 +854,44 @@ function removerConfigTablet(){
   var msg = document.getElementById('cfgMsg');
   if(!_isAdmin()){ msg.textContent = 'Apenas administrador pode remover.'; return; }
 
+  var frotaAtual = _frotaUsuario();
+
+  // 1) para de enviar posição AGORA (senão o timer regrava logo em seguida)
+  pararCompartilhamento(true);
+
+  // 2) apaga a linha do RASTREIO, senão o caminhão fica parado no mapa
+  msg.style.color = '#8E8E93';
+  msg.textContent = 'Removendo do mapa...';
+  apiGet('?action=removerLocalizacao'
+        +'&device='+encodeURIComponent(_deviceId())
+        +'&nome='+encodeURIComponent(_nomeUsuario())
+        +'&frota='+encodeURIComponent(frotaAtual)
+        +'&_t='+Date.now())
+    .then(function(res){
+      _limparVpLocal();
+      toast(res && res.ok ? 'VP removida do tablet e do mapa'
+                          : 'VP removida do tablet (o mapa pode levar alguns minutos)');
+    })
+    .catch(function(){
+      // sem conexão: limpa local mesmo assim, mas avisa
+      _limparVpLocal();
+      toast('VP removida do tablet. Sem conexão para limpar o mapa agora.');
+    });
+}
+
+// limpa a VP guardada no aparelho e atualiza a tela
+function _limparVpLocal(){
   localStorage.removeItem('twm_vp_tablet');
   localStorage.removeItem('twm_placa_tablet');
-  msg.textContent = '';
+  var msg = document.getElementById('cfgMsg');
+  if(msg){ msg.textContent = ''; msg.style.color = '#D70015'; }
   fecharConfigTablet();
-  toast('VP removida deste tablet');
   var st = document.getElementById('meStatus');
   if(st) st.textContent = 'sem VP';
   var chip = document.getElementById('statusChip');
   if(chip) chip.style.background = '#FFF4E5';
+  var dot = document.getElementById('meDot');
+  if(dot) dot.classList.remove('live');
 }
 
 // posição reportada (se houver) para uma frota
@@ -1128,7 +1162,7 @@ window.addEventListener('DOMContentLoaded', function(){
 
   // envia uma última posição ao fechar
   window.addEventListener('pagehide', function(){
-    if(compartilhando && ultimaPos && navigator.sendBeacon){
+    if(compartilhando && ultimaPos && _frotaUsuario() && navigator.sendBeacon){
       var params = new URLSearchParams({
         action:'salvarLocalizacao', nome:_nomeUsuario(), frota:_frotaUsuario(),
         placa:_placaUsuario(), device:_deviceId(),
