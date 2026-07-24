@@ -1,507 +1,918 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0A0A0F">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>TWM — Jornada</title>
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icone-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#0A0A0F;--bg2:#0F0F18;--bg3:#13131E;--border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.14);--text:#F0EEF8;--muted:#7A7890;--diesel:#F59E0B;--arla:#06B6D4;--green:#10B981;--red:#EF4444;--accent:#7B3FE4;--accent2:#A855F7;--gold:#F59E0B;--rota:#64D2FF}
-body.light{--bg:#F4F3FF;--bg2:#FFFFFF;--bg3:#FAFAFA;--border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);--text:#1A1A2E;--muted:#6B6880}
-body.light .app-header{box-shadow:0 1px 8px rgba(0,0,0,.08)}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+/* ════════════════════════════════════════════════════════════════
+   TWM Apps Script — MÓDULO JORNADA (Início/Fim de Viagem)
+   VERSION 4: Jornada + Rastreio GPS + Equipamentos + Validar Admin
+              + Status automático por GPS (indo/voltando/descarregando)
+   ────────────────────────────────────────────────────────────────
+   SUBSTITUA TODO O CONTEÚDO DO SEU ARQUIVO POR ESTE.
+   Depois: Implantar → Gerenciar implantações → editar a existente
+           → Nova versão → Implantar (mesma URL de sempre).
+   ════════════════════════════════════════════════════════════════ */
 
-.app-header{background:var(--bg2);border-bottom:2px solid var(--rota);padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.logo{display:flex;align-items:center;gap:10px}
-.logo-badge{width:34px;height:34px;background:linear-gradient(135deg,#7B3FE4,#A855F7);border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:900;color:#fff}
-.logo-title{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
-.btn-back{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:4px}
+// ── PLANILHAS ──────────────────────────────────────────────────
+// ⚠️ ATENÇÃO: este ID deu "Illegal spreadsheet id" no teste.
+// Abra a planilha da JORNADA/ABASTECIMENTO e copie o ID da URL:
+// https://docs.google.com/spreadsheets/d/ ESTE_PEDACO_AQUI /edit
+var ABASTECIMENTO_ID = '1Cx2RR_3GNOuJZD60vYtA2Jcgnvdf5EXHzR-lXGHHtw4'; // Jornada/Abastecimento
+var FROTA_ID         = '1Q1XHvwuho8nNFAUMd3XcZx70njgU7kKatVnbk45X5Xg'; // Frota (EQUIPAMENTOS)
+var MOTORISTAS_ID    = '1YBcHrhZdTvW1Z41AUW6qOtAnvE5kMom6dlXVmStQI8w'; // Usuários/login (MOTORISTAS)
 
-.nav-tabs{background:var(--bg2);border-bottom:1px solid var(--border2);display:flex;overflow-x:auto;scrollbar-width:none}
-.nav-tabs::-webkit-scrollbar{display:none}
-.nav-tab{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:10px 14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.15s;display:flex;align-items:center;gap:5px}
-.nav-tab.on{color:var(--rota);border-bottom-color:var(--rota)}
+// ── ABAS ───────────────────────────────────────────────────────
+var ABA_JORNADA    = 'Jornada';
+var ABA_RASTREIO   = 'RASTREIO';       // GPS do mapa (nome diferente de LOCALIZACAO,
+                                        // que já é COLUNA de status na aba Jornada)
+var ABA_EQUIP      = 'EQUIPAMENTOS';   // fica na planilha FROTA_ID
+var ABA_MOTORISTAS = 'MOTORISTAS';     // fica na planilha MOTORISTAS_ID
 
-.page{display:none;padding:14px;max-width:600px;margin:0 auto;padding-bottom:40px}
-.page.on{display:block}
+var REGEX_ABA_ANO = /^\d{4}$/;
 
-/* STATS */
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
-.scard{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;border-top:2px solid transparent}
-.scard.r{border-top-color:var(--rota)}.scard.d{border-top-color:var(--diesel)}.scard.g{border-top-color:var(--green)}.scard.t{border-top-color:var(--accent2)}
-.sn{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;line-height:1}
-.scard.r .sn{color:var(--rota)}.scard.d .sn{color:var(--diesel)}.scard.g .sn{color:var(--green)}.scard.t .sn{color:var(--accent2)}
-.sl{font-size:7px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:2px}
-
-/* BANNER VINDO DO CHECKLIST */
-.banner-check{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:12px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px}
-.banner-check .bi{font-size:20px}
-.banner-check .bt{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--green)}
-.banner-check .bs{font-size:10px;color:var(--muted);margin-top:1px}
-
-/* FORM */
-.form-card{background:var(--bg3);border:1px solid var(--border2);border-radius:14px;padding:16px;margin-bottom:14px}
-.form-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--rota);margin-bottom:14px;display:flex;align-items:center;gap:8px}
-.field{margin-bottom:12px}
-.field label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);display:block;margin-bottom:5px}
-.field input,.field select,.field textarea{width:100%;background:var(--bg);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:11px 13px;outline:none;transition:.15s;-webkit-appearance:none;appearance:none}
-.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--rota)}
-
-/* BOTÃO */
-.btn-reg{width:100%;padding:14px;background:linear-gradient(135deg,#0EA5E9,#64D2FF);border:none;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#04202E;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 20px rgba(100,210,255,.25)}
-.btn-ghost{padding:10px 16px;background:rgba(255,255,255,.05);border:1px solid var(--border2);border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);cursor:pointer;width:100%}
-
-/* CARDS DE VIAGEM */
-.filter-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
-.fbtn{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:5px 12px;border-radius:20px;background:var(--bg3);border:1px solid var(--border2);color:var(--muted);cursor:pointer}
-.fbtn.on{background:var(--rota);border-color:var(--rota);color:#04202E}
-.filtros-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
-
-.viagem-card{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
-.vc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;gap:8px}
-.vc-frota{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;color:var(--rota)}
-.vc-mot{font-size:11px;color:var(--muted);margin-top:1px}
-.vc-status{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;padding:3px 9px;border-radius:20px}
-.vc-status.aberta{background:rgba(245,158,11,.12);color:var(--diesel);border:1px solid rgba(245,158,11,.25)}
-.vc-status.fechada{background:rgba(16,185,129,.12);color:var(--green);border:1px solid rgba(16,185,129,.25)}
-.vc-info{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:10px;color:var(--muted)}
-.vc-info b{color:var(--text);font-weight:700}
-.vc-kml{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;margin-top:8px}
-.vc-kml.bom{background:rgba(16,185,129,.12);color:var(--green);border:1px solid rgba(16,185,129,.25)}
-.vc-kml.medio{background:rgba(245,158,11,.12);color:var(--diesel);border:1px solid rgba(245,158,11,.25)}
-.vc-kml.ruim{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.25)}
-
-/* LOCALIZAÇÃO */
-.vc-local{margin-top:10px;padding:8px 10px;background:rgba(123,63,228,.1);border:1px solid rgba(123,63,228,.3);border-radius:8px}
-.vc-local-label{font-size:9px;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.5px}
-.vc-local-value{font-size:12px;color:var(--text);font-weight:600;margin-top:2px}
-.local-select{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:inherit;font-size:12px;padding:6px 8px;outline:none;margin-top:4px}
-.btn-atualizar-local{padding:6px 10px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:10px;font-weight:700;cursor:pointer;text-transform:uppercase;margin-top:4px;width:100%}
-
-.vc-fin-row{display:flex;gap:8px;margin-top:10px}
-.vc-fin-row input{flex:1;background:var(--bg);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;padding:9px 11px;outline:none}
-.vc-fin-row input:focus{border-color:var(--rota)}
-.vc-fin-btn{background:linear-gradient(135deg,#10B981,#34D399);border:none;border-radius:8px;padding:0 16px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;text-transform:uppercase;color:#04220F;cursor:pointer;white-space:nowrap}
-
-/* CONFIG */
-.cfg-card{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:14px;margin-bottom:12px}
-.cfg-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px}
-.cfg-note{font-size:10px;color:var(--muted);line-height:1.6;margin-top:6px}
-
-/* SYNC / TOAST */
-.sync-bar{display:none;text-align:center;padding:6px 16px;font-size:11px;font-weight:600;letter-spacing:.5px;position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--bg2);border-top:1px solid var(--border2)}
-.sync-bar.on{display:block}
-.sync-bar.ok{color:var(--green)}.sync-bar.err{color:var(--red)}
-.toast{position:fixed;bottom:50px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:10px 20px;font-size:12px;font-weight:600;z-index:999;transition:.3s;white-space:nowrap;max-width:90vw;text-align:center}
-.toast.on{transform:translateX(-50%) translateY(0)}
-.toast.ok{border-color:rgba(16,185,129,.4);color:var(--green)}
-.toast.err{border-color:rgba(239,68,68,.4);color:var(--red)}
-
-.empty{text-align:center;padding:32px 16px;color:var(--muted);font-size:12px;line-height:1.6}
-</style>
-<script>
-(function() {
-  var pref = localStorage.getItem('twm_tema') || 'auto';
-  var claro;
-  if (pref === 'claro') claro = true;
-  else if (pref === 'escuro') claro = false;
-  else { var h = new Date().getHours(); claro = h >= 6 && h < 18; }
-  function aplicar() { if (claro) document.body.classList.add('light'); }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', aplicar);
-  else aplicar();
-})();
-</script>
-</head>
-<body>
-
-<div class="toast" id="toast"></div>
-<div class="sync-bar" id="syncBar"></div>
-
-<div class="app-header">
-  <div class="logo">
-    <div class="logo-badge">TWM</div>
-    <div class="logo-title">Jornada</div>
-  </div>
-  <a class="btn-back" href="index.html">← Central</a>
-</div>
-
-<div class="nav-tabs">
-  <div class="nav-tab on" id="tab-iniciar" onclick="goTab('iniciar',this)">🚚 Iniciar</div>
-  <div class="nav-tab" id="tab-finalizar" onclick="goTab('finalizar',this)">🏁 Finalizar</div>
-  <div class="nav-tab" id="tab-historico" onclick="goTab('historico',this)">📋 Histórico</div>
-  <div class="nav-tab" id="tab-config" onclick="goTab('config',this)">⚙️ Config</div>
-</div>
-
-<!-- ABA INICIAR -->
-<div class="page on" id="page-iniciar">
-  <div class="banner-check" id="banner-checklist" style="display:none">
-    <div class="bi">✅</div>
-    <div>
-      <div class="bt">Vindo do Checklist</div>
-      <div class="bs">KM preenchido automaticamente — confira e confirme</div>
-    </div>
-  </div>
-
-  <div class="form-card">
-    <div class="form-title">🚚 Iniciar Viagem</div>
-    <div class="field">
-      <label>Frota / Prefixo *</label>
-      <input id="inp-frota" type="text" placeholder="VP-100" required>
-    </div>
-    <div class="field">
-      <label>Motorista *</label>
-      <input id="inp-motorista" type="text" placeholder="João Silva" required>
-    </div>
-    <div class="field">
-      <label>KM Inicial *</label>
-      <input id="inp-km-ini" type="number" placeholder="0" required>
-    </div>
-    <div class="field">
-      <label>Rota (opcional)</label>
-      <input id="inp-rota" type="text" placeholder="Belo Horizonte - São Paulo">
-    </div>
-    <button class="btn-reg" onclick="iniciarViagemClick()">✈️ Iniciar Viagem</button>
-  </div>
-</div>
-
-<!-- ABA FINALIZAR -->
-<div class="page" id="page-finalizar">
-  <div id="lista-abertas"></div>
-</div>
-
-<!-- ABA HISTÓRICO -->
-<div class="page" id="page-historico">
-  <div class="stats">
-    <div class="scard r"><div class="sn" id="st-viagens">0</div><div class="sl">Viagens</div></div>
-    <div class="scard d"><div class="sn" id="st-km">0</div><div class="sl">KM</div></div>
-    <div class="scard d"><div class="sn" id="st-litros">0</div><div class="sl">Litros</div></div>
-    <div class="scard t"><div class="sn" id="st-kml">0</div><div class="sl">KM/L</div></div>
-  </div>
-  <div class="filter-row">
-    <button class="fbtn on" id="fbtn-todas" onclick="filtrarHistorico('todas',this)">Todas</button>
-    <button class="fbtn" id="fbtn-abertas" onclick="filtrarHistorico('ABERTA',this)">Abertas</button>
-    <button class="fbtn" id="fbtn-fechadas" onclick="filtrarHistorico('FECHADA',this)">Fechadas</button>
-  </div>
-  <div id="lista-hist"></div>
-</div>
-
-<!-- ABA CONFIG -->
-<div class="page" id="page-config">
-  <div class="cfg-card">
-    <div class="cfg-title">⚙️ Configuração do Script</div>
-    <div class="field">
-      <label>Script URL (Apps Script)</label>
-      <input id="cfg-script" type="text">
-    </div>
-    <button class="btn-reg" onclick="salvarConfig()" style="background:linear-gradient(135deg,#7B3FE4,#A855F7)">💾 Salvar</button>
-  </div>
-  <div class="cfg-card">
-    <div class="cfg-title">ℹ️ Informações</div>
-    <div class="cfg-note">
-      <strong>Como usar:</strong><br>
-      1. Preencha Frota, Motorista e KM inicial<br>
-      2. Clique em "Iniciar Viagem"<br>
-      3. Quando chegar ao destino, finalize com o KM final<br>
-      4. Atualizar Localização permite rastrear o veículo em tempo real
-    </div>
-  </div>
-</div>
-
-<script>
-var SCRIPT_URL = 'https://script.google.com/macros/d/AKfycbw4BZz60sy9BsFACdqKktKpzJOfP8mj0U6s1G7Em5pwhaC_kQHCk-GPbLNZOlwjvrOwsw/userweb';
-var CFG_KEY = 'twm_jornada_cfg';
-var viagensAbertas = [];
-var viagensHist = [];
-var filtroHist = 'todas';
-
-function salvar(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
-function ler(k) { var v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }
-function toast(msg, tipo) {
-  var el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = 'toast on ' + (tipo||'');
-  setTimeout(() => { el.className = 'toast'; }, 2500);
-}
-function sync(msg, ok) {
-  var bar = document.getElementById('syncBar');
-  bar.textContent = msg;
-  bar.className = 'sync-bar on ' + (ok ? 'ok' : 'err');
-  setTimeout(() => { bar.className = 'sync-bar'; }, 1500);
+function out(data) {
+  return ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
-function iniciarViagemClick() {
-  var frota = document.getElementById('inp-frota').value.trim().toUpperCase();
-  var motorista = document.getElementById('inp-motorista').value.trim();
-  var kmIni = parseFloat(document.getElementById('inp-km-ini').value || 0);
-  var rota = document.getElementById('inp-rota').value.trim();
+/* ── ROTEAMENTO ─────────────────────────────────────────────── */
+function doGet(e) {
+  var action = e.parameter.action || '';
+  try {
+    // Jornada (já existentes)
+    if (action === 'iniciarViagem')    return iniciarViagem(e);
+    if (action === 'finalizarViagem')  return finalizarViagem(e);
+    if (action === 'getViagens')       return getViagens(e);
+    if (action === 'atualizarLocal')   return atualizarLocal(e);
 
-  if (!frota || !motorista || !kmIni) {
-    toast('Preencha Frota, Motorista e KM inicial', 'err');
-    return;
+    // Mapa (novas)
+    if (action === 'salvarLocalizacao') return salvarLocalizacao(e);
+    if (action === 'getLocalizacoes')   return getLocalizacoes(e);
+    if (action === 'getEquipamentos')   return getEquipamentos(e);
+    if (action === 'validarAdmin')      return validarAdmin(e);
+    if (action === 'validarLogin')      return validarLogin(e);
+    if (action === 'checarVpTablet')    return checarVpTablet(e);
+    if (action === 'getStatusFrota')    return getStatusFrota(e);
+
+    if (action === 'ping')             return out({ ok: true, msg: 'Jornada Script ativo!' });
+    return out({ ok: true, msg: 'Jornada Script ativo!' });
+  } catch (err) {
+    return out({ ok: false, msg: 'Erro: ' + err.toString() });
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   JORNADA  (mantido igual ao seu, sem alterações de comportamento)
+   ════════════════════════════════════════════════════════════════ */
+function _sheetJornada() {
+  var ss = SpreadsheetApp.openById(ABASTECIMENTO_ID);
+  var sh = ss.getSheetByName(ABA_JORNADA);
+  if (!sh) throw new Error('Aba "' + ABA_JORNADA + '" não encontrada na planilha de Abastecimento.');
+  return sh;
+}
+
+function _vazio(v) {
+  return v === '' || v === null || v === undefined;
+}
+
+function _initJornadaCols() {
+  var sh = _sheetJornada();
+  var dados = sh.getDataRange().getValues();
+  if (dados.length === 0) return null;
+
+  var header = dados[0].map(function(h) { return String(h).toUpperCase().trim(); });
+
+  // Se não tem LOCALIZACAO, adiciona
+  var iLoc = header.indexOf('LOCALIZACAO');
+  if (iLoc < 0) {
+    var ultimaCol = header.length + 1;
+    sh.getRange(1, ultimaCol).setValue('LOCALIZACAO');
+    iLoc = ultimaCol - 1;
   }
 
-  var cfg = ler(CFG_KEY) || {};
-  var url = (cfg.scriptUrl || SCRIPT_URL) + '?action=iniciarViagem&frota=' + encodeURIComponent(frota) + 
-            '&motorista=' + encodeURIComponent(motorista) + '&km_inicial=' + kmIni + 
-            '&rota=' + encodeURIComponent(rota);
+  return { frota: 0, motorista: 1, km_ini: 2, km_fim: 3, km_rod: 4, kml: 5, rota: 6, local: iLoc };
+}
 
-  fetch(url).then(r => r.json()).then(d => {
-    if (d.ok) {
-      toast('✅ Viagem iniciada para ' + frota, 'ok');
-      document.getElementById('inp-frota').value = '';
-      document.getElementById('inp-motorista').value = '';
-      document.getElementById('inp-km-ini').value = '';
-      document.getElementById('inp-rota').value = '';
+/* ── INICIAR VIAGEM ─────────────────────────────────────────── */
+function iniciarViagem(e) {
+  var p = e.parameter;
+  var frota     = (p.frota || '').trim().toUpperCase();
+  var motorista = (p.motorista || '').trim();
+  var kmInicial = parseFloat(p.km_inicial || 0);
+  var rota      = (p.rota || '').trim();
+
+  if (!frota || !motorista || !kmInicial) {
+    return out({ ok: false, msg: 'Frota, motorista e KM inicial são obrigatórios.' });
+  }
+
+  var sh = _sheetJornada();
+  var cols = _initJornadaCols();
+  var dados = sh.getDataRange().getValues();
+
+  // Evita duas viagens abertas para mesma frota
+  for (var i = 1; i < dados.length; i++) {
+    var f = String(dados[i][0] || '').trim().toUpperCase();
+    if (f === frota && _vazio(dados[i][3])) {
+      return out({ ok: false, msg: 'Já existe uma viagem em aberto para ' + frota + '. Finalize-a antes de iniciar outra.' });
+    }
+  }
+
+  sh.appendRow([frota, motorista, kmInicial, '', '', '', rota, 'Garagem']);
+  return out({ ok: true });
+}
+
+/* ── FINALIZAR VIAGEM ───────────────────────────────────────── */
+function finalizarViagem(e) {
+  var p = e.parameter;
+  var frota   = (p.frota || '').trim().toUpperCase();
+  var kmFinal = parseFloat(p.km_final || 0);
+
+  var sh = _sheetJornada();
+  var dados = sh.getDataRange().getValues();
+
+  var rowIdx = -1, kmInicial = 0;
+  for (var i = 1; i < dados.length; i++) {
+    var f = String(dados[i][0] || '').trim().toUpperCase();
+    if (f === frota && _vazio(dados[i][3])) {
+      rowIdx = i + 1;
+      kmInicial = parseFloat(dados[i][2]);
+      break;
+    }
+  }
+
+  if (rowIdx < 0) return out({ ok: false, msg: 'Nenhuma viagem em aberto encontrada para ' + frota + '.' });
+  if (!kmFinal || kmFinal <= kmInicial) {
+    return out({ ok: false, msg: 'KM final deve ser maior que o KM inicial (' + kmInicial + ').' });
+  }
+
+  var kmRodado = kmFinal - kmInicial;
+  sh.getRange(rowIdx, 4).setValue(kmFinal);   // D = KM FINAL
+  sh.getRange(rowIdx, 5).setValue(kmRodado);  // E = KM RODADA
+
+  var consumo = _calcularConsumo(frota, kmInicial, kmFinal);
+  sh.getRange(rowIdx, 6).setValue(consumo.kml); // F = KM/LITRO
+  sh.getRange(rowIdx, 8).setValue('Garagem');   // LOCALIZACAO
+
+  return out({ ok: true, km_rodado: kmRodado, litros: consumo.litros, km_l: consumo.kml });
+}
+
+/* ── ATUALIZAR LOCALIZAÇÃO (status) DO VEÍCULO ─────────────── */
+function atualizarLocal(e) {
+  var p = e.parameter;
+  var frota = (p.frota || '').trim().toUpperCase();
+  var local = (p.local || '').trim(); // Garagem, Indo Entregar, Descarregando, Voltando
+
+  if (!frota || !local) {
+    return out({ ok: false, msg: 'Frota e localização são obrigatórios.' });
+  }
+
+  var sh = _sheetJornada();
+  var cols = _initJornadaCols();
+  var dados = sh.getDataRange().getValues();
+
+  for (var i = 1; i < dados.length; i++) {
+    var f = String(dados[i][0] || '').trim().toUpperCase();
+    if (f === frota) {
+      sh.getRange(i + 1, cols.local + 1).setValue(local);
+      return out({ ok: true, msg: 'Localização de ' + frota + ' atualizada para: ' + local });
+    }
+  }
+
+  return out({ ok: false, msg: 'Frota ' + frota + ' não encontrada.' });
+}
+
+/* ── LISTAR VIAGENS ────────────────────────────────────────── */
+function getViagens(e) {
+  var p = e.parameter || {};
+  var status    = (p.status || '').toUpperCase();
+  var motorista = (p.motorista || '').trim().toUpperCase();
+  var frota     = (p.frota || '').trim().toUpperCase();
+
+  var sh = _sheetJornada();
+  var cols = _initJornadaCols();
+  var dados = sh.getDataRange().getValues();
+  var lista = [];
+
+  for (var i = 1; i < dados.length; i++) {
+    var r = dados[i];
+    var f = String(r[0] || '').trim();
+    if (!f) continue;
+
+    var kmIni = parseFloat(r[2]) || 0;
+    var aberta = _vazio(r[3]);
+    var kmFim = aberta ? null : parseFloat(r[3]);
+
+    var item = {
+      frota: f,
+      motorista: r[1] || '',
+      km_inicial: kmIni,
+      km_final: kmFim,
+      km_rodado: aberta ? null : (parseFloat(r[4]) || (kmFim - kmIni)),
+      rota: r[6] || '',
+      local: r[cols.local] || 'Garagem',
+      status: aberta ? 'ABERTA' : 'FECHADA'
+    };
+
+    if (status && item.status !== status) continue;
+    if (motorista && String(item.motorista).toUpperCase().indexOf(motorista) < 0) continue;
+    if (frota && item.frota.toUpperCase().indexOf(frota) < 0) continue;
+
+    if (!aberta) {
+      var consumo = _calcularConsumo(item.frota, kmIni, kmFim);
+      item.litros = consumo.litros;
+      item.km_l = consumo.kml;
+    }
+    lista.push(item);
+  }
+  lista.reverse();
+  return out({ ok: true, viagens: lista });
+}
+
+/* ── CÁLCULO DE CONSUMO ─────────────────────────────────────── */
+function _calcularConsumo(frota, kmInicial, kmFinal) {
+  var ss = SpreadsheetApp.openById(ABASTECIMENTO_ID);
+  var todas = ss.getSheets();
+  var litros = 0;
+  var frotaU = String(frota).toUpperCase();
+
+  for (var a = 0; a < todas.length; a++) {
+    if (!REGEX_ABA_ANO.test(todas[a].getName())) continue;
+    var dados = todas[a].getDataRange().getValues();
+    for (var i = 1; i < dados.length; i++) {
+      var f      = String(dados[i][0] || '').toUpperCase();
+      var km     = parseFloat(dados[i][2]);
+      var diesel = parseFloat(dados[i][3]) || 0;
+      if (f === frotaU && km > kmInicial && km <= kmFinal) litros += diesel;
+    }
+  }
+
+  var kmRodado = kmFinal - kmInicial;
+  var kml = litros > 0 ? (kmRodado / litros) : 0;
+  return { litros: Math.round(litros * 100) / 100, kml: Math.round(kml * 100) / 100 };
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MAPA — RASTREIO GPS EM TEMPO REAL
+   Aba RASTREIO na planilha da Jornada. Nome diferente de LOCALIZACAO
+   porque LOCALIZACAO já é COLUNA de status na aba Jornada.
+   ════════════════════════════════════════════════════════════════ */
+function _sheetRastreio_() {
+  var ss = SpreadsheetApp.openById(ABASTECIMENTO_ID);
+  var sh = ss.getSheetByName(ABA_RASTREIO);
+  if (!sh) {
+    sh = ss.insertSheet(ABA_RASTREIO);
+    var cab = ['CHAVE','NOME','FROTA','PLACA','LAT','LNG','PRECISAO','TS','ATUALIZADO_EM','DEVICE'];
+    sh.appendRow(cab);
+    var h = sh.getRange(1, 1, 1, cab.length);
+    h.setBackground('#7C3AED'); h.setFontColor('#FFFFFF'); h.setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+/* Grava/atualiza a posição de UMA pessoa. Chave = NOME|FROTA */
+function salvarLocalizacao(e) {
+  try {
+    var p = e.parameter;
+    var nome  = String(p.nome  || '').trim();
+    var frota = String(p.frota || '').trim().toUpperCase();
+    var placa = String(p.placa || '').trim().toUpperCase();
+    var device= String(p.device|| '').trim().toUpperCase();
+    var lat   = parseFloat(p.lat);
+    var lng   = parseFloat(p.lng);
+    if (isNaN(lat) || isNaN(lng)) return out({ ok: false, msg: 'lat/lng inválidos' });
+
+    var chave = (nome || 'ANON') + '|' + frota;
+    var sh    = _sheetRastreio_();
+    var dados = sh.getDataRange().getValues();
+    var hdr   = dados[0];
+    var cCha  = hdr.indexOf('CHAVE');
+
+    // garante a coluna DEVICE (cria no fim se ainda não existir)
+    var cDev = hdr.indexOf('DEVICE');
+    if (cDev < 0) {
+      cDev = hdr.length;
+      sh.getRange(1, cDev + 1).setValue('DEVICE');
+    }
+
+    var rowIdx = -1;
+    for (var i = 1; i < dados.length; i++) {
+      if (String(dados[i][cCha]) === chave) { rowIdx = i + 1; break; }
+    }
+
+    var agora = new Date();
+    var linha = [chave, nome, frota, placa, lat, lng, (p.precisao || ''),
+                 (p.ts || agora.toISOString()), agora];
+
+    if (rowIdx > 0) {
+      sh.getRange(rowIdx, 1, 1, linha.length).setValues([linha]);
+      sh.getRange(rowIdx, cDev + 1).setValue(device);
     } else {
-      toast('❌ ' + d.msg, 'err');
+      linha[cDev] = device;   // posiciona o device na coluna certa
+      sh.appendRow(linha);
     }
-  }).catch(err => {
-    toast('Erro ao conectar com servidor', 'err');
-  });
-}
-
-function carregarViagensAbertas() {
-  var cfg = ler(CFG_KEY) || {};
-  var url = (cfg.scriptUrl || SCRIPT_URL) + '?action=getViagens&status=ABERTA';
-
-  fetch(url).then(r => r.json()).then(d => {
-    if (d.ok) {
-      viagensAbertas = d.viagens || [];
-      renderViagensAbertas();
-    }
-  }).catch(() => {});
-}
-
-function renderViagensAbertas() {
-  var el = document.getElementById('lista-abertas');
-  if (!viagensAbertas.length) {
-    el.innerHTML = '<div class="empty">Nenhuma viagem em aberto.</div>';
-    return;
+    return out({ ok: true });
+  } catch (err) {
+    return out({ ok: false, msg: String(err) });
   }
-  var html = '';
-  viagensAbertas.forEach(function(v) {
-    html += '<div class="viagem-card">' +
-      '<div class="vc-top">' +
-        '<div><div class="vc-frota">' + v.frota + '</div><div class="vc-mot">' + v.motorista + (v.rota ? ' · ' + v.rota : '') + '</div></div>' +
-        '<div class="vc-status aberta">Aberta</div>' +
-      '</div>' +
-      '<div class="vc-info">' +
-        '<span>KM inicial: <b>' + Number(v.km_inicial).toLocaleString('pt-BR') + '</b></span>' +
-      '</div>' +
-      '<div class="vc-local">' +
-        '<div class="vc-local-label">📍 Localização Atual:</div>' +
-        '<div class="vc-local-value">' + (v.local || 'Garagem') + '</div>' +
-        '<select class="local-select" id="local-sel-' + v.frota + '">' +
-          '<option value="Garagem">🏢 Garagem</option>' +
-          '<option value="Indo Entregar">🚚 Indo Entregar</option>' +
-          '<option value="Descarregando">📦 Descarregando</option>' +
-          '<option value="Voltando">↩️ Voltando</option>' +
-        '</select>' +
-        '<button class="btn-atualizar-local" onclick="atualizarLocalizacao(\'' + v.frota + '\')">Atualizar Local</button>' +
-      '</div>' +
-      '<div class="vc-fin-row">' +
-        '<input id="km-fin-' + v.frota + '" type="number" placeholder="KM final" min="' + v.km_inicial + '">' +
-        '<button class="vc-fin-btn" onclick="finalizarViagemClick(\'' + v.frota + '\')">Finalizar</button>' +
-      '</div>' +
-    '</div>';
-  });
-  el.innerHTML = html;
 }
 
-function atualizarLocalizacao(frota) {
-  var sel = document.getElementById('local-sel-' + frota);
-  var local = sel ? sel.value : '';
-  
-  if (!local) {
-    toast('Selecione uma localização', 'err');
-    return;
-  }
+/* Lista a última posição de todos (painel do admin no mapa). */
+function getLocalizacoes(e) {
+  try {
+    var sh    = _sheetRastreio_();
+    var dados = sh.getDataRange().getValues();
+    if (dados.length < 2) return out({ ok: true, localizacoes: [] });
 
-  var cfg = ler(CFG_KEY) || {};
-  var url = (cfg.scriptUrl || SCRIPT_URL) + '?action=atualizarLocal&frota=' + encodeURIComponent(frota) + 
-            '&local=' + encodeURIComponent(local);
+    var hdr = dados[0];
+    var iNome = hdr.indexOf('NOME'), iFro = hdr.indexOf('FROTA'), iPla = hdr.indexOf('PLACA'),
+        iLat  = hdr.indexOf('LAT'),  iLng = hdr.indexOf('LNG'),
+        iPre  = hdr.indexOf('PRECISAO'), iTs = hdr.indexOf('TS');
 
-  fetch(url).then(r => r.json()).then(d => {
-    if (d.ok) {
-      toast('✅ ' + d.msg, 'ok');
-      carregarViagensAbertas();
-    } else {
-      toast('❌ ' + d.msg, 'err');
-    }
-  }).catch(err => {
-    toast('Erro ao atualizar localização', 'err');
-  });
-}
-
-function finalizarViagemClick(frota) {
-  var kmFinal = parseFloat(document.getElementById('km-fin-' + frota).value || 0);
-  
-  if (!kmFinal) {
-    toast('Preencha o KM final', 'err');
-    return;
-  }
-
-  var cfg = ler(CFG_KEY) || {};
-  var url = (cfg.scriptUrl || SCRIPT_URL) + '?action=finalizarViagem&frota=' + encodeURIComponent(frota) + '&km_final=' + kmFinal;
-
-  fetch(url).then(r => r.json()).then(d => {
-    if (d.ok) {
-      toast('✅ Viagem finalizada! KM rodado: ' + d.km_rodado + ' km', 'ok');
-      carregarViagensAbertas();
-    } else {
-      toast('❌ ' + d.msg, 'err');
-    }
-  }).catch(err => {
-    toast('Erro ao finalizar viagem', 'err');
-  });
-}
-
-function carregarHistorico() {
-  var cfg = ler(CFG_KEY) || {};
-  var url = (cfg.scriptUrl || SCRIPT_URL) + '?action=getViagens';
-
-  fetch(url).then(r => r.json()).then(d => {
-    if (d.ok) {
-      viagensHist = d.viagens || [];
-      renderStatsHist();
-      renderHistorico();
-    }
-  }).catch(() => {});
-}
-
-function filtrarHistorico(status, el) {
-  filtroHist = status;
-  var btns = document.querySelectorAll('.fbtn');
-  for (var i = 0; i < btns.length; i++) btns[i].className = 'fbtn';
-  if (el) el.className = 'fbtn on';
-  renderHistorico();
-}
-
-function renderStatsHist() {
-  var totalKm = 0, totalLitros = 0, n = 0;
-  viagensHist.forEach(function(v) {
-    if (v.status !== 'FECHADA') return;
-    totalKm += v.km_rodado || 0;
-    totalLitros += parseFloat(v.litros)||0;
-    n++;
-  });
-  var mediaKml = totalLitros > 0 ? (totalKm/totalLitros) : 0;
-  document.getElementById('st-viagens').textContent = viagensHist.length;
-  document.getElementById('st-km').textContent = totalKm.toLocaleString('pt-BR');
-  document.getElementById('st-litros').textContent = totalLitros.toFixed(0);
-  document.getElementById('st-kml').textContent = mediaKml ? mediaKml.toFixed(2) : '—';
-}
-
-function classeKml(kml) {
-  if (!kml) return '';
-  if (kml >= 2.2) return 'bom';
-  if (kml >= 1.5) return 'medio';
-  return 'ruim';
-}
-
-function renderHistorico() {
-  var el = document.getElementById('lista-hist');
-  var filtradas = viagensHist;
-  
-  if (filtroHist !== 'todas') {
-    filtradas = viagensHist.filter(v => v.status === filtroHist);
-  }
-  
-  if (!filtradas.length) {
-    el.innerHTML = '<div class="empty">Nenhuma viagem encontrada para o filtro atual.</div>';
-    return;
-  }
-  
-  var html = '';
-  filtradas.forEach(function(v) {
-    var fechada = v.status === 'FECHADA';
-    var kml = fechada ? parseFloat(v.km_l)||0 : null;
-    html += '<div class="viagem-card">' +
-      '<div class="vc-top">' +
-        '<div><div class="vc-frota">' + v.frota + '</div><div class="vc-mot">' + v.motorista + (v.rota ? ' · ' + v.rota : '') + '</div></div>' +
-        '<div class="vc-status ' + (fechada?'fechada':'aberta') + '">' + (fechada?'Fechada':'Aberta') + '</div>' +
-      '</div>' +
-      '<div class="vc-info">' +
-        '<span>KM inicial: <b>' + Number(v.km_inicial).toLocaleString('pt-BR') + '</b></span>' +
-        (fechada ? '<span>KM final: <b>' + Number(v.km_final).toLocaleString('pt-BR') + '</b></span>' : '') +
-      '</div>' +
-      (fechada ?
-        ('<div class="vc-info"><span>Rodado: <b>' + Number(v.km_rodado).toLocaleString('pt-BR') + ' km</b></span><span>Diesel: <b>' + (parseFloat(v.litros)||0).toFixed(1) + ' L</b></span></div>' +
-         '<div class="vc-kml ' + classeKml(kml) + '">' + (kml ? kml.toFixed(2) + ' km/L' : 'Sem abastecimento no período') + '</div>')
-      : '') +
-    '</div>';
-  });
-  el.innerHTML = html;
-}
-
-function salvarConfig() {
-  var scriptVal = document.getElementById('cfg-script').value.trim();
-  var cfg = ler(CFG_KEY) || {};
-  cfg.scriptUrl = scriptVal || SCRIPT_URL;
-  salvar(CFG_KEY, cfg);
-  toast('✅ Config salva!', 'ok');
-}
-
-function carregarConfig() {
-  var cfg = ler(CFG_KEY);
-  var el  = document.getElementById('cfg-script');
-  if (el) el.value = (cfg && cfg.scriptUrl) ? cfg.scriptUrl : SCRIPT_URL;
-}
-
-function goTab(id, el) {
-  var pages = document.querySelectorAll('.page');
-  var tabs  = document.querySelectorAll('.nav-tab');
-  for (var i = 0; i < pages.length; i++) pages[i].className = 'page';
-  for (var i = 0; i < tabs.length;  i++) tabs[i].className  = 'nav-tab';
-  var pg = document.getElementById('page-' + id);
-  if (pg) pg.className = 'page on';
-  if (el) el.className = 'nav-tab on';
-
-  if (id === 'finalizar') carregarViagensAbertas();
-  if (id === 'historico') carregarHistorico();
-  if (id === 'config')    carregarConfig();
-}
-
-window.onload = function() {
-  // Esconde as abas Histórico e Config se necessário
-  carregarConfig();
-};
-</script>
-<script>
-// ══ SERVICE WORKER + AUTO-ATUALIZAÇÃO SILENCIOSA ══
-if ('serviceWorker' in navigator) {
-  var _swReloaded = false;
-  navigator.serviceWorker.addEventListener('controllerchange', function() {
-    if (_swReloaded) return;
-    _swReloaded = true;
-    window.location.reload();
-  });
-
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('service-worker.js').then(function(reg) {
-      reg.update();
-      if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
-      reg.addEventListener('updatefound', function() {
-        var nw = reg.installing;
-        if (!nw) return;
-        nw.addEventListener('statechange', function() {
-          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-            nw.postMessage('SKIP_WAITING');
-          }
-        });
+    var lista = [];
+    for (var i = 1; i < dados.length; i++) {
+      var r = dados[i];
+      if (r[iLat] === '' || r[iLng] === '') continue;
+      lista.push({
+        nome:     String(r[iNome] || ''),
+        frota:    String(r[iFro]  || ''),
+        placa:    iPla >= 0 ? String(r[iPla] || '') : '',
+        lat:      r[iLat],
+        lng:      r[iLng],
+        precisao: r[iPre],
+        ts:       (r[iTs] instanceof Date) ? r[iTs].toISOString() : String(r[iTs] || '')
       });
-      document.addEventListener('visibilitychange', function() {
-        if (!document.hidden) reg.update();
+    }
+    return out({ ok: true, localizacoes: lista });
+  } catch (err) {
+    return out({ ok: false, msg: String(err) });
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   EQUIPAMENTOS — cadastro da frota (fica na planilha FROTA_ID)
+   ════════════════════════════════════════════════════════════════ */
+function _norm_(s) {
+  return String(s || '').trim().toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function getEquipamentos(e) {
+  try {
+    var ss = SpreadsheetApp.openById(FROTA_ID);
+    var sh = ss.getSheetByName(ABA_EQUIP)
+          || ss.getSheetByName('Equipamentos')
+          || ss.getSheetByName('equipamentos');
+    if (!sh) return out({ ok: false, msg: 'Aba EQUIPAMENTOS não encontrada' });
+
+    var dados = sh.getDataRange().getValues();
+    if (dados.length < 2) return out({ ok: true, equipamentos: [] });
+
+    var hdr = dados[0].map(function(h) { return _norm_(h); });
+    function achar(nomes) {
+      for (var n = 0; n < nomes.length; n++) {
+        var idx = hdr.indexOf(_norm_(nomes[n]));
+        if (idx >= 0) return idx;
+      }
+      return -1;
+    }
+    var iVeic  = achar(['VEICULO', 'VEÍCULO', 'FROTA']);
+    var iPlaca = achar(['PLACA']);
+    var iMarca = achar(['MARCA / TIPO', 'MARCA/TIPO', 'MARCA', 'TIPO']);
+    var iAno   = achar(['ANO']);
+    var iMot   = achar(['MOTORISTA']);
+
+    if (iVeic  < 0) iVeic  = 1; // B
+    if (iPlaca < 0) iPlaca = 2; // C
+    if (iMarca < 0) iMarca = 3; // D
+    if (iAno   < 0) iAno   = 4; // E
+    if (iMot   < 0) iMot   = 6; // G
+
+    var lista = [];
+    for (var i = 1; i < dados.length; i++) {
+      var r = dados[i];
+      var frota = String(r[iVeic] || '').trim().toUpperCase();
+      if (!frota) continue;
+      if (!/^[A-Z]{1,3}L?-?\d/.test(frota)) continue; // VP/RB/VPL/RBL/VA/RA...
+
+      var mot = String(r[iMot] || '').trim();
+      if (/CPF|CNH|\d{3}\.\d{3}/.test(mot)) mot = '';
+
+      lista.push({
+        frota:     frota,
+        placa:     String(r[iPlaca] || '').trim().toUpperCase(),
+        modelo:    String(r[iMarca] || '').trim(),
+        ano:       String(r[iAno]   || '').trim(),
+        motorista: mot
       });
-    }).catch(function(){});
+    }
+    return out({ ok: true, equipamentos: lista });
+  } catch (err) {
+    return out({ ok: false, msg: String(err) });
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   VALIDAR ADMIN — libera a troca da VP do tablet
+   (aba MOTORISTAS, na planilha de usuários MOTORISTAS_ID)
+   ════════════════════════════════════════════════════════════════ */
+function validarAdmin(e) {
+  try {
+    var usuario = String(e.parameter.usuario || '').trim();
+    var senha   = String(e.parameter.senha   || '');
+    if (!usuario || !senha) return out({ ok: false, msg: 'Informe usuário e senha.' });
+
+    // procura a aba de usuários nas planilhas conhecidas
+    var sh = null;
+    var idsBusca = [MOTORISTAS_ID, FROTA_ID, ABASTECIMENTO_ID];
+    for (var b = 0; b < idsBusca.length && !sh; b++) {
+      try {
+        var ssTmp = SpreadsheetApp.openById(idsBusca[b]);
+        sh = ssTmp.getSheetByName(ABA_MOTORISTAS)
+          || ssTmp.getSheetByName('Motoristas')
+          || ssTmp.getSheetByName('USUARIOS');
+      } catch (ex) { /* planilha inacessível, tenta a próxima */ }
+    }
+    if (!sh) return out({ ok: false, msg: 'Aba MOTORISTAS não encontrada em nenhuma planilha.' });
+
+    var dados = sh.getDataRange().getValues();
+    if (dados.length < 2) return out({ ok: false, msg: 'Sem usuários cadastrados.' });
+
+    var hdr = dados[0].map(function(h) { return _norm_(h); });
+    function col(nomes) {
+      for (var i = 0; i < nomes.length; i++) {
+        var idx = hdr.indexOf(_norm_(nomes[i]));
+        if (idx >= 0) return idx;
+      }
+      for (var j = 0; j < hdr.length; j++) {
+        for (var k = 0; k < nomes.length; k++) {
+          if (hdr[j].indexOf(_norm_(nomes[k])) >= 0) return j;
+        }
+      }
+      return -1;
+    }
+
+    var iMat   = col(['MATRICULA', 'MATRÍCULA']);
+    var iNome  = col(['NOME']);
+    var iEmail = col(['EMAIL', 'E-MAIL']);
+    var iSenha = col(['SENHA']);
+    var iAtivo = col(['ATIVO']);
+    // ADMIN precisa ser EXATO (senão casa com "ADMINISTRATIVO MASTER")
+    var iAdmin = hdr.indexOf('ADMIN');
+    var iAdmMs = col(['ADMINISTRATIVO MASTER', 'ADMIN MASTER', 'ADMIN_MASTER', 'ADMINMASTER']);
+
+    if (iSenha < 0) return out({ ok: false, msg: 'Coluna SENHA não encontrada.' });
+
+    var alvo = _norm_(usuario);
+
+    function marcado(v) {
+      var t = _norm_(v);
+      return t === 'X' || t === 'SIM' || t === 'S' || t === 'TRUE' || t === 'VERDADEIRO';
+    }
+
+    for (var r = 1; r < dados.length; r++) {
+      var linha = dados[r];
+
+      var bate = false;
+      if (iMat   >= 0 && _norm_(linha[iMat])   === alvo) bate = true;
+      if (iEmail >= 0 && _norm_(linha[iEmail]) === alvo) bate = true;
+      if (iNome  >= 0 && _norm_(linha[iNome])  === alvo) bate = true;
+      if (!bate) continue;
+
+      if (String(linha[iSenha]) !== senha) {
+        return out({ ok: false, msg: 'Senha incorreta.' });
+      }
+
+      if (iAtivo >= 0) {
+        var at = _norm_(linha[iAtivo]);
+        if (at === 'NAO' || at === 'N' || at === 'FALSE' || at === 'INATIVO') {
+          return out({ ok: false, msg: 'Usuário inativo.' });
+        }
+      }
+
+      var ehAdmin = (iAdmin >= 0 && marcado(linha[iAdmin])) ||
+                    (iAdmMs >= 0 && marcado(linha[iAdmMs]));
+      if (!ehAdmin) return out({ ok: false, msg: 'Este usuário não é administrador.' });
+
+      return out({ ok: true, admin: true, nome: (iNome >= 0 ? String(linha[iNome] || '') : usuario) });
+    }
+
+    return out({ ok: false, msg: 'Usuário não encontrado.' });
+  } catch (err) {
+    return out({ ok: false, msg: String(err) });
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   VALIDAR LOGIN — qualquer usuário válido (NÃO exige admin)
+   Usado para configurar a VP do tablet: basta ter login no sistema.
+   ════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════
+   CHECAR VP JÁ CADASTRADA EM OUTRO TABLET
+   Evita que dois aparelhos sejam configurados com a mesma VP.
+   Parâmetros: ?action=checarVpTablet&frota=VP-183&device=TBL-XXXX
+   Resposta: { ok:true, livre:true }  ou
+             { ok:true, livre:false, device:'TBL-YYYY', nome:'...', quando:'...' }
+   ════════════════════════════════════════════════════════════════ */
+function checarVpTablet(e) {
+  try {
+    var frota  = String(e.parameter.frota  || '').trim().toUpperCase();
+    var device = String(e.parameter.device || '').trim().toUpperCase();
+    if (!frota) return out({ ok: false, msg: 'Frota não informada' });
+
+    var sh = _sheetRastreio_();
+    var dados = sh.getDataRange().getValues();
+    if (dados.length < 2) return out({ ok: true, livre: true });
+
+    var hdr  = dados[0];
+    var iFro = hdr.indexOf('FROTA');
+    var iDev = hdr.indexOf('DEVICE');
+    var iNom = hdr.indexOf('NOME');
+    var iAtu = hdr.indexOf('ATUALIZADO_EM');
+    if (iFro < 0 || iDev < 0) return out({ ok: true, livre: true }); // sem coluna: não bloqueia
+
+    // normaliza VPL-313 e VP-313 como a mesma frota
+    function chave(f){
+      return String(f||'').toUpperCase().replace(/\s+/g,'')
+        .replace(/^VPL/,'VP').replace(/^RBL/,'RB').replace(/-/g,'');
+    }
+    var alvo = chave(frota);
+
+    for (var i = 1; i < dados.length; i++) {
+      var linha = dados[i];
+      if (chave(linha[iFro]) !== alvo) continue;
+
+      var devLinha = String(linha[iDev] || '').trim().toUpperCase();
+      if (!devLinha) continue;              // linha antiga sem device: ignora
+      if (devLinha === device) continue;    // é o próprio aparelho: liberado
+
+      // achou outro aparelho com essa VP
+      var quando = '';
+      if (iAtu >= 0 && linha[iAtu]) {
+        var d = linha[iAtu];
+        quando = (d instanceof Date)
+          ? Utilities.formatDate(d, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')
+          : String(d);
+      }
+      return out({
+        ok: true,
+        livre: false,
+        device: devLinha,
+        nome: iNom >= 0 ? String(linha[iNom] || '') : '',
+        quando: quando
+      });
+    }
+
+    return out({ ok: true, livre: true });
+  } catch (err) {
+    return out({ ok: false, msg: String(err) });
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CHECAR VP JÁ CADASTRADA — fim
+   ════════════════════════════════════════════════════════════════ */
+function validarLogin(e) {
+  try {
+    var usuario = String(e.parameter.usuario || '').trim();
+    var senha   = String(e.parameter.senha   || '');
+    if (!usuario || !senha) return out({ ok: false, msg: 'Informe usuário e senha.' });
+
+    // procura a aba de usuários nas planilhas conhecidas
+    var sh = null;
+    var idsBusca = [MOTORISTAS_ID, FROTA_ID, ABASTECIMENTO_ID];
+    for (var b = 0; b < idsBusca.length && !sh; b++) {
+      try {
+        var ssTmp = SpreadsheetApp.openById(idsBusca[b]);
+        sh = ssTmp.getSheetByName(ABA_MOTORISTAS)
+          || ssTmp.getSheetByName('Motoristas')
+          || ssTmp.getSheetByName('USUARIOS');
+      } catch (ex) {}
+    }
+    if (!sh) return out({ ok: false, msg: 'Aba MOTORISTAS não encontrada.' });
+
+    var dados = sh.getDataRange().getValues();
+    if (dados.length < 2) return out({ ok: false, msg: 'Sem usuários cadastrados.' });
+
+    var hdr = dados[0].map(function(h){ return _norm_(h); });
+    function col(nomes){
+      for (var i = 0; i < nomes.length; i++){
+        var idx = hdr.indexOf(_norm_(nomes[i]));
+        if (idx >= 0) return idx;
+      }
+      for (var j = 0; j < hdr.length; j++){
+        for (var k = 0; k < nomes.length; k++){
+          if (hdr[j].indexOf(_norm_(nomes[k])) >= 0) return j;
+        }
+      }
+      return -1;
+    }
+
+    var iMat   = col(['MATRICULA', 'MATRÍCULA']);
+    var iNome  = col(['NOME']);
+    var iEmail = col(['EMAIL', 'E-MAIL']);
+    var iSenha = col(['SENHA']);
+    var iAtivo = col(['ATIVO']);
+    if (iSenha < 0) return out({ ok: false, msg: 'Coluna SENHA não encontrada.' });
+
+    var alvo = _norm_(usuario);
+
+    for (var r = 1; r < dados.length; r++) {
+      var linha = dados[r];
+
+      var bate = false;
+      if (iMat   >= 0 && _norm_(linha[iMat])   === alvo) bate = true;
+      if (iEmail >= 0 && _norm_(linha[iEmail]) === alvo) bate = true;
+      if (iNome  >= 0 && _norm_(linha[iNome])  === alvo) bate = true;
+      if (!bate) continue;
+
+      if (String(linha[iSenha]) !== senha) {
+        return out({ ok: false, msg: 'Senha incorreta.' });
+      }
+
+      if (iAtivo >= 0) {
+        var at = _norm_(linha[iAtivo]);
+        if (at === 'NAO' || at === 'N' || at === 'FALSE' || at === 'INATIVO') {
+          return out({ ok: false, msg: 'Usuário inativo.' });
+        }
+      }
+
+      return out({ ok: true, login: true, nome: (iNome >= 0 ? String(linha[iNome] || '') : usuario) });
+    }
+
+    return out({ ok: false, msg: 'Usuário não encontrado.' });
+  } catch (err) {
+    return out({ ok: false, msg: String(err) });
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STATUS AUTOMÁTICO POR GPS  (painel Status Logístico)
+   ════════════════════════════════════════════════════════════════ */
+
+// ── CONFIGURAÇÃO ───────────────────────────────────────────────
+// Garagem TWM — R. Mirafiori, 34, Distrito Industrial Paulo Camilo Sul, Betim/MG
+var GARAGEM_LAT = -19.964264;
+var GARAGEM_LNG = -44.118880;
+var GARAGEM_NOME = 'Garagem TWM — Betim';
+
+var RAIO_GARAGEM  = 0.2;   // km (200 m) — pátio tem ~95x105 m; sobra p/ erro do GPS
+var RAIO_DESTINO  = 2.0;   // km — dentro disso considera "Descarregando"
+var MIN_DESLOC    = 0.3;   // km — variação mínima para dizer que se moveu
+
+// Planilha do Status Logístico — é de onde vem a coluna ROTA.
+// (a mesma que alimenta o quadro de frota da tela inicial)
+var LOGISTICO_ID  = '16Zjm0udIqi7z7nZfo32JKGHh-2bFOJtgP3yd3brV0bY';
+var ABA_LOGISTICO = 'Frota';   // ajuste se a aba tiver outro nome
+
+// ── DISTÂNCIA ENTRE DOIS PONTOS (fórmula de Haversine, em km) ──
+function _distanciaKm_(lat1, lng1, lat2, lng2) {
+  var R = 6371;
+  var dLat = (lat2 - lat1) * Math.PI / 180;
+  var dLng = (lng2 - lng1) * Math.PI / 180;
+  var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+          Math.sin(dLng/2) * Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ── COORDENADAS DE UMA CIDADE (com cache) ──────────────────────
+function _coordDaCidade_(nome) {
+  if (!nome) return null;
+  var chave = 'geo_' + String(nome).trim().toUpperCase().substring(0, 90);
+  var cache = CacheService.getScriptCache();
+
+  var salvo = cache.get(chave);
+  if (salvo) {
+    if (salvo === 'NAO_ACHOU') return null;
+    var p = salvo.split(',');
+    return { lat: parseFloat(p[0]), lng: parseFloat(p[1]) };
+  }
+
+  // também guarda permanentemente, para não consultar de novo em outro dia
+  var props = PropertiesService.getScriptProperties();
+  var perm = props.getProperty(chave);
+  if (perm) {
+    cache.put(chave, perm, 21600);
+    if (perm === 'NAO_ACHOU') return null;
+    var q = perm.split(',');
+    return { lat: parseFloat(q[0]), lng: parseFloat(q[1]) };
+  }
+
+  try {
+    var busca = encodeURIComponent(nome + ', Brasil');
+    var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=' + busca;
+    var resp = UrlFetchApp.fetch(url, {
+      muteHttpExceptions: true,
+      headers: { 'User-Agent': 'TWM-DataLink/1.0' }
+    });
+    var arr = JSON.parse(resp.getContentText());
+    if (arr && arr.length) {
+      var valor = arr[0].lat + ',' + arr[0].lon;
+      cache.put(chave, valor, 21600);
+      props.setProperty(chave, valor);
+      return { lat: parseFloat(arr[0].lat), lng: parseFloat(arr[0].lon) };
+    }
+    cache.put(chave, 'NAO_ACHOU', 21600);
+    props.setProperty(chave, 'NAO_ACHOU');
+    return null;
+  } catch (err) {
+    return null;   // sem internet ou serviço fora: não trava
+  }
+}
+
+// ── HISTÓRICO DA DISTÂNCIA (para saber se aproxima ou afasta) ──
+function _distanciaAnterior_(frota) {
+  var v = PropertiesService.getScriptProperties().getProperty('dist_' + frota);
+  return v ? parseFloat(v) : null;
+}
+function _guardarDistancia_(frota, km) {
+  PropertiesService.getScriptProperties().setProperty('dist_' + frota, String(km));
+}
+
+/* Histórico da distância até a GARAGEM (com horário), para estimar
+   a velocidade de aproximação e o tempo previsto de chegada. */
+function _histGaragem_(frota) {
+  var v = PropertiesService.getScriptProperties().getProperty('gar_' + frota);
+  if (!v) return null;
+  var p = String(v).split('|');
+  return { km: parseFloat(p[0]), ts: parseFloat(p[1]) };
+}
+function _guardarGaragem_(frota, km) {
+  PropertiesService.getScriptProperties()
+    .setProperty('gar_' + frota, km + '|' + new Date().getTime());
+}
+
+/* Calcula quanto falta para chegar na garagem, comparando a distância
+   atual com a da leitura anterior. Devolve minutos ou null. */
+function _etaGaragem_(frota, kmAgora) {
+  var ant = _histGaragem_(frota);
+  _guardarGaragem_(frota, kmAgora);
+  if (!ant || isNaN(ant.km)) return null;
+
+  var minutos = (new Date().getTime() - ant.ts) / 60000;
+  if (minutos < 0.5 || minutos > 120) return null;   // intervalo inútil
+
+  var percorreu = ant.km - kmAgora;                  // positivo = aproximando
+  if (percorreu <= 0.2) return null;                 // parado ou afastando
+
+  var kmh = (percorreu / minutos) * 60;
+  if (kmh < 5 || kmh > 130) return null;             // valor implausível
+
+  return Math.round((kmAgora / kmh) * 60);           // minutos até a garagem
+}
+
+// ── CÁLCULO DO STATUS DE UM VEÍCULO ────────────────────────────
+function _statusDoVeiculo_(frota, lat, lng, rota) {
+  // 1) está na garagem?
+  var dGaragem = _distanciaKm_(lat, lng, GARAGEM_LAT, GARAGEM_LNG);
+  if (dGaragem <= RAIO_GARAGEM) {
+    _guardarDistancia_(frota, null);
+    return { status: 'Na Garagem', detalhe: 'na base', sentido: 'base',
+             dist_destino: null, dist_garagem: Math.round(dGaragem*10)/10 };
+  }
+
+  // 2) sem rota definida: só sabemos que está fora
+  if (!rota) {
+    return { status: 'Em Viagem', detalhe: 'sem rota informada', sentido: 'indo',
+             dist_destino: null, dist_garagem: Math.round(dGaragem*10)/10 };
+  }
+
+  // 3) onde fica o destino?
+  var destino = _coordDaCidade_(rota);
+  if (!destino) {
+    return { status: 'Em Viagem', detalhe: 'destino "' + rota + '" não localizado', sentido: 'indo',
+             dist_destino: null, dist_garagem: Math.round(dGaragem*10)/10 };
+  }
+
+  var dDestino = _distanciaKm_(lat, lng, destino.lat, destino.lng);
+
+  // 4) chegou no destino?
+  if (dDestino <= RAIO_DESTINO) {
+    _guardarDistancia_(frota, dDestino);
+    return { status: 'Descarregando', detalhe: 'em ' + rota, sentido: 'parado',
+             dist_destino: Math.round(dDestino*10)/10, dist_garagem: Math.round(dGaragem*10)/10 };
+  }
+
+  // 5) aproximando ou afastando?
+  var antes = _distanciaAnterior_(frota);
+  _guardarDistancia_(frota, dDestino);
+
+  var status, detalhe, sentido;
+  if (antes === null) {
+    status = 'Em Viagem'; sentido = 'indo';
+    detalhe = 'a ' + Math.round(dDestino) + ' km de ' + rota;
+  } else if (dDestino < antes - MIN_DESLOC) {
+    status = 'Em Viagem'; sentido = 'indo';
+    detalhe = 'indo para ' + rota + ' (faltam ' + Math.round(dDestino) + ' km)';
+  } else if (dDestino > antes + MIN_DESLOC) {
+    status = 'Retorno'; sentido = 'voltando';
+    detalhe = 'voltando de ' + rota + ' (a ' + Math.round(dGaragem) + ' km da base)';
+  } else {
+    status = 'Parado'; sentido = 'parado';
+    detalhe = 'sem deslocamento • a ' + Math.round(dDestino) + ' km de ' + rota;
+  }
+
+  return { status: status, detalhe: detalhe, sentido: sentido,
+           dist_destino: Math.round(dDestino*10)/10,
+           dist_garagem: Math.round(dGaragem*10)/10 };
+}
+
+// ── AÇÃO: devolve o status calculado de toda a frota ───────────
+function getStatusFrota(e) {
+  try {
+    // posições GPS
+    var shR = _sheetRastreio_();
+    var dadosR = shR.getDataRange().getValues();
+    if (dadosR.length < 2) return out({ ok: true, status: [] });
+
+    var hR = dadosR[0];
+    var iFro = hR.indexOf('FROTA'), iNome = hR.indexOf('NOME'),
+        iLat = hR.indexOf('LAT'),   iLng  = hR.indexOf('LNG'),
+        iTs  = hR.indexOf('TS');
+
+    // rotas (planilha do Status Logístico)
+    var rotas = {};
+    try {
+      var ssL = SpreadsheetApp.openById(LOGISTICO_ID);
+      var shL = ssL.getSheetByName(ABA_LOGISTICO) || ssL.getSheets()[0];
+      var dadosL = shL.getDataRange().getValues();
+      var hL = dadosL[0].map(function(x){ return _norm_(x); });
+      var cFrota = hL.indexOf('FROTA');
+      if (cFrota < 0) cFrota = hL.indexOf('CAVALO');
+      var cRota  = hL.indexOf('ROTA');
+      if (cFrota >= 0 && cRota >= 0) {
+        for (var i = 1; i < dadosL.length; i++) {
+          var f = String(dadosL[i][cFrota] || '').trim().toUpperCase();
+          if (f) rotas[_chaveFrota_(f)] = String(dadosL[i][cRota] || '').trim();
+        }
+      }
+    } catch (ex) { /* sem planilha logística: segue sem rota */ }
+
+    var lista = [];
+    for (var r = 1; r < dadosR.length; r++) {
+      var linha = dadosR[r];
+      var lat = parseFloat(linha[iLat]), lng = parseFloat(linha[iLng]);
+      if (isNaN(lat) || isNaN(lng)) continue;
+
+      var frota = String(linha[iFro] || '').trim().toUpperCase();
+      var rota  = rotas[_chaveFrota_(frota)] || '';
+      var st    = _statusDoVeiculo_(frota, lat, lng, rota);
+
+      // há quanto tempo foi a última posição
+      var tsVal = linha[iTs];
+      var tsIso = (tsVal instanceof Date) ? tsVal.toISOString() : String(tsVal || '');
+      var minAtras = null;
+      try {
+        var tms = (tsVal instanceof Date) ? tsVal.getTime() : new Date(tsIso).getTime();
+        if (!isNaN(tms)) minAtras = Math.round((new Date().getTime() - tms) / 60000);
+      } catch (ex) {}
+
+      lista.push({
+        frota: frota,
+        nome: String(linha[iNome] || ''),
+        rota: rota,
+        status: st.status,
+        detalhe: st.detalhe,
+        sentido: st.sentido,                  // 'indo' | 'voltando' | 'parado' | 'base'
+        eta_garagem: (st.sentido === 'voltando' && st.dist_garagem != null)
+                     ? _etaGaragem_(frota, st.dist_garagem) : null,  // minutos
+        dist_destino: st.dist_destino,        // km até o destino da rota
+        dist_garagem: st.dist_garagem,        // km até a garagem
+        minutos_atras: minAtras,              // idade da última posição
+        online: (minAtras !== null && minAtras <= 5),
+        lat: lat, lng: lng,
+        ts: tsIso
+      });
+    }
+    return out({ ok: true, status: lista });
+  } catch (err) {
+    return out({ ok: false, msg: String(err) });
+  }
+}
+
+// VPL-313 e VP-313 são o mesmo veículo
+function _chaveFrota_(f) {
+  return String(f || '').toUpperCase().replace(/\s+/g, '')
+    .replace(/^VPL/, 'VP').replace(/^RBL/, 'RB').replace('-', '');
+}
+
+/* ── TESTE (roda no editor, não altera nada) ────────────────── */
+function testarStatusFrota() {
+  var r = JSON.parse(getStatusFrota({ parameter: {} }).getContent());
+  if (!r.ok) { Logger.log('❌ ' + r.msg); return; }
+  Logger.log('Veículos com posição: ' + r.status.length);
+  r.status.forEach(function(v) {
+    Logger.log('  ' + v.frota + ' | ' + v.status + ' | ' + v.detalhe);
   });
 }
-</script>
 
-</body>
-</html>
+/* ── DESCOBRIR COORDENADAS DA GARAGEM ───────────────────────────
+   Rode uma vez informando o endereço para pegar lat/lng da base. */
+function descobrirGaragem() {
+  var ENDERECO = 'COLOQUE AQUI O ENDEREÇO DA GARAGEM';  // ex: 'Rua X, 100, Betim, MG'
+  var c = _coordDaCidade_(ENDERECO);
+  if (c) {
+    Logger.log('✅ Encontrado!');
+    Logger.log('   var GARAGEM_LAT = ' + c.lat + ';');
+    Logger.log('   var GARAGEM_LNG = ' + c.lng + ';');
+    Logger.log('   Confira no mapa: https://www.google.com/maps?q=' + c.lat + ',' + c.lng);
+  } else {
+    Logger.log('❌ Endereço não encontrado. Tente com cidade e estado.');
+  }
+}
