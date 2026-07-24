@@ -642,7 +642,7 @@ function _gpsChave(f){
 
 function carregarGPS(){
   return fetch(GPS_URL + '?action=getStatusFrota&_t=' + Date.now(), {
-      method:'GET', redirect:'follow', headers:{'Content-Type':'text/plain'}
+      method:'GET', redirect:'follow'   // sem headers: evita preflight CORS
     })
     .then(function(r){ return r.text(); })
     .then(function(t){
