@@ -109,6 +109,7 @@
   #fleetToggle{position:absolute;right:14px;bottom:24px;z-index:1200;
     background:var(--brand);color:#fff;border:none;
     border-radius:24px;padding:12px 18px;font-size:14px;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,.3);cursor:pointer}
+  .semvp-btn.ativo{background:#D70015;color:#fff}
   #fleetPanel{position:absolute;left:0;right:0;bottom:0;z-index:1002;background:#fff;border-radius:18px 18px 0 0;
     box-shadow:0 -4px 20px rgba(0,0,0,.25);max-height:60%;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .3s ease}
   #fleetPanel.open{transform:translateY(0)}
@@ -204,6 +205,7 @@
       <div id="fleetPanelHead">
         <span>👥 FROTA <span class="count" id="fleetCount"></span></span>
         <div>
+          <button class="fp-btn semvp-btn hidden" id="semVpToggle" title="Mostrar aparelhos sem VP">📵</button>
           <button class="fp-btn" id="btnAtualizarFrota">🔄</button>
           <button class="fp-btn" id="fleetPanelClose">✕</button>
         </div>
@@ -278,6 +280,11 @@ function _isAdmin(){
   var p = _perm();
   return !!(p.admin || p.admin_master);
 }
+// admin master: só ele vê o filtro de aparelhos sem VP
+function _isAdminMaster(){
+  var p = _perm();
+  return !!p.admin_master;
+}
 function _nomeUsuario(){
   var s = _sessao();
   return s.nome || s.usuario || s.motorista || s.name || 'Usuário';
@@ -334,6 +341,7 @@ function tempoRelativo(iso){
    ============================================================ */
 var map, marcadores = {};
 var clusterFrota = null;   // grupo que agrupa marcadores próximos
+var mostrarSemVp = false;  // filtro do admin master: mostra aparelhos sem VP
 var jaEnquadrou = false;   // evita o mapa "pular" a cada atualização
 var jaCentralizou = false; // idem para a centralização no GPS
 var frotaAtual = [];
@@ -550,19 +558,21 @@ function enviarMinhaPos(){
   if(!ultimaPos) return;
   var nome  = _nomeUsuario();
   var frota = _frotaUsuario();
-  // sem VP configurada não envia: evita criar linha órfã no RASTREIO
-  // (era o que fazia o caminhão "voltar" ao mapa depois de removido)
-  if(!frota) return;
+  // Sem VP: envia mesmo assim, mas marcado como 'SEM-VP'. Isso permite que
+  // o admin master veja aparelhos mal configurados no filtro, sem poluir o
+  // mapa normal (que ignora esses registros).
+  var semVp = !frota;
   var params = new URLSearchParams({
     action:'salvarLocalizacao',
     nome: nome,
-    frota: frota,
+    frota: frota || 'SEM-VP',
     placa: _placaUsuario(),
     device: _deviceId(),
     lat: ultimaPos.lat,
     lng: ultimaPos.lng,
     precisao: Math.round(ultimaPos.acc||0),
-    ts: new Date().toISOString()
+    ts: new Date().toISOString(),
+    sem_vp: semVp ? '1' : ''
   });
   // envia e mostra no status se realmente gravou
   apiGet('?'+params.toString())
@@ -621,6 +631,13 @@ function renderFrota(lista){
   lista.forEach(function(p){
     var lat = parseFloat(p.lat), lng = parseFloat(p.lng);
     if(isNaN(lat)||isNaN(lng)) return;
+
+    // Aparelho SEM VP: só aparece quando o admin master liga o filtro.
+    var ehSemVp = (p.sem_vp === '1' || p.sem_vp === 1 ||
+                   String(p.frota||'').toUpperCase() === 'SEM-VP');
+    if(ehSemVp && !mostrarSemVp) return;      // filtro desligado: esconde
+    if(!ehSemVp && mostrarSemVp) return;      // filtro ligado: mostra SÓ os sem-vp
+
     var on = minutosDesde(p.ts) <= ONLINE_LIMITE_MIN;
     if(on) online++;
 
@@ -1073,6 +1090,18 @@ window.addEventListener('DOMContentLoaded', function(){
   document.getElementById('destNavegar').addEventListener('click', navegarPara);
   document.getElementById('destFechar').addEventListener('click', fecharDestino);
   document.getElementById('cfgAbrir').addEventListener('click', abrirConfigTablet);
+
+  // Filtro de aparelhos sem VP — só admin master
+  var svBtn = document.getElementById('semVpToggle');
+  if(svBtn && _isAdminMaster()){
+    svBtn.classList.remove('hidden');
+    svBtn.addEventListener('click', function(){
+      mostrarSemVp = !mostrarSemVp;
+      svBtn.classList.toggle('ativo', mostrarSemVp);
+      svBtn.title = mostrarSemVp ? 'Mostrando aparelhos sem VP' : 'Mostrar aparelhos sem VP';
+      carregarFrota();   // recarrega aplicando o filtro
+    });
+  }
   // tocar no status quando bloqueado tenta pedir a permissão de novo
   document.getElementById('meStatus').addEventListener('click', function(){
     var t = this.textContent || '';
