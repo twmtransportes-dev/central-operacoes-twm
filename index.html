@@ -656,7 +656,7 @@
 <script>
 // ── CONFIG ────────────────────────────────────────────────────
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwAskGgXeNOKDB5sdt8VWdbpwPY6rYU1XVzPNzKgDvw9OF9XW92FJ_-wZMaYh5d6LzE/exec';
-const SESSION_H  = 8;
+const SESSION_H  = 0;   // 0 = sessão permanente (só sai no logout manual)
 
 // ── MÓDULOS ───────────────────────────────────────────────────
 const MODULOS = [
@@ -735,6 +735,8 @@ function doLogin(){
         permissoes: d.permissoes || {}
       };
       u._ts = Date.now();
+      // guarda o último e-mail para pré-preencher se um dia a sessão cair
+      try { localStorage.setItem('twm_ultimo_email', email); } catch(e){}
       // sessionToken gerado pelo script e salvo junto com os dados do usuário
       localStorage.setItem('twm_user_cache', JSON.stringify(u));
       var perm = u.permissoes || extrairPerms(u);
@@ -773,11 +775,17 @@ function doLogout(){
 // ── INIT APP ──────────────────────────────────────────────────
 function initApp(){
   var u = getUser();
-  if(!u){ document.getElementById('screen-login').classList.add('login-visible');  return; }
-  // Sessão expirada?
-  if(u._ts && (Date.now()-u._ts) > SESSION_H*3600000){
-    doLogout(); return;
+  if(!u){
+    document.getElementById('screen-login').classList.add('login-visible');
+    // pré-preenche o último e-mail usado (ajuda no APK, que não sugere senha)
+    try {
+      var ult = localStorage.getItem('twm_ultimo_email');
+      var campo = document.getElementById('login-email');
+      if(ult && campo && !campo.value){ campo.value = ult; }
+    } catch(e){}
+    return;
   }
+  // Sessão permanente: só sai no logout manual (não expira por tempo).
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('screen-login').classList.remove('login-visible');
   document.getElementById('screen-main').classList.add('active');
@@ -1096,7 +1104,7 @@ document.getElementById('login-email').addEventListener('keydown',function(e){
 (function(){
   aplicarTema();
   var u=getUser();
-  if(u && (!u._ts || (Date.now()-u._ts)<SESSION_H*3600000)){
+  if(u){
     initApp();
   } else {
     document.getElementById('screen-login').classList.add('login-visible');
