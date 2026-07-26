@@ -33,27 +33,36 @@
 
   /* lista de mensagens */
   .mural{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
-  .msg{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;
-    border-left:4px solid var(--muted)}
-  .msg.motorista{border-left-color:var(--brand2)}
-  .msg.logistica{border-left-color:var(--brand);background:var(--card2)}
-  .msg.aberta{border-left-color:var(--warn)}
-  .msg.urgente{border-left-color:var(--urg)}
-  .msg-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
-  .msg-quem{font-weight:700;font-size:16px}
-  .msg-quem .vp{color:var(--muted);font-weight:600;font-size:14px;margin-left:6px}
-  .msg-hora{font-size:12px;color:var(--muted);white-space:nowrap}
-  .msg-txt{font-size:16px;line-height:1.4;font-weight:400}
-  .msg-tags{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center}
+  /* CONVERSA agrupada (thread por VP) */
+  .conv{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:12px;border-left:4px solid var(--muted)}
+  .conv.aberta{border-left-color:var(--warn)}
+  .conv.urgente{border-left-color:var(--urg)}
+  .conv-head{display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .conv-vp{margin-left:auto;font-weight:700;color:var(--muted);font-size:14px}
+  .conv-body{display:flex;flex-direction:column;gap:8px}
+
+  /* bolhas: motorista à esquerda, logística à direita (estilo chat) */
+  .bolha{max-width:85%;padding:9px 12px;border-radius:14px;font-size:15px;line-height:1.35}
+  .bolha.mot{align-self:flex-start;background:var(--card2);border:1px solid var(--line);border-bottom-left-radius:4px}
+  .bolha.log{align-self:flex-end;background:rgba(124,58,237,.22);border:1px solid rgba(124,58,237,.4);border-bottom-right-radius:4px}
+  .bolha-top{display:flex;justify-content:space-between;gap:8px;margin-bottom:3px;align-items:baseline}
+  .bolha-quem{font-weight:700;font-size:14px}
+  .bolha-quem .vp{color:var(--muted);font-weight:600;font-size:12px;margin-left:5px}
+  .bolha-hora{font-size:11px;color:var(--muted);white-space:nowrap}
+  .bolha-txt{font-size:15px;font-weight:400}
+
+  /* campo de continuar a conversa */
+  .conv-reply{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+  .conv-input{flex:1;background:var(--card2);border:1px solid var(--line);color:var(--ink);
+    border-radius:10px;padding:9px 12px;font-size:15px;font-family:var(--sfont)}
+  .conv-send{background:var(--brand);color:#fff;border:none;border-radius:10px;width:44px;font-size:17px;cursor:pointer}
+
   .tag{font-size:12px;font-weight:700;padding:2px 9px;border-radius:12px;letter-spacing:.3px}
   .tag.cat{background:rgba(124,58,237,.18);color:#c4b5fd}
   .tag.urg{background:rgba(239,68,68,.18);color:#fca5a5}
   .tag.norm{background:rgba(139,147,167,.15);color:var(--muted)}
   .tag.resp{background:rgba(34,197,94,.15);color:#86efac}
-  .msg-resp{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);
-    font-size:13px;color:var(--muted)}
-  .btn-resp{margin-top:8px;background:var(--brand2);color:#fff;border:none;border-radius:10px;
-    padding:8px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--sfont)}
   .vazio{text-align:center;color:var(--muted);padding:40px 20px;font-size:15px;line-height:1.6}
 
   /* barra de envio (embaixo) */
@@ -212,47 +221,94 @@ function render(){
     return;
   }
 
-  box.innerHTML='';
+  // Agrupa por CONVERSA. Uma conversa = todas as mensagens da mesma VP.
+  // (sem VP, cada mensagem é sua própria conversa, pela chave do id)
+  var convs = {};
+  var ordem = [];
   lista.forEach(function(m){
-    var ehLog = m.tipo==='logistica';
-    var aberta = m.status==='aberta';
-    var urgente = String(m.prioridade).toLowerCase()==='urgente';
-    var cls = 'msg '+(ehLog?'logistica':'motorista')+(aberta?(urgente?' urgente':' aberta'):'');
-
-    var tags='';
-    if(m.categoria) tags+='<span class="tag cat">'+m.categoria+'</span>';
-    if(aberta && urgente) tags+='<span class="tag urg">URGENTE</span>';
-    else if(aberta) tags+='<span class="tag norm">aguardando</span>';
-    if(m.status==='respondida') tags+='<span class="tag resp">✓ respondida</span>';
-
-    var el=document.createElement('div');
-    el.className=cls;
-    var html =
-      '<div class="msg-top">'+
-        '<div class="msg-quem">'+esc(m.remetente)+
-          (m.vp?'<span class="vp">'+esc(m.vp)+'</span>':'')+'</div>'+
-        '<div class="msg-hora">'+esc(fmtData(m.data_hora))+'</div>'+
-      '</div>'+
-      '<div class="msg-txt">'+esc(m.mensagem)+'</div>'+
-      (tags?'<div class="msg-tags">'+tags+'</div>':'');
-
-    if(m.status==='respondida' && m.respondido_por){
-      html+='<div class="msg-resp">Respondido por '+esc(m.respondido_por)+' • '+esc(m.data_resposta)+'</div>';
-    }
-    // botão responder: só logística, só em mensagem de motorista ainda aberta
-    if(aberta && !ehLog && _ehLogistica()){
-      html+='<button class="btn-resp" data-id="'+esc(m.id)+'" data-vp="'+esc(m.vp)+'" data-txt="'+esc(m.mensagem).replace(/"/g,'&quot;')+'">↩ Responder</button>';
-    }
-    el.innerHTML=html;
-    box.appendChild(el);
+    var chave = m.vp ? ('VP:'+m.vp.toUpperCase()) : ('ID:'+m.id);
+    if(!convs[chave]){ convs[chave]={ vp:m.vp, msgs:[] }; ordem.push(chave); }
+    convs[chave].msgs.push(m);
   });
 
-  // liga os botões de responder
-  Array.prototype.forEach.call(box.querySelectorAll('.btn-resp'), function(b){
-    b.addEventListener('click', function(){
-      abrirResposta(b.getAttribute('data-id'), b.getAttribute('data-vp'), b.getAttribute('data-txt'));
+  box.innerHTML='';
+  ordem.forEach(function(chave){
+    var c = convs[chave];
+    // a conversa está "aberta" (aguardando) se a última mensagem for de motorista sem resposta
+    var temAberta = c.msgs.some(function(m){ return m.status==='aberta'; });
+    var urgente = c.msgs.some(function(m){ return m.status==='aberta' && String(m.prioridade).toLowerCase()==='urgente'; });
+
+    var wrap=document.createElement('div');
+    wrap.className='conv'+(temAberta?(urgente?' urgente':' aberta'):'');
+
+    var dentro='';
+    c.msgs.forEach(function(m){
+      var ehLog = m.tipo==='logistica';
+      var linha =
+        '<div class="bolha '+(ehLog?'log':'mot')+'">'+
+          '<div class="bolha-top">'+
+            '<span class="bolha-quem">'+esc(m.remetente)+
+              (m.vp && !ehLog?'<span class="vp">'+esc(m.vp)+'</span>':'')+'</span>'+
+            '<span class="bolha-hora">'+esc(fmtData(m.data_hora))+'</span>'+
+          '</div>'+
+          '<div class="bolha-txt">'+esc(m.mensagem)+'</div>'+
+        '</div>';
+      dentro+=linha;
     });
+
+    // cabeçalho da conversa com categoria e status
+    var cat = c.msgs[0].categoria || '';
+    var selo='';
+    if(temAberta) selo='<span class="tag '+(urgente?'urg':'norm')+'">'+(urgente?'URGENTE':'aguardando')+'</span>';
+    else selo='<span class="tag resp">✓ respondida</span>';
+
+    var head='<div class="conv-head">'+
+      (cat?'<span class="tag cat">'+esc(cat)+'</span>':'')+selo+
+      (c.vp?'<span class="conv-vp">'+esc(c.vp)+'</span>':'')+'</div>';
+
+    // campo para continuar a conversa (só logística) — NÃO some após responder
+    var rodape='';
+    if(_ehLogistica()){
+      rodape='<div class="conv-reply">'+
+        '<input class="conv-input" placeholder="Responder nesta conversa..." '+
+          'data-vp="'+esc(c.vp||'')+'" data-id="'+esc(c.msgs[c.msgs.length-1].id)+'">'+
+        '<button class="conv-send">➤</button>'+
+      '</div>';
+    }
+
+    wrap.innerHTML=head+'<div class="conv-body">'+dentro+'</div>'+rodape;
+    box.appendChild(wrap);
   });
+
+  // liga os campos de resposta dentro de cada conversa
+  Array.prototype.forEach.call(box.querySelectorAll('.conv-reply'), function(rep){
+    var input=rep.querySelector('.conv-input');
+    var btn=rep.querySelector('.conv-send');
+    function envia(){
+      var txt=input.value.trim();
+      if(!txt){ input.focus(); return; }
+      responderConversa(input.getAttribute('data-id'), input.getAttribute('data-vp'), txt, input);
+    }
+    btn.addEventListener('click', envia);
+    input.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); envia(); } });
+  });
+}
+
+// responde dentro da conversa (não fecha nada visualmente até recarregar)
+function responderConversa(id, vp, txt, input){
+  input.disabled=true;
+  apiGet('?action=responder'
+        +'&remetente='+encodeURIComponent(_nome())
+        +'&responde_id='+encodeURIComponent(id)
+        +'&vp='+encodeURIComponent(vp)
+        +'&mensagem='+encodeURIComponent(txt)
+        +'&_t='+Date.now())
+    .then(function(res){
+      input.disabled=false;
+      if(res && res.ok){ input.value=''; toast('Enviado'); carregar(); }
+      else toast('Não consegui enviar');
+    })
+    .catch(function(){ input.disabled=false; toast('Sem conexão'); });
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
