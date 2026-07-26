@@ -672,6 +672,7 @@ const MODULOS = [
   {id:'jornada',          nome:'Jornada',         desc:'Início/fim de viagem e desempenho',   href:'jornada.html',               icon:'🚚', bg:'#64D2FF', perm:'jornada'},
   {id:'documentos',       nome:'Documentação',    desc:'CRLV, CNH, CIV, CIPP e mais',         href:'documentos.html',            icon:'📁', bg:'#30D158', perm:'documentos'},
   {id:'mapa',             nome:'Mapa',            desc:'Rota e localização da frota',         href:'mapa.html',                  icon:'🗺️', bg:'#0A84FF', perm:'mapa'},
+  {id:'mural',            nome:'Mural',           desc:'Fale com a logística',                href:'mural.html',                 icon:'💬', bg:'#7C3AED', perm:'*'},
   {id:'compras',          nome:'Compras',         desc:'Solicitações de compra',              href:'solicitacao_compras.html',   icon:'🛒', bg:'#AF52DE', perm:'solicitacao_compra', wide:true},
   {id:'relatorios',       nome:'Relatórios',      desc:'Análises e relatórios gerenciais',    href:'relatorios.html',            icon:'📊', bg:'#007AFF', perm:'relatorios'},
 ];
@@ -687,6 +688,7 @@ function getUser(){
   try{ return JSON.parse(localStorage.getItem('twm_user_cache')||'null'); }catch(e){return null;}
 }
 function temPerm(key){
+  if(key === '*') return true;   // módulo liberado para todos os logados
   if(isAdmin()) return true;
   var p=getPerm();
   if(p[key]||p[key.toUpperCase()]) return true;
