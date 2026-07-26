@@ -221,7 +221,7 @@ function render(){
       '<div class="msg-top">'+
         '<div class="msg-quem">'+esc(m.remetente)+
           (m.vp?'<span class="vp">'+esc(m.vp)+'</span>':'')+'</div>'+
-        '<div class="msg-hora">'+esc(m.data_hora)+'</div>'+
+        '<div class="msg-hora">'+esc(fmtData(m.data_hora))+'</div>'+
       '</div>'+
       '<div class="msg-txt">'+esc(m.mensagem)+'</div>'+
       (tags?'<div class="msg-tags">'+tags+'</div>':'');
@@ -246,6 +246,19 @@ function render(){
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Formata a data para pt-BR. Se já vier "dd/MM/yyyy HH:mm", mantém.
+// Se vier em formato ISO/inglês, converte.
+function fmtData(s){
+  s = String(s||'').trim();
+  if(!s) return '';
+  // já está no formato brasileiro?
+  if(/^\d{2}\/\d{2}\/\d{4}/.test(s)) return s;
+  var d = new Date(s);
+  if(isNaN(d.getTime())) return s;   // não deu pra converter: mostra como veio
+  var p = function(n){ return String(n).padStart(2,'0'); };
+  return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
 
 /* ── enviar mensagem ── */
 function enviar(){
