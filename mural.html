@@ -158,10 +158,20 @@ function _vp(){
   var v = (localStorage.getItem('twm_vp_tablet')||u.frota||u.veiculo||'').toString().toUpperCase();
   return v;
 }
-// quem é logística/admin pode responder; senão é motorista
+// quem pode RESPONDER (papel de logística/admin, independente de ter VP)
 function _ehLogistica(){
   var p=_perm();
   return !!(p.admin || p.admin_master || p.logistica || p.LOGISTICA || p['LOGÍSTICA']);
+}
+
+// Decide se a mensagem é de motorista ou de logística.
+// REGRA: quem tem VP configurada no aparelho é MOTORISTA (tablet do caminhão),
+// mesmo que a pessoa seja admin. Sem VP + permissão de logística = logística.
+// Isso garante que mensagem de caminhão SEMPRE dispare o alerta.
+function _tipoRemetente(){
+  if(_vp()) return 'motorista';           // tem VP = tablet de caminhão
+  if(_ehLogistica()) return 'logistica';  // sem VP e é da logística
+  return 'motorista';                     // sem VP e sem papel: trata como motorista
 }
 
 function apiGet(qs){
@@ -266,7 +276,7 @@ function enviar(){
   if(!txt){ toast('Escreva uma mensagem'); return; }
   var cat=document.getElementById('categoria').value;
   var urg=document.getElementById('urgente').checked;
-  var tipo = _ehLogistica() ? 'logistica' : 'motorista';
+  var tipo = _tipoRemetente();
 
   var btn=document.getElementById('btnEnviar'); btn.disabled=true;
   apiGet('?action=enviarMensagem'
