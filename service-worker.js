@@ -6,7 +6,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 // ⚠️ IMPORTANTE: mude este número a cada deploy para forçar atualização
-const VERSION = 'v20260725-07';
+const VERSION = 'v20260726-01';
 const CACHE_HTML   = 'twm-html-'   + VERSION;
 const CACHE_ASSETS = 'twm-assets-' + VERSION;
 
@@ -31,6 +31,11 @@ self.addEventListener('activate', function(event) {
 self.addEventListener('fetch', function(event) {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
+
+  // Ignora requests que não sejam http/https (ex: chrome-extension://, moz-extension://)
+  // O Cache API não aceita gravar esses esquemas — deixa o navegador tratar direto.
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
   const isLocal = url.origin === location.origin;
 
   // 1. DADOS DINÂMICOS (Apps Script, Google Sheets, ImgBB) → SEMPRE rede
