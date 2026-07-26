@@ -224,6 +224,18 @@
     transform: translateY(-1px);
   }
   .truck-card:active { transform: scale(.97); }
+  /* balão do mural no canto do card */
+  .truck-mural{
+    position:absolute;top:6px;right:6px;z-index:3;
+    background:#7c3aed;color:#fff;border-radius:12px;
+    font-size:12px;font-weight:800;padding:2px 8px;
+    border:2px solid var(--surface);
+    display:flex;align-items:center;gap:2px;
+  }
+  .truck-mural.urgente{
+    background:#ef4444;
+    animation:muralPisca 1s ease-in-out infinite;
+  }
 
   .truck-icon-wrap {
     width: 48px; height: 48px;
@@ -932,6 +944,9 @@ function carregarFrota() {
 // Busca a posição de cada veículo e o status calculado (indo/voltando/
 // Alerta do mural: pisca no header quando há mensagem de motorista sem
 // resposta. Para de piscar quando a logística responde (abertas = 0).
+// Guarda quais VPs têm mensagem aberta no mural (para o balão no card).
+var muralVps = {};
+
 function atualizarMural() {
   return fetch(MURAL_URL + '?action=contarAbertas&_=' + Date.now(), { cache: 'no-store' })
     .then(function(r) { return r.text(); })
@@ -940,15 +955,32 @@ function atualizarMural() {
       if (!res || !res.ok) return;
       var el = document.getElementById('muralAlerta');
       var badge = document.getElementById('muralBadge');
-      if (!el || !badge) return;
-      var n = res.abertas || 0;
-      badge.textContent = n;
-      if (n > 0) {
-        el.classList.add('alerta');
-        el.classList.toggle('urgente', (res.urgentes || 0) > 0);
-      } else {
-        el.classList.remove('alerta');
-        el.classList.remove('urgente');
+      if (el && badge) {
+        var n = res.abertas || 0;
+        badge.textContent = n;
+        if (n > 0) {
+          el.classList.add('alerta');
+          el.classList.toggle('urgente', (res.urgentes || 0) > 0);
+        } else {
+          el.classList.remove('alerta');
+          el.classList.remove('urgente');
+        }
+      }
+      // monta o mapa de VPs com mensagem aberta (chaveFlex trata VPL=VP)
+      var novo = {};
+      (res.lista || []).forEach(function(m) {
+        if (m.vp) {
+          var k = chaveFlex(m.vp);
+          if (!novo[k]) novo[k] = { n: 0, urgente: false };
+          novo[k].n++;
+          if (String(m.prioridade).toLowerCase() === 'urgente') novo[k].urgente = true;
+        }
+      });
+      var mudou = JSON.stringify(novo) !== JSON.stringify(muralVps);
+      muralVps = novo;
+      // se mudou quais caminhões têm mensagem, redesenha para atualizar os balões
+      if (mudou && typeof renderDashboard === 'function' && fleetData && fleetData.length) {
+        renderDashboard();
       }
     })
     .catch(function(){ /* sem mural: header segue normal */ });
@@ -1179,7 +1211,13 @@ function renderDashboard() {
       var card = document.createElement('div');
       card.className = 'truck-card card-' + key;
       card.onclick = function() { openModal(v); };
+      // balão do mural: se este caminhão (VP) tem mensagem aberta, mostra 💬
+      var mv = muralVps[chaveFlex(v.cavalo)];
+      var muralHtml = mv ? '<div class="truck-mural' + (mv.urgente ? ' urgente' : '') + '" '
+        + 'onclick="event.stopPropagation();location.href=\'mural.html\'">💬 '
+        + mv.n + '</div>' : '';
       card.innerHTML = '<div class="truck-icon-wrap ' + meta.iconClass + '">' + meta.icon + '</div>'
+        + muralHtml
         + '<div class="truck-plate">' + esc(frotaLabel(v.cavalo)) + '</div>'
         + '<div class="truck-driver">' + esc(shortName(v.motorista)) + '</div>'
         + gpsHtml
