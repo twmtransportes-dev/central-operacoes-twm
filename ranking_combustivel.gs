@@ -1,542 +1,1337 @@
-/**
- * Ranking de Economia de Combustível — backend do TWM DataLink
- *
- * INSTALAÇÃO
- * 1. Cole este arquivo como um novo .gs no projeto Apps Script existente.
- * 2. No doPost, logo depois do JSON.parse, acrescente:
- *
- *      var resp = rkRotear(dados);
- *      if (resp) return rkJson(resp);
- *
- * 3. O RK_ARQUIVO_ID abaixo já aponta para a planilha "Consumo de combustivel".
- * 4. Rode UMA VEZ a função rkInstalar() pelo editor.
- * 5. Rode rkTestarPasta() e confira o log antes de implantar.
- * 6. Implante com "Nova versão" na implantação existente.
- *
- * COMO O ARQUIVO DEVE ESTAR NO DRIVE
- * Uma aba por mês. O nome da aba define a competência:
- *   "08/2026", "AGOSTO", "AGOSTO 2026", "AGO/26", "2026-08" — todos funcionam.
- * O relatório é acumulado do dia 1 até a exportação, então cada leitura
- * substitui o mês inteiro. Abas sem mês reconhecível são ignoradas.
- * Como o arquivo já é planilha do Google, não precisa ativar a Drive API.
- */
-
-var RK_PLANILHA = '1Q1XHvwuho8nNFAUMd3XcZx70njgU7kKatVnbk45X5Xg'; // PLANILHA_ID do DataLink
-
-// Arquivo do Drive com o relatório de consumo — uma aba por mês.
-var RK_ARQUIVO_ID = '1VYxdMt2Abx4ljJJYRY5qwLUBqQo-_QtTbG5SP12JR8s';
-
-// Alternativa: deixe RK_ARQUIVO_ID vazio e informe uma pasta;
-// aí o script usa o arquivo mais recente que encontrar nela.
-var RK_PASTA_ID = '';
-
-var RK_ABA_DADOS  = 'RANKING_CONSUMO';
-var RK_ABA_CONFIG = 'RANKING_CONFIG';
-var RK_CABECALHO  = ['COMPETENCIA','MOTORISTA','VEICULO','MODELO','KM','LITROS','FAIXA_VERDE','CO2','IMPORTADO_EM'];
-
-var RK_HORA_SYNC = 3; // hora do dia em que o gatilho roda
-
-/* ==========================================================
-   INSTALAÇÃO — rode uma vez pelo editor
-   ========================================================== */
-function rkInstalar(){
-  rkAba(RK_ABA_DADOS, RK_CABECALHO);
-  rkAba(RK_ABA_CONFIG, ['CHAVE','VALOR']);
-
-  ScriptApp.getProjectTriggers().forEach(function(t){
-    if(t.getHandlerFunction() === 'rkSincronizar') ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger('rkSincronizar').timeBased().everyDays(1).atHour(RK_HORA_SYNC).create();
-
-  Logger.log('Pronto. Gatilho diário às ' + RK_HORA_SYNC + 'h. Cada aba do arquivo vira um mês.');
-  return 'ok';
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ranking de Economia · TWM DataLink</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B3D2E">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#F1F3F2; --card:#FFFFFF; --card2:#F7F8F8;
+  --txt:#14201B; --txt2:#657069; --txt3:#98A29C;
+  --sep:rgba(20,32,27,.10);
+  --verde:#1E9E63; --verde-esc:#0B3D2E; --verde-claro:#E6F4EC;
+  --ambar:#C98A0E; --vermelho:#D64545; --azul:#2F6FD0;
+  --ouro:#D9A521; --prata:#98A0A6; --bronze:#B0703C;
+  --r:16px; --r-sm:11px;
+  --sombra:0 1px 2px rgba(20,32,27,.06), 0 6px 20px rgba(20,32,27,.05);
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
 }
-
-/* ==========================================================
-   ROTEADOR
-   ========================================================== */
-function rkJson(obj){
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-/** Devolve null se a ação não for deste módulo — deixa o roteador seguir. */
-function rkRotear(d){
-  if(!d || !d.acao) return null;
-  try{
-    switch(d.acao){
-      case 'rkInicio':
-        var cfg = rkLerConfig();
-        return { config: cfg, periodos: rkPeriodos(), sync: cfg.ultimaSync || null };
-      case 'rkDados':          return { linhas: rkLerLinhas(d.competencia) };
-      case 'rkHistorico':      return rkHistorico();
-      case 'rkSalvarConfig':   return rkSalvarConfig(d.config);
-      case 'rkImportar':       return rkGravar(d.competencia, d.linhas);
-      case 'rkSincronizarJa':  return rkSincronizar(true);
-      default: return null;
-    }
-  }catch(err){
-    return { erro: String(err && err.message || err) };
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0E1512; --card:#182220; --card2:#1F2B27;
+    --txt:#ECF1EE; --txt2:#9AA7A1; --txt3:#6C7A74;
+    --sep:rgba(255,255,255,.10);
+    --verde:#34C77F; --verde-esc:#0F5B41; --verde-claro:#153228;
+    --ambar:#E6AE3A; --vermelho:#F0645F; --azul:#5E9BF0;
+    --sombra:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
   }
 }
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+  font-size:15px; line-height:1.45;
+  padding-bottom:calc(28px + var(--safe-bot));
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:680px;margin:0 auto;padding:0 16px}
+button{font-family:inherit;font-size:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select{font-family:inherit;font-size:16px}
 
-/* ==========================================================
-   ABAS INTERNAS E CONFIGURAÇÃO
-   ========================================================== */
-function rkAba(nome, cabecalho){
-  var ss = SpreadsheetApp.openById(RK_PLANILHA);
-  var aba = ss.getSheetByName(nome);
-  if(!aba){
-    aba = ss.insertSheet(nome);
-    aba.appendRow(cabecalho);
-    aba.setFrozenRows(1);
-    aba.getRange(1,1,1,cabecalho.length).setFontWeight('bold');
-  }
-  return aba;
+/* ---------- topo ---------- */
+.topo{
+  position:sticky;top:0;z-index:40;
+  padding:calc(var(--safe-top) + 10px) 16px 10px;
+  background:color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter:saturate(180%) blur(20px);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:.5px solid var(--sep);
+}
+.topo-in{max-width:680px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.voltar{font-size:17px;color:var(--verde);display:flex;align-items:center;gap:3px;padding:4px 4px 4px 0}
+.topo h1{flex:1;margin:0;font-size:17px;font-weight:650;letter-spacing:-.2px;text-align:center}
+.ico-btn{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--card);box-shadow:var(--sombra)}
+.ico-btn svg{width:18px;height:18px;stroke:var(--txt2);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- competência ---------- */
+.periodo{display:flex;align-items:center;justify-content:center;gap:10px;margin:14px 0 4px}
+.periodo select{
+  appearance:none;background:var(--card);color:var(--txt);border:.5px solid var(--sep);
+  border-radius:100px;padding:7px 34px 7px 16px;font-size:14px;font-weight:560;
+  box-shadow:var(--sombra);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1.5L6 6.5L11 1.5' stroke='%23657069' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>");
+  background-repeat:no-repeat;background-position:right 13px center;background-size:11px;
 }
 
-function rkLerConfig(){
-  var aba = rkAba(RK_ABA_CONFIG, ['CHAVE','VALOR']);
-  var vals = aba.getDataRange().getValues();
-  for(var i=1;i<vals.length;i++){
-    if(String(vals[i][0]) === 'config'){
-      try{ return JSON.parse(vals[i][1]) || {}; }catch(e){ return {}; }
-    }
-  }
-  return {};
+/* ---------- painel do motorista ---------- */
+.meu{
+  margin-top:14px;border-radius:22px;overflow:hidden;
+  background:linear-gradient(155deg,var(--verde-esc) 0%, #14624A 55%, #1E9E63 130%);
+  color:#fff;box-shadow:0 10px 30px rgba(11,61,46,.28);
 }
-
-function rkSalvarConfig(config){
-  var aba   = rkAba(RK_ABA_CONFIG, ['CHAVE','VALOR']);
-  var atual = rkLerConfig();
-  var novo  = config || {};
-  // campos controlados pelo servidor: preserva se o app nao mandou
-  if(novo.ultimaSync     === undefined) novo.ultimaSync     = atual.ultimaSync;
-  if(novo.carimboArquivo === undefined) novo.carimboArquivo = atual.carimboArquivo;
-
-  var txt  = JSON.stringify(novo);
-  var vals = aba.getDataRange().getValues();
-  for(var i=1;i<vals.length;i++){
-    if(String(vals[i][0]) === 'config'){
-      aba.getRange(i+1, 2).setValue(txt);
-      return { ok:true };
-    }
-  }
-  aba.appendRow(['config', txt]);
-  return { ok:true };
+.meu-top{padding:18px 20px 4px;display:flex;align-items:flex-start;gap:16px}
+.meu-pos{text-align:center;flex-shrink:0}
+.meu-pos b{display:block;font-size:40px;font-weight:750;letter-spacing:-2px;line-height:1}
+.meu-pos b sup{font-size:17px;font-weight:600;letter-spacing:0;top:-14px;position:relative}
+.meu-pos span{font-size:11.5px;opacity:.72}
+.meu-info{flex:1;min-width:0;padding-top:2px}
+.meu-info h2{margin:0;font-size:17px;font-weight:640;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meu-info p{margin:2px 0 0;font-size:13px;opacity:.75}
+.meu-premio{
+  margin:14px 20px 0;background:rgba(255,255,255,.14);border-radius:14px;
+  padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;
 }
-
-/* ==========================================================
-   LEITURA DOS DADOS GRAVADOS
-   ========================================================== */
-function rkPeriodos(){
-  var aba = rkAba(RK_ABA_DADOS, RK_CABECALHO);
-  var n = aba.getLastRow();
-  if(n < 2) return [];
-  var col = aba.getRange(2, 1, n-1, 1).getValues();
-  var vistos = {}, out = [];
-  for(var i=0;i<col.length;i++){
-    var c = String(col[i][0] || '').trim();
-    if(c && !vistos[c]){ vistos[c] = 1; out.push(c); }
-  }
-  return out.sort().reverse();
+.meu-premio small{display:block;font-size:11.5px;opacity:.8;margin-bottom:1px}
+.meu-premio .valor{font-size:25px;font-weight:720;letter-spacing:-.8px}
+.meu-premio .valor.zero{opacity:.5;font-size:19px}
+.barra-meta{padding:16px 20px 20px}
+.barra-linha{display:flex;justify-content:space-between;font-size:12px;opacity:.82;margin-bottom:7px}
+.barra{height:9px;border-radius:100px;background:rgba(255,255,255,.2);overflow:hidden;position:relative}
+.barra i{display:block;height:100%;border-radius:100px;background:#FFF;transition:width .8s cubic-bezier(.22,1,.36,1)}
+.barra i.neg{background:#FFB4B0}
+.barra .marco{position:absolute;top:-3px;bottom:-3px;width:2px;background:rgba(255,255,255,.85);border-radius:2px}
+.meu-rodape{
+  display:flex;border-top:1px solid rgba(255,255,255,.16);
 }
+.meu-rodape div{flex:1;padding:11px 8px;text-align:center}
+.meu-rodape div + div{border-left:1px solid rgba(255,255,255,.16)}
+.meu-rodape b{display:block;font-size:15px;font-weight:640}
+.meu-rodape span{font-size:11px;opacity:.75}
 
-function rkLerLinhas(competencia){
-  var aba = rkAba(RK_ABA_DADOS, RK_CABECALHO);
-  var n = aba.getLastRow();
-  if(n < 2) return [];
-  var vals = aba.getRange(2, 1, n-1, RK_CABECALHO.length).getValues();
-  var out = [];
-  for(var i=0;i<vals.length;i++){
-    var v = vals[i];
-    if(competencia && String(v[0]).trim() !== String(competencia).trim()) continue;
-    if(!v[1]) continue;
-    out.push({
-      motorista: String(v[1]).trim(),
-      veiculo:   String(v[2]).trim(),
-      modelo:    String(v[3]).trim(),
-      km:        Number(v[4]) || 0,
-      litros:    Number(v[5]) || 0,
-      faixaVerde:Number(v[6]) || 0,
-      co2:       Number(v[7]) || 0
-    });
-  }
-  return out;
+/* ---------- pódio ---------- */
+.secao-tit{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin:26px 2px 12px;
 }
+.secao-tit h3{margin:0;font-size:19px;font-weight:680;letter-spacing:-.4px}
+.secao-tit span{font-size:12.5px;color:var(--txt2)}
 
-/* ==========================================================
-   GRAVACAO — substitui integralmente a competencia
-   ========================================================== */
-function rkGravar(competencia, linhas){
-  if(!competencia) throw new Error('Competência não informada');
-  if(!linhas || !linhas.length) throw new Error('Nenhuma linha para gravar');
-
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try{
-    var aba  = rkAba(RK_ABA_DADOS, RK_CABECALHO);
-    var comp = String(competencia).trim();
-    var n    = aba.getLastRow();
-
-    // apaga o que ja existia nesta competencia, em blocos contiguos
-    if(n > 1){
-      var col = aba.getRange(2, 1, n-1, 1).getValues();
-      var i = col.length - 1;
-      while(i >= 0){
-        if(String(col[i][0]).trim() === comp){
-          var fim = i;
-          while(i >= 0 && String(col[i][0]).trim() === comp) i--;
-          aba.deleteRows(i + 3, fim - i);
-        } else { i--; }
-      }
-    }
-
-    var agora = new Date();
-    var bloco = linhas.map(function(l){
-      return [comp,
-        String(l.motorista || '').trim(),
-        String(l.veiculo   || '').trim(),
-        String(l.modelo    || '').trim(),
-        Number(l.km) || 0, Number(l.litros) || 0,
-        Number(l.faixaVerde) || 0, Number(l.co2) || 0,
-        agora];
-    });
-    aba.getRange(aba.getLastRow() + 1, 1, bloco.length, RK_CABECALHO.length).setValues(bloco);
-    return { ok:true, gravadas: bloco.length, competencia: comp };
-  } finally {
-    lock.releaseLock();
-  }
+.podio{display:grid;grid-template-columns:1fr 1.14fr 1fr;gap:8px;align-items:end;margin-bottom:8px}
+.pod{
+  background:var(--card);border-radius:var(--r);padding:14px 8px 12px;text-align:center;
+  box-shadow:var(--sombra);position:relative;
 }
+.pod.p1{padding-top:20px;padding-bottom:16px}
+.pod .medalha{
+  width:30px;height:30px;border-radius:50%;display:grid;place-items:center;margin:0 auto 8px;
+  font-size:13px;font-weight:700;color:#fff;
+}
+.pod.p1 .medalha{width:36px;height:36px;font-size:15px;background:var(--ouro);box-shadow:0 4px 14px rgba(217,165,33,.4)}
+.pod.p2 .medalha{background:var(--prata)}
+.pod.p3 .medalha{background:var(--bronze)}
+.pod .nome{font-size:12.5px;font-weight:600;line-height:1.25;height:2.5em;overflow:hidden;margin-bottom:6px}
+.pod .eco{font-size:18px;font-weight:720;color:var(--verde);letter-spacing:-.5px}
+.pod.p1 .eco{font-size:22px}
+.pod .rs{font-size:11.5px;color:var(--txt2);margin-top:1px}
 
-/* ==========================================================
-   SINCRONIZACAO COM O DRIVE
-   Le TODAS as abas do arquivo mais recente da pasta.
-   Cada aba e um mes e substitui aquele mes por inteiro.
-   ========================================================== */
-function rkSincronizar(forcar){
-  var cfg = rkLerConfig();
-  var arq = rkFonte();
+/* ---------- lista ---------- */
+.lista{background:var(--card);border-radius:var(--r);box-shadow:var(--sombra);overflow:hidden}
+.item{display:flex;align-items:center;gap:12px;padding:11px 14px;position:relative}
+.item + .item::before{content:"";position:absolute;left:52px;right:0;top:0;height:.5px;background:var(--sep)}
+.item.eu{background:var(--verde-claro)}
+.item .pos{
+  width:26px;text-align:center;font-size:14.5px;font-weight:640;color:var(--txt2);flex-shrink:0;
+  font-variant-numeric:tabular-nums;
+}
+.item.eu .pos{color:var(--verde)}
+.item .av{
+  width:34px;height:34px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;
+  background:var(--card2);font-size:12px;font-weight:650;color:var(--txt2);letter-spacing:.3px;
+}
+.item .cen{flex:1;min-width:0}
+.item .cen b{display:block;font-size:14.5px;font-weight:560;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .cen span{font-size:11.5px;color:var(--txt3)}
+.item .dir{text-align:right;flex-shrink:0}
+.item .dir b{display:block;font-size:15px;font-weight:660;color:var(--verde);letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.item .dir b.neg{color:var(--txt3)}
+.item .dir span{font-size:11.5px;color:var(--txt2)}
 
-  var carimbo = arq.getId() + '|' + arq.getLastUpdated().getTime();
-  if(!forcar && cfg.carimboArquivo === carimbo)
-    return { ok:true, semMudanca:true, arquivo: arq.getName(), sync: cfg.ultimaSync || null };
+.faixa-corte{
+  padding:9px 14px;background:var(--card2);font-size:11.5px;color:var(--txt2);
+  display:flex;align-items:center;gap:7px;
+}
+.faixa-corte::before{content:"";flex:1;height:.5px;background:var(--sep)}
+.faixa-corte::after{content:"";flex:1;height:.5px;background:var(--sep)}
 
-  var abas = rkAbasDoArquivo(arq);
-  if(!abas.length) throw new Error('O arquivo "' + arq.getName() + '" não tem nenhuma aba legível');
+.nota{font-size:12px;color:var(--txt3);text-align:center;margin:14px 6px 0;line-height:1.5}
 
-  var anoBase = rkAnoBase(arq);
-  var meses = [], ignoradas = [], total = 0;
+.vazio{text-align:center;padding:56px 24px;color:var(--txt2)}
+.vazio svg{width:44px;height:44px;stroke:var(--txt3);fill:none;stroke-width:1.4;margin-bottom:14px}
+.vazio h4{margin:0 0 6px;font-size:16px;font-weight:620;color:var(--txt)}
+.vazio p{margin:0;font-size:13.5px;max-width:280px;margin-inline:auto}
 
-  for(var i = 0; i < abas.length; i++){
-    var ab = abas[i];
+/* ---------- botões ---------- */
+.btn{
+  display:block;width:100%;padding:13px;border-radius:13px;font-size:16px;font-weight:600;
+  background:var(--verde);color:#fff;text-align:center;
+}
+.btn:active{opacity:.82}
+.btn.sec{background:var(--card);color:var(--verde);box-shadow:var(--sombra)}
+.btn.txt{background:none;color:var(--verde);box-shadow:none;font-weight:560}
+.btn.perigo{background:none;color:var(--vermelho)}
+.btn[disabled]{opacity:.45;pointer-events:none}
 
-    var comp = rkCompetenciaDaAba(ab.nome, anoBase);
-    // arquivo de aba unica: aceita o mes vindo do nome do arquivo ou da configuracao
-    if(!comp && abas.length === 1) comp = cfg.competenciaForcada || rkCompetenciaDoArquivo(arq);
-    if(!comp){ ignoradas.push(ab.nome + ' (mês não identificado)'); continue; }
+/* ---------- modal ---------- */
+.sheet{
+  position:fixed;inset:0;z-index:90;display:none;
+  background:rgba(10,18,15,.42);backdrop-filter:blur(3px);
+}
+.sheet.on{display:block}
+.sheet-in{
+  position:absolute;left:0;right:0;bottom:0;max-height:92vh;
+  background:var(--bg);border-radius:22px 22px 0 0;
+  display:flex;flex-direction:column;
+  animation:sobe .32s cubic-bezier(.22,1,.36,1);
+}
+@keyframes sobe{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){.sheet-in{animation:none}.barra i{transition:none}}
+.sheet-topo{
+  padding:14px 16px;border-bottom:.5px solid var(--sep);
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;
+}
+.sheet-topo h3{margin:0;font-size:17px;font-weight:650}
+.sheet-corpo{overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch}
+.sheet-corpo > .grupo:first-child{margin-top:0}
 
-    var linhas;
-    try{
-      linhas = rkLinhasDaGrade(ab.valores);
-    }catch(e){
-      ignoradas.push(ab.nome + ' (' + e.message + ')');
-      continue;
-    }
-    if(!linhas.length){ ignoradas.push(ab.nome + ' (sem linhas de consumo)'); continue; }
+.grupo{margin:22px 0 0}
+.grupo > label{display:block;font-size:12.5px;color:var(--txt2);margin:0 4px 7px;font-weight:520}
+.bloco{background:var(--card);border-radius:var(--r);box-shadow:var(--sombra);overflow:hidden}
+.campo{display:flex;align-items:center;gap:12px;padding:11px 14px;position:relative;min-height:48px}
+.campo + .campo::before{content:"";position:absolute;left:14px;right:0;top:0;height:.5px;background:var(--sep)}
+.campo > span{flex:1;font-size:15px}
+.campo > span small{display:block;font-size:11.5px;color:var(--txt3);line-height:1.35;margin-top:1px}
+.campo input[type=number],.campo input[type=text]{
+  width:104px;text-align:right;border:none;background:var(--card2);color:var(--txt);
+  border-radius:9px;padding:7px 10px;font-size:15px;font-weight:560;
+}
+.campo select{
+  border:none;background:var(--card2);color:var(--txt);border-radius:9px;padding:7px 10px;font-size:15px;
+}
+.campo input:focus,.campo select:focus,button:focus-visible{outline:2px solid var(--verde);outline-offset:1px}
 
-    var r = rkGravar(comp, linhas);
-    meses.push({ competencia: comp, aba: ab.nome, gravadas: r.gravadas });
-    total += r.gravadas;
+.switch{width:50px;height:30px;border-radius:100px;background:var(--sep);position:relative;transition:background .2s;flex-shrink:0}
+.switch.on{background:var(--verde)}
+.switch i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.2);transition:transform .2s}
+.switch.on i{transform:translateX(20px)}
+
+.faixas-tab{width:100%;border-collapse:collapse;font-size:14px}
+.faixas-tab th{font-size:11.5px;color:var(--txt2);font-weight:520;text-align:left;padding:9px 14px 5px}
+.faixas-tab td{padding:5px 14px 5px;border-top:.5px solid var(--sep)}
+.faixas-tab input{width:100%;border:none;background:var(--card2);color:var(--txt);border-radius:8px;padding:7px 9px;font-size:15px;text-align:right}
+.faixas-tab td:last-child{width:44px;text-align:center}
+.rm{color:var(--vermelho);font-size:20px;line-height:1;padding:4px}
+
+.metas-busca{
+  width:100%;border:none;background:var(--card);color:var(--txt);border-radius:11px;
+  padding:11px 14px;font-size:15px;box-shadow:var(--sombra);margin-bottom:10px;
+}
+.meta-linha{display:flex;align-items:center;gap:12px;padding:10px 14px;position:relative}
+.meta-linha + .meta-linha::before{content:"";position:absolute;left:14px;right:0;top:0;height:.5px;background:var(--sep)}
+.meta-linha > span{flex:1;font-size:14px;line-height:1.3}
+.meta-linha > span small{display:block;font-size:11px;color:var(--txt3)}
+.meta-linha input{width:82px;text-align:right;border:none;background:var(--card2);color:var(--txt);border-radius:9px;padding:7px 10px;font-size:15px;font-weight:560}
+
+.aviso{
+  background:var(--verde-claro);color:var(--verde-esc);border-radius:12px;padding:11px 14px;
+  font-size:12.5px;line-height:1.5;margin-top:12px;
+}
+@media (prefers-color-scheme: dark){.aviso{color:#9FE3C1}}
+.aviso.alerta{background:rgba(201,138,14,.14);color:var(--ambar)}
+
+.toast{
+  position:fixed;left:50%;bottom:calc(26px + var(--safe-bot));transform:translateX(-50%) translateY(14px);
+  background:rgba(20,32,27,.94);color:#fff;padding:11px 20px;border-radius:100px;font-size:14px;
+  z-index:120;opacity:0;pointer-events:none;transition:all .28s;max-width:calc(100vw - 40px);text-align:center;
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.load{display:grid;place-items:center;padding:70px 0}
+.load i{width:26px;height:26px;border:2.5px solid var(--sep);border-top-color:var(--verde);border-radius:50%;animation:gira .8s linear infinite;display:block}
+@keyframes gira{to{transform:rotate(360deg)}}
+
+.oculto{display:none !important}
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-in">
+    <button class="voltar" onclick="voltar()" aria-label="Voltar">
+      <svg width="11" height="18" viewBox="0 0 11 18" fill="none"><path d="M9.5 1L1.5 9l8 8" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg> Voltar
+    </button>
+    <h1>Economia de diesel</h1>
+    <button class="ico-btn oculto" id="btnConfig" onclick="abrirConfig()" aria-label="Configurações">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="periodo">
+    <select id="selPeriodo" onchange="trocarPeriodo(this.value)" aria-label="Período de apuração"></select>
+  </div>
+
+  <div id="conteudo"><div class="load"><i></i></div></div>
+</div>
+
+<!-- ====== configurações (admin) ====== -->
+<div class="sheet" id="shConfig">
+  <div class="sheet-in">
+    <div class="sheet-topo">
+      <button class="btn txt" style="width:auto;padding:4px" onclick="fecharSheet('shConfig')">Cancelar</button>
+      <h3>Premiação</h3>
+      <button class="btn txt" style="width:auto;padding:4px;font-weight:640" onclick="salvarConfig()">Salvar</button>
+    </div>
+    <div class="sheet-corpo">
+
+      <div class="grupo">
+        <label>Como a meta é definida</label>
+        <div class="bloco">
+          <div class="campo">
+            <span>Critério<small>Por modelo compara cada motorista com o consumo típico do caminhão que ele dirigiu.</small></span>
+            <select id="cfgModoMeta" onchange="alternarModoMeta()">
+              <option value="modelo">Por modelo</option>
+              <option value="global">Meta única</option>
+            </select>
+          </div>
+          <div class="campo" id="linhaMetaGlobal">
+            <span>Meta única<small>km/L exigido de toda a frota</small></span>
+            <input type="number" id="cfgMetaGlobal" step="0.01" min="0.5" max="10">
+          </div>
+          <div class="campo">
+            <span>Ganho exigido sobre a meta<small>quanto o motorista precisa economizar para entrar na premiação</small></span>
+            <input type="number" id="cfgMetaPct" step="0.5" min="0" max="50">
+          </div>
+        </div>
+      </div>
+
+      <div class="grupo" id="grupoMetas">
+        <label>Meta por modelo (km/L)</label>
+        <input class="metas-busca" id="buscaMeta" placeholder="Buscar modelo" oninput="renderMetas()">
+        <div class="bloco" id="listaMetas"></div>
+        <button class="btn txt" style="margin-top:8px" onclick="sugerirMetas()">Calcular metas a partir do histórico</button>
+      </div>
+
+      <div class="grupo">
+        <label>Valor do prêmio</label>
+        <div class="bloco">
+          <div class="campo">
+            <span>Modelo de cálculo</span>
+            <select id="cfgModoPremio" onchange="alternarModoPremio()">
+              <option value="ponto">Por ponto %</option>
+              <option value="faixas">Por faixa</option>
+            </select>
+          </div>
+          <div class="campo" id="linhaPorPonto">
+            <span>R$ por 1% economizado<small>acima do ganho exigido</small></span>
+            <input type="number" id="cfgValorPonto" step="10" min="0">
+          </div>
+          <div class="campo">
+            <span>Teto por motorista<small>R$ — deixe 0 para não limitar</small></span>
+            <input type="number" id="cfgTeto" step="50" min="0">
+          </div>
+        </div>
+      </div>
+
+      <div class="grupo" id="grupoFaixas">
+        <label>Faixas de premiação</label>
+        <div class="bloco">
+          <table class="faixas-tab">
+            <thead><tr><th>A partir de %</th><th>Prêmio R$</th><th></th></tr></thead>
+            <tbody id="corpoFaixas"></tbody>
+          </table>
+        </div>
+        <button class="btn txt" style="margin-top:8px" onclick="addFaixa()">Adicionar faixa</button>
+      </div>
+
+      <div class="grupo">
+        <label>Bônus de pódio</label>
+        <div class="bloco">
+          <div class="campo"><span>1º lugar</span><input type="number" id="cfgBonus1" step="50" min="0"></div>
+          <div class="campo"><span>2º lugar</span><input type="number" id="cfgBonus2" step="50" min="0"></div>
+          <div class="campo"><span>3º lugar</span><input type="number" id="cfgBonus3" step="50" min="0"></div>
+        </div>
+      </div>
+
+      <div class="grupo">
+        <label>Quem entra na apuração</label>
+        <div class="bloco">
+          <div class="campo">
+            <span>Mínimo de km no período<small>abaixo disso o motorista fica fora do ranking</small></span>
+            <input type="number" id="cfgKmMin" step="100" min="0">
+          </div>
+          <div class="campo">
+            <span>Descartar viagens abaixo de<small>km — trechos curtos distorcem a média</small></span>
+            <input type="number" id="cfgKmLinha" step="10" min="0">
+          </div>
+          <div class="campo">
+            <span>Rendimento máximo aceito<small>km/L — acima disso a linha é tratada como falha de telemetria</small></span>
+            <input type="number" id="cfgRendMax" step="0.5" min="1">
+          </div>
+        </div>
+      </div>
+
+      <div class="grupo">
+        <label>Publicação</label>
+        <div class="bloco">
+          <div class="campo">
+            <span>Ranking visível para os motoristas<small>desligue enquanto estiver conferindo os dados</small></span>
+            <div class="switch" id="cfgPublicado" onclick="this.classList.toggle('on')"><i></i></div>
+          </div>
+        </div>
+        <div class="aviso" id="avisoQualidade"></div>
+      </div>
+
+      <div class="grupo">
+        <label>Dados de consumo</label>
+        <div class="bloco">
+          <div class="campo">
+            <span>Última atualização<small id="txtSync">—</small></span>
+          </div>
+          <div class="campo" style="cursor:pointer" onclick="sincronizarAgora(this)">
+            <span style="color:var(--verde);font-weight:560">Ler o arquivo do Drive agora<small style="color:var(--txt3);font-weight:400">lê todas as abas — o app já faz isso sozinho toda madrugada</small></span>
+            <svg width="9" height="15" viewBox="0 0 9 15" style="opacity:.35"><path d="M1 1l6 6.5-6 6.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+          </div>
+          <div class="campo" style="cursor:pointer" onclick="document.getElementById('arquivo').click()">
+            <span>Importar arquivo manualmente<small>use se o Drive falhar — .xls, .xlsx ou .csv</small></span>
+            <svg width="9" height="15" viewBox="0 0 9 15" style="opacity:.35"><path d="M1 1l6 6.5-6 6.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+          </div>
+        </div>
+        <input type="file" id="arquivo" accept=".xls,.xlsx,.csv" class="oculto" onchange="importarArquivo(this)">
+      </div>
+
+      <div class="grupo">
+        <label>Meses lidos do arquivo</label>
+        <div class="bloco">
+          <div class="campo" style="align-items:flex-start">
+            <span style="font-size:13px" id="txtAbas">—</span>
+          </div>
+          <div class="campo">
+            <span>Forçar um mês<small>só vale para arquivo de aba única — deixe vazio</small></span>
+            <input type="month" id="cfgCompForcada" style="width:150px;border:none;background:var(--card2);color:var(--txt);border-radius:9px;padding:7px 10px;font-size:15px">
+          </div>
+        </div>
+        <div class="aviso">Cada aba do arquivo vira um mês, pelo próprio nome da aba. Como o relatório é acumulado do dia 1 até a exportação, cada leitura substitui aquele mês por inteiro — corrigir uma aba antiga conserta o histórico sozinho.</div>
+      </div>
+
+      <div class="grupo">
+        <label>Campeão do ano</label>
+        <div class="bloco">
+          <div class="campo"><span>Prêmio do 1º lugar</span><input type="number" id="cfgAno1" step="100" min="0"></div>
+          <div class="campo"><span>Prêmio do 2º lugar</span><input type="number" id="cfgAno2" step="100" min="0"></div>
+          <div class="campo"><span>Prêmio do 3º lugar</span><input type="number" id="cfgAno3" step="100" min="0"></div>
+          <div class="campo">
+            <span>Meses mínimos para concorrer<small>evita que quem rodou um mês só dispute o ano</small></span>
+            <input type="number" id="cfgMesesAno" step="1" min="1" max="12">
+          </div>
+        </div>
+      </div>
+
+      <div class="grupo">
+        <button class="btn sec" onclick="exportarCsv()">Exportar ranking completo (CSV)</button>
+      </div>
+      <div style="height:calc(20px + var(--safe-bot))"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== confirmação de importação ====== -->
+<div class="sheet" id="shImport">
+  <div class="sheet-in">
+    <div class="sheet-topo">
+      <button class="btn txt" style="width:auto;padding:4px" onclick="fecharSheet('shImport')">Cancelar</button>
+      <h3>Conferir importação</h3>
+      <span style="width:60px"></span>
+    </div>
+    <div class="sheet-corpo" id="corpoImport"></div>
+  </div>
+</div>
+
+<!-- ====== histórico do motorista ====== -->
+<div class="sheet" id="shHist">
+  <div class="sheet-in">
+    <div class="sheet-topo">
+      <span style="width:60px"></span>
+      <h3>Minha evolução</h3>
+      <button class="btn txt" style="width:auto;padding:4px" onclick="fecharSheet('shHist')">Fechar</button>
+    </div>
+    <div class="sheet-corpo" id="corpoHist"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   Ranking de Economia de Combustível — TWM DataLink
+   Backend: Google Apps Script + Google Sheets
+   Nenhum dado de frota, motorista ou veículo é fixado no código.
+   ============================================================ */
+
+const API = 'https://script.google.com/macros/s/AKfycbw4BZz60sy9BsFACdqKktKpzJOfP8mj0U6s1G7Em5pwhaC_kQHCk-GPbLNZOlwjvrOwsw/exec';
+const TOP_PUBLICO = 20;
+const CACHE = 'rk_cache_v1';
+
+/* ---------- sessão (mesmo formato do index.html do DataLink) ---------- */
+function getUser(){
+  try{ return JSON.parse(localStorage.getItem('twm_user_cache')||'null'); }catch(e){ return null; }
+}
+function getPerm(){
+  try{ return JSON.parse(localStorage.getItem('twm_permissoes')||'{}'); }catch(e){ return {}; }
+}
+function usuarioAtual(){
+  let u = getUser();
+  if(!u){
+    try{ u = (JSON.parse(localStorage.getItem('twm_session')||'null')||{}).motorista || null; }catch(e){}
   }
-
-  if(!meses.length)
-    throw new Error('Nenhuma aba pôde ser lida. ' + ignoradas.join('; '));
-
-  meses.sort(function(a,b){ return a.competencia < b.competencia ? -1 : 1; });
-
-  cfg = rkLerConfig();
-  cfg.carimboArquivo = carimbo;
-  cfg.ultimaSync = {
-    quando: Utilities.formatDate(new Date(), 'America/Sao_Paulo', "dd/MM/yyyy 'às' HH:mm"),
-    arquivo: arq.getName(),
-    linhas: total,
-    meses: meses,
-    ignoradas: ignoradas,
-    competencia: meses[meses.length-1].competencia
+  if(!u) return { nome:'', admin:false };
+  const cargo = String(u.cargo || u.CARGO || '').toUpperCase().trim();
+  const perm  = u.permissoes || getPerm() || {};
+  return {
+    nome: u.nome || u.NOME || '',
+    admin: cargo === 'ADMIN' || cargo === 'ADMINISTRATIVO MASTER' || !!perm.admin_master
   };
-  rkSalvarConfig(cfg);
-
-  return { ok:true, arquivo: arq.getName(), linhas: total, meses: meses,
-           ignoradas: ignoradas, competencia: cfg.ultimaSync.competencia, sync: cfg.ultimaSync };
 }
 
-/** Arquivo de origem: o id fixo, ou o mais recente da pasta. */
-function rkFonte(){
-  if(RK_ARQUIVO_ID && RK_ARQUIVO_ID.indexOf('COLE_AQUI') !== 0){
-    try{
-      return DriveApp.getFileById(RK_ARQUIVO_ID);
-    }catch(e){
-      throw new Error('Não consegui abrir o arquivo do Drive. Confira o RK_ARQUIVO_ID e se a conta do script tem acesso a ele. Detalhe: ' + e);
-    }
-  }
-  if(!RK_PASTA_ID) throw new Error('Informe RK_ARQUIVO_ID ou RK_PASTA_ID no script');
-  var arq = rkArquivoMaisRecente(RK_PASTA_ID);
-  if(!arq) throw new Error('Nenhum arquivo compatível na pasta do Drive');
-  return arq;
+const USUARIO = usuarioAtual();
+
+/* ---------- estado ---------- */
+let CFG = null, LINHAS = [], PERIODOS = [], PERIODO = '', RANK = [], DESCARTE = null, PENDENTE = null, SYNC = null;
+let HIST = null, ANOS = [];
+
+const CFG_PADRAO = {
+  modoMeta:'modelo', metaGlobal:1.90, metaPct:3,
+  modoPremio:'ponto', valorPonto:120, teto:1500,
+  faixas:[{de:3,rs:200},{de:6,rs:450},{de:10,rs:800}],
+  bonus:[500,300,150],
+  premioAno:[3000,1500,750], mesesMinAno:6,
+  kmMin:2000, kmLinha:50, rendMax:5,
+  publicado:true, metas:{}
+};
+
+const ehAno = p => String(p||'').indexOf('ANO:') === 0;
+const anoDe = p => String(p||'').slice(4);
+
+/* ---------- utilidades ---------- */
+const nf = (n,d=2)=> (isFinite(n)?n:0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const brl = n => 'R$ ' + (n||0).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0});
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const norm = s => String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+
+function primeiroUltimo(nome){
+  const p = String(nome).trim().split(/\s+/).filter(w=>w.length>2);
+  if(!p.length) return nome;
+  return p.length===1 ? p[0] : p[0]+' '+p[p.length-1];
+}
+function iniciais(nome){
+  const p = String(nome).trim().split(/\s+/).filter(w=>w.length>2);
+  if(!p.length) return '?';
+  return ((p[0][0]||'')+(p.length>1?p[p.length-1][0]:'')).toUpperCase();
+}
+function rotuloPeriodo(c){
+  const m = /^(\d{4})-(\d{2})$/.exec(c||'');
+  if(!m) return c || '—';
+  const meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  return meses[+m[2]-1] + ' de ' + m[1];
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('on'), 2600);
+}
+function voltar(){
+  if(history.length>1) history.back(); else location.href='index.html';
+}
+function fecharSheet(id){ document.getElementById(id).classList.remove('on'); }
+
+/* ---------- comunicação ---------- */
+async function chamar(acao, dados){
+  const r = await fetch(API, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(Object.assign({acao}, dados||{}))
+  });
+  const j = await r.json();
+  if(j && j.erro) throw new Error(j.erro);
+  return j;
 }
 
-function rkArquivoMaisRecente(pastaId){
-  var it = DriveApp.getFolderById(pastaId).getFiles();
-  var melhor = null;
-  while(it.hasNext()){
-    var f = it.next();
-    var nome = f.getName().toLowerCase();
-    var mime = f.getMimeType();
-    var serve = mime === MimeType.GOOGLE_SHEETS
-      || /\.(xlsx|xls|csv)$/.test(nome)
-      || mime === MimeType.MICROSOFT_EXCEL
-      || mime === MimeType.MICROSOFT_EXCEL_LEGACY
-      || mime === MimeType.CSV;
-    if(!serve) continue;
-    if(!melhor || f.getLastUpdated() > melhor.getLastUpdated()) melhor = f;
-  }
-  return melhor;
-}
-
-/** Devolve [{nome, valores}] de todas as abas, convertendo o Excel se preciso. */
-function rkAbasDoArquivo(arq){
-  if(arq.getMimeType() === MimeType.CSV){
-    return [{ nome: arq.getName(), valores: Utilities.parseCsv(arq.getBlob().getDataAsString('UTF-8')) }];
-  }
-
-  var id = arq.getId(), temporario = false;
-
-  if(arq.getMimeType() !== MimeType.GOOGLE_SHEETS){
-    var tmp;
-    try{
-      tmp = Drive.Files.create(
-        { name: 'tmp_ranking_' + Date.now(), mimeType: MimeType.GOOGLE_SHEETS },
-        arq.getBlob()
-      );
-    }catch(e){
-      throw new Error('Não consegui converter o Excel. Ative o serviço avançado "Drive API" (v3) no editor do Apps Script, ou salve o relatório na pasta como planilha do Google. Detalhe: ' + e);
-    }
-    id = tmp.id; temporario = true;
-  }
-
+/* ---------- carga ---------- */
+async function iniciar(){
+  if(USUARIO.admin) document.getElementById('btnConfig').classList.remove('oculto');
   try{
-    return SpreadsheetApp.openById(id).getSheets().map(function(sh){
-      return { nome: sh.getName(), valores: sh.getDataRange().getValues() };
-    });
-  } finally {
-    if(temporario){ try{ DriveApp.getFileById(id).setTrashed(true); }catch(e){} }
-  }
-}
-
-/* ==========================================================
-   COMPETENCIA
-   ========================================================== */
-var RK_MESES = ['JANEIRO','FEVEREIRO','MARCO','ABRIL','MAIO','JUNHO',
-                'JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
-var RK_MESES_CURTO = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
-
-/** Ano de referencia quando a aba traz so o nome do mes. */
-function rkAnoBase(arq){
-  var m = /(20\d{2})/.exec(String(arq.getName()));
-  if(m) return m[1];
-  return Utilities.formatDate(arq.getLastUpdated(), 'America/Sao_Paulo', 'yyyy');
-}
-
-/** "AGOSTO 2026", "AGO/26", "08-2026", "2026-08" -> "2026-08". Null se nao achar mes. */
-function rkCompetenciaDaAba(nomeAba, anoBase){
-  var t = rkNorm(nomeAba);
-  if(!t) return null;
-
-  var m;
-
-  // 2026-08 / 2026-8
-  m = /(20\d{2})[-_.\/ ]?(1[0-2]|0?[1-9])(?!\d)/.exec(t);
-  if(m) return m[1] + '-' + rkMes2(m[2]);
-
-  // 08-2026 / 8-2026 / 08/26
-  m = /(?:^|[^\d])(1[0-2]|0?[1-9])[-_.\/](20\d{2}|\d{2})(?!\d)/.exec(t);
-  if(m) return rkAno4(m[2]) + '-' + rkMes2(m[1]);
-
-  // nome do mes por extenso ou abreviado, com ano opcional
-  for(var i = 0; i < 12; i++){
-    var re  = new RegExp('(?:^|[^A-Z])' + RK_MESES[i] + '(?![A-Z])');
-    var reC = new RegExp('(?:^|[^A-Z])' + RK_MESES_CURTO[i] + '(?![A-Z])');
-    if(re.test(t) || reC.test(t)){
-      var ano = /(20\d{2})/.exec(t);
-      if(ano) return ano[1] + '-' + ('0' + (i+1)).slice(-2);
-      var resto = t.replace(RK_MESES[i], ' ').replace(RK_MESES_CURTO[i], ' ');
-      var a2 = /(?:^|[^\d])(\d{2})(?!\d)/.exec(resto);
-      return (a2 ? rkAno4(a2[1]) : anoBase) + '-' + ('0' + (i+1)).slice(-2);
+    const j = await chamar('rkInicio', {});
+    CFG = Object.assign({}, CFG_PADRAO, j.config||{});
+    CFG.metas = Object.assign({}, j.config && j.config.metas || {});
+    SYNC = j.sync || null;
+    PERIODOS = j.periodos || [];
+    PERIODO  = PERIODOS[0] || '';
+    try{ HIST = await chamar('rkHistorico', {}); }catch(e){ HIST = null; }
+    montarAnos();
+    montarPeriodos();
+    if(PERIODO) await carregarPeriodo(PERIODO); else desenhar();
+  }catch(e){
+    const c = lerCache();
+    if(c){
+      CFG = c.cfg; LINHAS = c.linhas; PERIODO = c.periodo; PERIODOS = [c.periodo];
+      montarPeriodos(); desenhar();
+      toast('Sem conexão — mostrando os últimos dados salvos');
+    }else{
+      CFG = Object.assign({}, CFG_PADRAO);
+      desenharVazio('Não foi possível carregar', USUARIO.admin
+        ? 'Verifique a implantação do Apps Script ou importe o relatório de consumo pelas configurações.'
+        : 'Tente novamente daqui a pouco.');
     }
   }
-  return null;
 }
 
-function rkAno4(a){
-  a = String(a);
-  return a.length === 4 ? a : '20' + a;
-}
-
-function rkMes2(m){
-  return ('0' + String(m)).slice(-2);
-}
-
-/** Fallback para arquivo de aba unica: procura o mes no nome do arquivo. */
-function rkCompetenciaDoArquivo(arq){
-  var c = rkCompetenciaDaAba(arq.getName(), rkAnoBase(arq));
-  if(c) return c;
-  return Utilities.formatDate(arq.getLastUpdated(), 'America/Sao_Paulo', 'yyyy-MM');
-}
-
-/* ==========================================================
-   LEITURA DO RELATORIO DE CONSUMO
-   ========================================================== */
-function rkNorm(s){
-  return String(s == null ? '' : s)
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase().replace(/\s+/g, ' ').trim();
-}
-
-function rkNum(v){
-  if(typeof v === 'number') return v;
-  if(v instanceof Date) return 0;
-  var s = String(v).trim();
-  if(!s) return 0;
-  if(/,\d{1,3}$/.test(s)) s = s.replace(/\./g, '').replace(',', '.');
-  var n = parseFloat(s.replace(/[^0-9.\-]/g, ''));
-  return isNaN(n) ? 0 : n;
-}
-
-function rkLinhasDaGrade(grade){
-  if(!grade || !grade.length) return [];
-
-  var iCab = -1;
-  for(var i = 0; i < Math.min(15, grade.length); i++){
-    var linha = grade[i].map(rkNorm);
-    var temMot = linha.some(function(c){ return c.indexOf('MOTORISTA') >= 0 || c.indexOf('CONDUTOR') >= 0; });
-    var temCon = linha.some(function(c){ return c.indexOf('CONSUMO') >= 0 || c.indexOf('LITROS') >= 0; });
-    if(temMot && temCon){ iCab = i; break; }
+async function carregarPeriodo(p){
+  document.getElementById('conteudo').innerHTML = '<div class="load"><i></i></div>';
+  if(ehAno(p)){
+    PERIODO = p;
+    LINHAS = linhasDoAno(anoDe(p));
+    desenhar();
+    return;
   }
-  if(iCab < 0) throw new Error('cabeçalho não encontrado');
+  try{
+    const j = await chamar('rkDados', {competencia:p});
+    LINHAS = j.linhas || []; PERIODO = p;
+    gravarCache();
+  }catch(e){ LINHAS = []; }
+  desenhar();
+}
+function trocarPeriodo(p){ carregarPeriodo(p); }
 
-  var cab = grade[iCab].map(rkNorm);
-  var idx = {};
-  for(var j = 0; j < cab.length; j++){
-    var c = cab[j];
-    if(!c) continue;
-    if(idx.motorista == null && (c.indexOf('MOTORISTA') >= 0 || c.indexOf('CONDUTOR') >= 0)) { idx.motorista = j; continue; }
-    if(idx.modelo    == null && c.indexOf('MODELO') >= 0)   { idx.modelo = j; continue; }
-    if(idx.veiculo   == null && (c.indexOf('VEICULO') >= 0 || c.indexOf('PLACA') >= 0)) { idx.veiculo = j; continue; }
-    if(idx.km        == null && (c.indexOf('DISTANCIA') >= 0 || c === 'KM')) { idx.km = j; continue; }
-    if(idx.litros    == null && (c.indexOf('CONSUMO') >= 0 || c.indexOf('LITROS') >= 0)) { idx.litros = j; continue; }
-    if(idx.co2       == null && (c.indexOf('CO2') >= 0 || c.indexOf('EMISSAO') >= 0)) { idx.co2 = j; continue; }
-    if(idx.faixaVerde == null && c.indexOf('FAIXA VERDE') >= 0 && c.indexOf('ECONOMICA') < 0) { idx.faixaVerde = j; continue; }
-  }
-  if(idx.motorista == null || idx.km == null || idx.litros == null)
-    throw new Error('colunas de motorista, distância ou consumo não localizadas');
+function montarAnos(){
+  ANOS = [];
+  if(!HIST || !HIST.comps) return;
+  const vistos = {};
+  HIST.comps.forEach(c=>{ const a = String(c).slice(0,4); if(/^\d{4}$/.test(a)) vistos[a]=1; });
+  ANOS = Object.keys(vistos).sort().reverse();
+}
 
-  var out = [];
-  for(var r = iCab + 1; r < grade.length; r++){
-    var L = grade[r];
-    var nome = String(L[idx.motorista] == null ? '' : L[idx.motorista]).trim();
-    if(!nome) continue;
-    if(rkNorm(nome).indexOf('TOTAL') === 0) continue;
+/* Monta as linhas do ano a partir do histórico agregado.
+   Só entra quem participou do número mínimo de meses — exigência
+   limitada aos meses que realmente já foram apurados no ano. */
+function linhasDoAno(ano){
+  if(!HIST || !HIST.d) return [];
+  const mesesDoAno = {};
+  const mesesPorNome = {};
+  HIST.d.forEach(([ci,ni])=>{
+    if(String(HIST.comps[ci]).slice(0,4) !== ano) return;
+    mesesDoAno[ci] = 1;
+    (mesesPorNome[ni] = mesesPorNome[ni] || {})[ci] = 1;
+  });
+  const apurados = Object.keys(mesesDoAno).length;
+  const minMeses = Math.max(1, Math.min(+CFG.mesesMinAno || 1, apurados));
+  const out = [];
+  HIST.d.forEach(([ci,ni,mi,km,lt,fvKm])=>{
+    if(String(HIST.comps[ci]).slice(0,4) !== ano) return;
+    if(Object.keys(mesesPorNome[ni]||{}).length < minMeses) return;
     out.push({
-      motorista: nome,
-      veiculo:   idx.veiculo != null ? String(L[idx.veiculo] || '').trim() : '',
-      modelo:    idx.modelo  != null ? String(L[idx.modelo]  || '').trim() : '',
-      km:        rkNum(L[idx.km]),
-      litros:    rkNum(L[idx.litros]),
-      faixaVerde: idx.faixaVerde != null ? rkNum(L[idx.faixaVerde]) : 0,
-      co2:       idx.co2 != null ? rkNum(L[idx.co2]) : 0
+      motorista: HIST.nomes[ni], modelo: HIST.modelos[mi], veiculo:'',
+      km, litros: lt, faixaVerde: km ? fvKm/km : 0
     });
-  }
+  });
+  out._minMeses = minMeses;
+  out._apurados = apurados;
   return out;
 }
 
-/* ==========================================================
-   HISTORICO — todos os meses, agregado por motorista + modelo.
-   Aplica aqui os mesmos filtros de linha que o app usa, para
-   que o calculo do mes e o do ano batam exatamente.
-   ========================================================== */
-function rkHistorico(){
-  var cfg     = rkLerConfig();
-  var kmLinha = Number(cfg.kmLinha) || 0;
-  var rendMax = Number(cfg.rendMax) || 99;
-
-  var aba = rkAba(RK_ABA_DADOS, RK_CABECALHO);
-  var n = aba.getLastRow();
-  if(n < 2) return { comps:[], nomes:[], modelos:[], d:[] };
-  var vals = aba.getRange(2, 1, n-1, RK_CABECALHO.length).getValues();
-
-  var comps = [], nomes = [], modelos = [];
-  var iC = {}, iN = {}, iM = {}, acc = {};
-
-  function idxDe(valor, lista, mapa, chave){
-    if(mapa[chave] == null){ mapa[chave] = lista.length; lista.push(valor); }
-    return mapa[chave];
+function montarPeriodos(){
+  const s = document.getElementById('selPeriodo');
+  let h = '';
+  if(ANOS.length){
+    h += '<optgroup label="Ano fechado">' + ANOS.map(a=>{
+      const v = 'ANO:'+a;
+      return `<option value="${v}"${v===PERIODO?' selected':''}>Campeão de ${a}</option>`;
+    }).join('') + '</optgroup>';
   }
-
-  for(var i = 0; i < vals.length; i++){
-    var v = vals[i];
-    var comp = String(v[0] || '').trim();
-    var nome = String(v[1] || '').trim();
-    if(!comp || !nome) continue;
-
-    var km = Number(v[4]) || 0, lt = Number(v[5]) || 0;
-    if(km <= 0 || lt <= 0) continue;
-    if(km < kmLinha) continue;
-    var rend = km / lt;
-    if(rend > rendMax || rend < 0.3) continue;
-
-    var modelo = String(v[3] || '').trim();
-    var ci = idxDe(comp,   comps,   iC, comp);
-    var ni = idxDe(nome,   nomes,   iN, rkNorm(nome));
-    var mi = idxDe(modelo, modelos, iM, rkNorm(modelo));
-
-    var k = ci + '|' + ni + '|' + mi;
-    var a = acc[k] || (acc[k] = [ci, ni, mi, 0, 0, 0]);
-    a[3] += km;
-    a[4] += lt;
-    a[5] += (Number(v[6]) || 0) * km;
-  }
-
-  var d = [];
-  for(var k2 in acc){
-    var a2 = acc[k2];
-    d.push([a2[0], a2[1], a2[2], Math.round(a2[3]*10)/10, Math.round(a2[4]*100)/100, Math.round(a2[5])]);
-  }
-  return { comps: comps, nomes: nomes, modelos: modelos, d: d };
+  h += '<optgroup label="Mês">' + PERIODOS.map(p=>
+        `<option value="${esc(p)}"${p===PERIODO?' selected':''}>${esc(rotuloPeriodo(p))}</option>`).join('') + '</optgroup>';
+  s.innerHTML = h || '<option>Sem período</option>';
+}
+function gravarCache(){
+  try{ localStorage.setItem(CACHE, JSON.stringify({cfg:CFG, linhas:LINHAS, periodo:PERIODO})); }catch(e){}
+}
+function lerCache(){
+  try{ return JSON.parse(localStorage.getItem(CACHE)||'null'); }catch(e){ return null; }
 }
 
-/* ==========================================================
-   TESTE — rode pelo editor antes de implantar
-   ========================================================== */
-function rkTestarPasta(){
-  var arq;
-  try{ arq = rkFonte(); }
-  catch(e){ Logger.log('ERRO: ' + e.message); return; }
-  Logger.log('Arquivo: ' + arq.getName() + '  |  ' + arq.getLastUpdated());
+/* ============================================================
+   CÁLCULO DO RANKING
+   Cada linha é motorista + veículo. A meta de um motorista é a
+   soma dos litros que ele deveria ter gasto em cada caminhão que
+   dirigiu, ponderada pela distância — assim quem roda um 6x4
+   pesado não compete em desvantagem contra um 6x2 leve.
+   ============================================================ */
+function calcularRanking(linhas, cfg){
+  const desc = {zeradas:0, curtas:0, absurdas:0, kmDescartado:0};
+  const porMotorista = {};
 
-  var anoBase = rkAnoBase(arq);
-  var abas = rkAbasDoArquivo(arq);
-  Logger.log('Abas encontradas: ' + abas.length + '  |  ano de referência: ' + anoBase);
+  for(const L of linhas){
+    const km = +L.km || 0, lt = +L.litros || 0;
+    if(km<=0 || lt<=0){ desc.zeradas++; continue; }
+    if(km < (+cfg.kmLinha||0)){ desc.curtas++; desc.kmDescartado += km; continue; }
+    const rend = km/lt;
+    if(rend > (+cfg.rendMax||99) || rend < 0.3){ desc.absurdas++; desc.kmDescartado += km; continue; }
 
-  abas.forEach(function(ab){
-    var comp = rkCompetenciaDaAba(ab.nome, anoBase);
-    if(!comp){ Logger.log('  [ ' + ab.nome + ' ] -> mês NÃO identificado, será ignorada'); return; }
-    var linhas = [];
-    try{ linhas = rkLinhasDaGrade(ab.valores); }
-    catch(e){ Logger.log('  [ ' + ab.nome + ' ] -> ' + comp + ' -> erro: ' + e.message); return; }
-    var km = 0, mot = {};
-    linhas.forEach(function(l){ km += l.km; mot[rkNorm(l.motorista)] = 1; });
-    Logger.log('  [ ' + ab.nome + ' ] -> ' + comp + ' -> ' + linhas.length + ' linhas, '
-             + Object.keys(mot).length + ' motoristas, ' + Math.round(km) + ' km');
+    const chave = norm(L.motorista);
+    if(!chave) continue;
+    const meta = cfg.modoMeta==='global'
+      ? (+cfg.metaGlobal||1)
+      : (+cfg.metas[norm(L.modelo)] || +cfg.metaGlobal || 1);
+
+    const m = porMotorista[chave] || (porMotorista[chave] = {
+      nome:L.motorista, km:0, litros:0, litrosMeta:0, fvSoma:0, modelos:{}
+    });
+    m.km += km; m.litros += lt;
+    m.litrosMeta += km/meta;
+    m.fvSoma += (+L.faixaVerde||0) * km;
+    m.modelos[L.modelo] = (m.modelos[L.modelo]||0) + km;
+  }
+
+  const exigido = +cfg.metaPct || 0;
+  const lista = Object.values(porMotorista).map(m=>{
+    const rend      = m.km/m.litros;
+    const metaKml   = m.km/m.litrosMeta;
+    const ecoLitros = m.litrosMeta - m.litros;
+    const ecoPct    = (ecoLitros/m.litrosMeta)*100;
+    const modeloTop = Object.entries(m.modelos).sort((a,b)=>b[1]-a[1])[0];
+    return {
+      nome:m.nome, km:m.km, litros:m.litros, rend, metaKml, ecoLitros, ecoPct,
+      faixaVerde: m.fvSoma/m.km,
+      modelo: modeloTop ? modeloTop[0] : '',
+      qtdModelos: Object.keys(m.modelos).length,
+      elegivel: m.km >= (+cfg.kmMin||0),
+      premio: 0
+    };
+  });
+
+  const dentro = lista.filter(x=>x.elegivel).sort((a,b)=> b.ecoPct - a.ecoPct || b.km - a.km);
+  const anual = ehAno(PERIODO);
+  dentro.forEach((x,i)=>{
+    x.pos = i+1;
+    x.premio = anual
+      ? (i < 3 && x.ecoPct >= exigido ? (+(cfg.premioAno||[])[i] || 0) : 0)
+      : calcularPremio(x, i+1, cfg, exigido);
+  });
+  lista.filter(x=>!x.elegivel).sort((a,b)=> b.ecoPct-a.ecoPct).forEach(x=>{ x.pos=null; });
+
+  DESCARTE = desc;
+  return {rank:dentro, fora:lista.filter(x=>!x.elegivel), total:lista.length};
+}
+
+function calcularPremio(x, pos, cfg, exigido){
+  if(x.ecoPct < exigido) return 0;
+  let v = 0;
+  if(cfg.modoPremio==='faixas'){
+    const fx = (cfg.faixas||[]).slice().sort((a,b)=>b.de-a.de).find(f=> x.ecoPct >= +f.de);
+    v = fx ? +fx.rs : 0;
+  }else{
+    v = (x.ecoPct - exigido) * (+cfg.valorPonto||0);
+  }
+  const teto = +cfg.teto||0;
+  if(teto>0) v = Math.min(v, teto);
+  const b = cfg.bonus||[];
+  if(pos<=3) v += (+b[pos-1]||0);
+  return Math.round(v);
+}
+
+/* ============================================================
+   TELA
+   ============================================================ */
+function desenhar(){
+  const el = document.getElementById('conteudo');
+
+  if(!LINHAS.length){
+    return desenharVazio('Nenhum consumo neste período', USUARIO.admin
+      ? 'Importe o relatório da telemetria nas configurações para abrir a disputa.'
+      : 'Assim que a apuração do mês fechar, seu resultado aparece aqui.');
+  }
+
+  const r = calcularRanking(LINHAS, CFG);
+  RANK = r.rank;
+
+  if(!CFG.publicado && !USUARIO.admin){
+    return desenharVazio('Apuração em conferência', 'O resultado deste período está sendo conferido pela administração e será liberado em breve.');
+  }
+  if(!RANK.length){
+    return desenharVazio('Ninguém atingiu o mínimo de km', 'Nenhum motorista rodou o suficiente neste período para entrar na apuração.');
+  }
+
+  const eu = acharMe(r);
+  let h = '';
+
+  if(!CFG.publicado && USUARIO.admin){
+    h += `<div class="aviso alerta" style="margin-bottom:4px">Ranking em conferência. Os motoristas ainda não estão vendo esta tela.</div>`;
+  }
+  if(eu) h += cardMotorista(eu, r);
+  h += blocoPodio(RANK);
+  h += blocoLista(RANK, eu);
+  if(HIST && HIST.comps && HIST.comps.length > 1 && eu){
+    h += `<button class="btn sec" style="margin-top:12px" onclick="abrirHistorico()">Ver minha evolução mês a mês</button>`;
+  }
+  h += ehAno(PERIODO)
+    ? `<p class="nota">Classificação de ${esc(anoDe(PERIODO))}, somando os ${nf(LINHAS._apurados||0,0)} meses já apurados.
+       Entram os motoristas com pelo menos ${nf(LINHAS._minMeses||1,0)} ${(LINHAS._minMeses||1)>1?'meses':'mês'} de registro.</p>`
+    : `<p class="nota">Cálculo feito sobre ${nf(RANK.reduce((s,x)=>s+x.km,0),0)} km rodados por ${RANK.length} motoristas em ${esc(rotuloPeriodo(PERIODO))}.
+       A economia compara o consumo de cada um com a meta do caminhão que ele dirigiu.</p>`;
+
+  if(USUARIO.admin) h += blocoAdmin(r);
+
+  el.innerHTML = h;
+  requestAnimationFrame(()=>{
+    document.querySelectorAll('.barra i').forEach(b=> b.style.width = b.dataset.w);
   });
 }
+
+function acharMe(r){
+  if(!USUARIO.nome) return null;
+  const alvo = norm(USUARIO.nome);
+  return r.rank.find(x=> norm(x.nome)===alvo)
+      || r.fora.find(x=> norm(x.nome)===alvo)
+      || r.rank.find(x=> norm(x.nome).includes(alvo) || alvo.includes(norm(x.nome)))
+      || null;
+}
+
+function cardMotorista(x, r){
+  const exigido = +CFG.metaPct||0;
+  const prog = Math.max(0, Math.min(100, (x.ecoPct/Math.max(exigido*2, exigido+5))*100));
+  const marco = Math.max(0, Math.min(100, (exigido/Math.max(exigido*2, exigido+5))*100));
+  const bateu = x.ecoPct >= exigido;
+
+  const posTxt = x.pos
+    ? `<b>${x.pos}<sup>º</sup></b><span>de ${r.rank.length}</span>`
+    : `<b style="font-size:22px;letter-spacing:-.5px">—</b><span>fora da apuração</span>`;
+
+  const linhaEstado = x.pos
+    ? (bateu ? `Você está economizando ${nf(Math.abs(x.ecoPct),1)}% acima da meta`
+             : `Faltam ${nf(exigido - x.ecoPct,1)} pontos para alcançar a meta`)
+    : `Você rodou ${nf(x.km,0)} km — o mínimo é ${nf(CFG.kmMin,0)} km`;
+
+  return `
+  <section class="meu">
+    <div class="meu-top">
+      <div class="meu-pos">${posTxt}</div>
+      <div class="meu-info">
+        <h2>${esc(primeiroUltimo(x.nome))}</h2>
+        <p>${esc(linhaEstado)}</p>
+      </div>
+    </div>
+    <div class="meu-premio">
+      <div>
+        <small>${bateu && x.pos ? 'Prêmio deste período' : 'Prêmio ainda não alcançado'}</small>
+        <div class="valor ${x.premio?'':'zero'}">${x.premio?brl(x.premio):'R$ 0'}</div>
+      </div>
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="opacity:${x.premio?.9:.35}">
+        <path d="M6 9a6 6 0 0012 0V3H6v6z"/><path d="M6 4H3v2a3 3 0 003 3M18 4h3v2a3 3 0 01-3 3"/><path d="M9 21h6M12 15v6"/>
+      </svg>
+    </div>
+    <div class="barra-meta">
+      <div class="barra-linha"><span>Sua economia ${nf(x.ecoPct,1)}%</span><span>Meta ${nf(exigido,1)}%</span></div>
+      <div class="barra">
+        <i class="${x.ecoPct<0?'neg':''}" data-w="${prog.toFixed(1)}%" style="width:0"></i>
+        <span class="marco" style="left:${marco.toFixed(1)}%"></span>
+      </div>
+    </div>
+    <div class="meu-rodape">
+      <div><b>${nf(x.rend,2)}</b><span>km/L feito</span></div>
+      <div><b>${nf(x.metaKml,2)}</b><span>km/L da meta</span></div>
+      <div><b>${nf(x.ecoLitros,0)} L</b><span>economizados</span></div>
+    </div>
+  </section>`;
+}
+
+function blocoPodio(rank){
+  const t = rank.slice(0,3);
+  if(t.length<3) return '';
+  const ordem = [t[1], t[0], t[2]], cls = ['p2','p1','p3'], med = ['2','1','3'];
+  return `
+  <div class="secao-tit"><h3>${ehAno(PERIODO)?'Pódio do ano':'Pódio'}</h3><span>${ehAno(PERIODO)?esc(anoDe(PERIODO)):esc(rotuloPeriodo(PERIODO))}</span></div>
+  <div class="podio">
+    ${ordem.map((x,i)=>`
+      <div class="pod ${cls[i]}">
+        <div class="medalha">${med[i]}</div>
+        <div class="nome">${esc(primeiroUltimo(x.nome))}</div>
+        <div class="eco">${nf(x.ecoPct,1)}%</div>
+        <div class="rs">${x.premio?brl(x.premio):'—'}</div>
+      </div>`).join('')}
+  </div>`;
+}
+
+function blocoLista(rank, eu){
+  const top = rank.slice(0, TOP_PUBLICO);
+  const inicio = rank.length>=3 ? 3 : 0;
+  const visiveis = top.slice(inicio);
+  const meuNome = eu ? norm(eu.nome) : '';
+  const forade = eu && eu.pos && eu.pos > TOP_PUBLICO;
+
+  let h = `<div class="secao-tit"><h3>${inicio?'4º ao '+Math.min(TOP_PUBLICO,rank.length)+'º':'Classificação'}</h3><span>${rank.length} na disputa</span></div>`;
+  h += '<div class="lista">';
+  h += visiveis.map(x=> itemLinha(x, norm(x.nome)===meuNome)).join('');
+  if(forade){
+    h += `<div class="faixa-corte">sua posição</div>` + itemLinha(eu, true);
+  }
+  h += '</div>';
+  return h;
+}
+
+function itemLinha(x, destaque){
+  return `
+  <div class="item${destaque?' eu':''}">
+    <div class="pos">${x.pos||'—'}</div>
+    <div class="av">${esc(iniciais(x.nome))}</div>
+    <div class="cen">
+      <b>${esc(primeiroUltimo(x.nome))}</b>
+      <span>${nf(x.rend,2)} km/L · ${nf(x.km,0)} km</span>
+    </div>
+    <div class="dir">
+      <b class="${x.ecoPct<0?'neg':''}">${x.ecoPct>0?'+':''}${nf(x.ecoPct,1)}%</b>
+      <span>${x.premio?brl(x.premio):'—'}</span>
+    </div>
+  </div>`;
+}
+
+function blocoAdmin(r){
+  const pagantes = r.rank.filter(x=>x.premio>0);
+  const custo = pagantes.reduce((s,x)=>s+x.premio,0);
+  const litros = r.rank.reduce((s,x)=>s+Math.max(0,x.ecoLitros),0);
+  const d = DESCARTE||{};
+  return `
+  <div class="secao-tit"><h3>Visão da administração</h3><span>só você vê</span></div>
+  <div class="lista">
+    <div class="item"><div class="cen"><b>Prêmios a pagar</b><span>${pagantes.length} motoristas premiados</span></div><div class="dir"><b>${brl(custo)}</b></div></div>
+    <div class="item"><div class="cen"><b>Diesel economizado</b><span>soma de quem ficou abaixo da meta</span></div><div class="dir"><b>${nf(litros,0)} L</b></div></div>
+    <div class="item"><div class="cen"><b>Fora da apuração</b><span>abaixo de ${nf(CFG.kmMin,0)} km no período</span></div><div class="dir"><b>${r.fora.length}</b></div></div>
+    <div class="item"><div class="cen"><b>Linhas descartadas</b><span>${d.zeradas||0} sem dado · ${d.curtas||0} curtas · ${d.absurdas||0} inconsistentes</span></div><div class="dir"><b>${(d.zeradas||0)+(d.curtas||0)+(d.absurdas||0)}</b></div></div>
+  </div>
+  <div style="margin-top:12px"><button class="btn sec" onclick="exportarCsv()">Exportar ranking completo</button></div>`;
+}
+
+function desenharVazio(t, p){
+  document.getElementById('conteudo').innerHTML = `
+  <div class="vazio">
+    <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6" stroke-linecap="round"/></svg>
+    <h4>${esc(t)}</h4><p>${esc(p)}</p>
+  </div>`;
+}
+
+/* ============================================================
+   HISTÓRICO DO MOTORISTA — evolução mês a mês
+   Recalcula o ranking de cada mês a partir do histórico, para
+   que a posição mostrada seja a mesma que apareceu na época.
+   ============================================================ */
+function historicoDe(nomeAlvo){
+  if(!HIST || !HIST.d) return [];
+  const alvo = norm(nomeAlvo);
+  const porMes = {};
+  HIST.d.forEach(([ci,ni,mi,km,lt,fvKm])=>{
+    const comp = HIST.comps[ci];
+    (porMes[comp] = porMes[comp] || []).push({
+      motorista: HIST.nomes[ni], modelo: HIST.modelos[mi], veiculo:'',
+      km, litros: lt, faixaVerde: km ? fvKm/km : 0
+    });
+  });
+  const guardaPeriodo = PERIODO;
+  const out = [];
+  Object.keys(porMes).sort().forEach(comp=>{
+    PERIODO = comp;                       // garante regra mensal no cálculo
+    const r = calcularRanking(porMes[comp], CFG);
+    const eu = r.rank.find(x=> norm(x.nome)===alvo) || r.fora.find(x=> norm(x.nome)===alvo);
+    if(eu) out.push({comp, total:r.rank.length, ...eu});
+  });
+  PERIODO = guardaPeriodo;
+  return out;
+}
+
+function abrirHistorico(){
+  const linhas = historicoDe(USUARIO.nome);
+  const corpo = document.getElementById('corpoHist');
+  if(!linhas.length){
+    corpo.innerHTML = '<div class="vazio"><h4>Sem histórico ainda</h4><p>Seu resultado aparece aqui a partir do segundo mês apurado.</p></div>';
+  }else{
+    const comPos = linhas.filter(x=>x.pos);
+    const media  = linhas.reduce((s,x)=>s+x.ecoPct,0)/linhas.length;
+    const totRs  = linhas.reduce((s,x)=>s+(x.premio||0),0);
+    const melhor = comPos.length ? comPos.reduce((a,b)=> a.pos<=b.pos?a:b) : null;
+
+    corpo.innerHTML = `
+      <div class="lista" style="margin-bottom:6px">
+        <div class="item">
+          <div class="cen"><b>Média de economia</b><span>nos ${linhas.length} meses apurados</span></div>
+          <div class="dir"><b class="${media<0?'neg':''}">${media>0?'+':''}${nf(media,1)}%</b></div>
+        </div>
+        <div class="item">
+          <div class="cen"><b>Melhor colocação</b><span>${melhor?esc(rotuloPeriodo(melhor.comp)):'—'}</span></div>
+          <div class="dir"><b>${melhor?melhor.pos+'º':'—'}</b></div>
+        </div>
+        <div class="item">
+          <div class="cen"><b>Total premiado</b><span>somando todos os meses</span></div>
+          <div class="dir"><b>${brl(totRs)}</b></div>
+        </div>
+      </div>
+      ${graficoHist(linhas)}
+      <div class="secao-tit" style="margin-top:22px"><h3>Mês a mês</h3><span>economia e posição</span></div>
+      <div class="lista">
+        ${linhas.slice().reverse().map(x=>`
+          <div class="item">
+            <div class="pos">${x.pos||'—'}</div>
+            <div class="cen">
+              <b>${esc(rotuloPeriodo(x.comp))}</b>
+              <span>${nf(x.rend,2)} km/L · meta ${nf(x.metaKml,2)} · ${nf(x.km,0)} km</span>
+            </div>
+            <div class="dir">
+              <b class="${x.ecoPct<0?'neg':''}">${x.ecoPct>0?'+':''}${nf(x.ecoPct,1)}%</b>
+              <span>${x.premio?brl(x.premio):'—'}</span>
+            </div>
+          </div>`).join('')}
+      </div>
+      <p class="nota">A posição é a que valeu na apuração daquele mês.</p>
+      <div style="height:calc(20px + var(--safe-bot))"></div>`;
+  }
+  document.getElementById('shHist').classList.add('on');
+}
+
+function graficoHist(linhas){
+  const meta = +CFG.metaPct || 0;
+  const vals = linhas.map(x=>x.ecoPct);
+  const alto = Math.max(meta+2, ...vals.map(Math.abs), 5);
+  const L = 22, R = 8, T = 14, B = 22, H = 130;
+  const larg = Math.max(280, linhas.length * 46);
+  const x = i => L + (larg-L-R) * (linhas.length===1 ? .5 : i/(linhas.length-1));
+  const y = v => T + (H-T-B) * (1 - (v+alto)/(2*alto));
+  const pts = linhas.map((d,i)=>`${x(i).toFixed(1)},${y(d.ecoPct).toFixed(1)}`).join(' ');
+  const mes = c => { const m=/^\d{4}-(\d{2})$/.exec(c); return m?['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][+m[1]-1]:''; };
+  return `
+  <div style="background:var(--card);border-radius:var(--r);box-shadow:var(--sombra);padding:10px 4px 4px;overflow-x:auto">
+    <svg viewBox="0 0 ${larg} ${H}" width="${larg}" height="${H}" style="display:block;max-width:100%">
+      <line x1="${L}" y1="${y(0).toFixed(1)}" x2="${larg-R}" y2="${y(0).toFixed(1)}" stroke="var(--sep)" stroke-width="1"/>
+      <line x1="${L}" y1="${y(meta).toFixed(1)}" x2="${larg-R}" y2="${y(meta).toFixed(1)}" stroke="var(--verde)" stroke-width="1" stroke-dasharray="3 3" opacity=".55"/>
+      <text x="${L}" y="${(y(meta)-4).toFixed(1)}" font-size="9" fill="var(--verde)">meta ${nf(meta,0)}%</text>
+      <polyline points="${pts}" fill="none" stroke="var(--verde)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${linhas.map((d,i)=>`
+        <circle cx="${x(i).toFixed(1)}" cy="${y(d.ecoPct).toFixed(1)}" r="3.4" fill="${d.ecoPct>=meta?'var(--verde)':'var(--txt3)'}"/>
+        <text x="${x(i).toFixed(1)}" y="${H-6}" font-size="9.5" fill="var(--txt2)" text-anchor="middle">${mes(d.comp)}</text>`).join('')}
+    </svg>
+  </div>`;
+}
+
+/* ============================================================
+   CONFIGURAÇÕES (admin)
+   ============================================================ */
+function abrirConfig(){
+  const v = (id,val)=> document.getElementById(id).value = val;
+  v('cfgModoMeta', CFG.modoMeta); v('cfgMetaGlobal', CFG.metaGlobal); v('cfgMetaPct', CFG.metaPct);
+  v('cfgModoPremio', CFG.modoPremio); v('cfgValorPonto', CFG.valorPonto); v('cfgTeto', CFG.teto);
+  v('cfgBonus1', (CFG.bonus||[])[0]||0); v('cfgBonus2', (CFG.bonus||[])[1]||0); v('cfgBonus3', (CFG.bonus||[])[2]||0);
+  v('cfgKmMin', CFG.kmMin); v('cfgKmLinha', CFG.kmLinha); v('cfgRendMax', CFG.rendMax);
+  v('cfgAno1', (CFG.premioAno||[])[0]||0); v('cfgAno2', (CFG.premioAno||[])[1]||0);
+  v('cfgAno3', (CFG.premioAno||[])[2]||0); v('cfgMesesAno', CFG.mesesMinAno||6);
+  v('cfgCompForcada', CFG.competenciaForcada || '');
+  document.getElementById('cfgPublicado').classList.toggle('on', !!CFG.publicado);
+  alternarModoMeta(); alternarModoPremio(); renderFaixas(); renderMetas(); avisoQualidade();
+  pintarSync();
+  document.getElementById('shConfig').classList.add('on');
+}
+
+function pintarSync(){
+  const s = SYNC;
+  document.getElementById('txtSync').textContent = s
+    ? `${s.quando} · ${s.linhas} linhas${s.arquivo?' · '+s.arquivo:''}`
+    : 'nenhuma leitura registrada';
+
+  const el = document.getElementById('txtAbas');
+  if(!s || !s.meses || !s.meses.length){
+    el.textContent = '—';
+    el.className = '';
+    return;
+  }
+  el.innerHTML = s.meses.map(m=>
+    `<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0">
+       <span>${esc(m.aba)} → ${esc(rotuloPeriodo(m.competencia))}</span>
+       <span style="color:var(--txt3);white-space:nowrap">${m.gravadas} linhas</span>
+     </div>`).join('')
+    + (s.ignoradas && s.ignoradas.length
+        ? `<div style="color:var(--ambar);margin-top:6px">Ignoradas: ${esc(s.ignoradas.join(', '))}</div>`
+        : '');
+}
+
+async function sincronizarAgora(el){
+  const span = el.querySelector('span');
+  const antes = span.innerHTML;
+  span.textContent = 'Lendo o arquivo do Drive…';
+  try{
+    const j = await chamar('rkSincronizarJa', {});
+    if(j.semMudanca){
+      toast('O arquivo no Drive não mudou desde a última leitura');
+    }else{
+      SYNC = j.sync || SYNC;
+      const n = (j.meses||[]).length;
+      toast(`${n} ${n===1?'mês lido':'meses lidos'} · ${j.linhas} linhas`);
+      (j.meses||[]).forEach(m=>{ if(!PERIODOS.includes(m.competencia)) PERIODOS.push(m.competencia); });
+      PERIODOS.sort().reverse();
+      try{ HIST = await chamar('rkHistorico', {}); montarAnos(); }catch(e){}
+      montarPeriodos();
+      await carregarPeriodo(j.competencia || PERIODO);
+    }
+  }catch(e){
+    toast(String(e.message||e).slice(0,140));
+  }
+  span.innerHTML = antes;
+  pintarSync();
+}
+function alternarModoMeta(){
+  const global = document.getElementById('cfgModoMeta').value === 'global';
+  document.getElementById('linhaMetaGlobal').classList.toggle('oculto', !global);
+  document.getElementById('grupoMetas').classList.toggle('oculto', global);
+}
+function alternarModoPremio(){
+  const faixas = document.getElementById('cfgModoPremio').value === 'faixas';
+  document.getElementById('grupoFaixas').classList.toggle('oculto', !faixas);
+  document.getElementById('linhaPorPonto').classList.toggle('oculto', faixas);
+}
+function renderFaixas(){
+  document.getElementById('corpoFaixas').innerHTML = (CFG.faixas||[]).map((f,i)=>`
+    <tr>
+      <td><input type="number" step="0.5" value="${f.de}" oninput="CFG.faixas[${i}].de=+this.value"></td>
+      <td><input type="number" step="50" value="${f.rs}" oninput="CFG.faixas[${i}].rs=+this.value"></td>
+      <td><button class="rm" onclick="CFG.faixas.splice(${i},1);renderFaixas()" aria-label="Remover faixa">×</button></td>
+    </tr>`).join('') || '<tr><td colspan="3" style="color:var(--txt3);padding:14px">Nenhuma faixa cadastrada</td></tr>';
+}
+function addFaixa(){ (CFG.faixas = CFG.faixas||[]).push({de:0, rs:0}); renderFaixas(); }
+
+function modelosDoPeriodo(){
+  const m = {};
+  LINHAS.forEach(L=>{
+    const k = norm(L.modelo); if(!k) return;
+    (m[k] = m[k] || {rotulo:L.modelo, km:0, litros:0});
+    if((+L.km||0)>=(+CFG.kmLinha||0) && (+L.litros||0)>0){
+      const rend = (+L.km)/(+L.litros);
+      if(rend<=(+CFG.rendMax||99) && rend>=0.3){ m[k].km+=+L.km; m[k].litros+=+L.litros; }
+    }
+  });
+  return m;
+}
+function renderMetas(){
+  const busca = norm(document.getElementById('buscaMeta').value);
+  const mods = modelosDoPeriodo();
+  const chaves = Object.keys(mods).filter(k=> !busca || k.includes(busca))
+                  .sort((a,b)=> mods[b].km - mods[a].km);
+  document.getElementById('listaMetas').innerHTML = chaves.map(k=>{
+    const m = mods[k];
+    const real = m.litros ? m.km/m.litros : 0;
+    return `<div class="meta-linha">
+      <span>${esc(m.rotulo)}<small>${nf(m.km,0)} km no período · média atual ${real?nf(real,2):'—'} km/L</small></span>
+      <input type="number" step="0.01" min="0.5" value="${CFG.metas[k]!=null?CFG.metas[k]:''}"
+             placeholder="${real?nf(real,2):'—'}" oninput="CFG.metas['${k}']=+this.value||undefined">
+    </div>`;
+  }).join('') || '<div class="meta-linha"><span style="color:var(--txt3)">Importe um relatório para listar os modelos</span></div>';
+}
+function sugerirMetas(){
+  const mods = modelosDoPeriodo(); let n=0;
+  Object.entries(mods).forEach(([k,m])=>{
+    if(m.litros>0 && m.km>500){ CFG.metas[k] = +(m.km/m.litros).toFixed(2); n++; }
+  });
+  renderMetas();
+  toast(n ? `${n} metas preenchidas com a média do período` : 'Sem dados suficientes para calcular');
+}
+function avisoQualidade(){
+  const el = document.getElementById('avisoQualidade');
+  if(!LINHAS.length){ el.textContent = 'Nenhum relatório importado neste período.'; return; }
+  calcularRanking(LINHAS, CFG);
+  const d = DESCARTE;
+  el.className = 'aviso' + (d.absurdas ? ' alerta':'');
+  el.textContent = `${d.zeradas} linhas sem consumo, ${d.curtas} viagens curtas e ${d.absurdas} linhas com rendimento acima do limite foram desconsideradas`
+    + (d.absurdas ? ' — essas costumam ser abastecimento não capturado pela telemetria.' : '.');
+}
+
+async function salvarConfig(){
+  const n = id => +document.getElementById(id).value;
+  CFG.modoMeta   = document.getElementById('cfgModoMeta').value;
+  CFG.metaGlobal = n('cfgMetaGlobal') || 1.9;
+  CFG.metaPct    = n('cfgMetaPct');
+  CFG.modoPremio = document.getElementById('cfgModoPremio').value;
+  CFG.valorPonto = n('cfgValorPonto');
+  CFG.teto       = n('cfgTeto');
+  CFG.bonus      = [n('cfgBonus1'), n('cfgBonus2'), n('cfgBonus3')];
+  CFG.kmMin      = n('cfgKmMin');
+  CFG.kmLinha    = n('cfgKmLinha');
+  CFG.rendMax    = n('cfgRendMax') || 5;
+  CFG.premioAno  = [n('cfgAno1'), n('cfgAno2'), n('cfgAno3')];
+  CFG.mesesMinAno= n('cfgMesesAno') || 1;
+  CFG.competenciaForcada = document.getElementById('cfgCompForcada').value || '';
+  CFG.publicado  = document.getElementById('cfgPublicado').classList.contains('on');
+  CFG.faixas     = (CFG.faixas||[]).filter(f=> f.de>0 || f.rs>0);
+  Object.keys(CFG.metas).forEach(k=>{ if(!CFG.metas[k]) delete CFG.metas[k]; });
+
+  try{
+    await chamar('rkSalvarConfig', {config:CFG});
+    try{ HIST = await chamar('rkHistorico', {}); montarAnos(); montarPeriodos(); }catch(e){}
+    gravarCache(); fecharSheet('shConfig'); desenhar(); toast('Configuração salva');
+  }catch(e){
+    gravarCache(); fecharSheet('shConfig'); desenhar();
+    toast('Salvo neste aparelho — o servidor não respondeu');
+  }
+}
+
+/* ============================================================
+   IMPORTAÇÃO DO RELATÓRIO
+   ============================================================ */
+const COLUNAS = [
+  {campo:'motorista',  chaves:['MOTORISTA','CONDUTOR','NOME']},
+  {campo:'veiculo',    chaves:['VEICULO','PLACA']},
+  {campo:'faixaVerde', chaves:['FAIXA VERDE ECONOMICA','%FAIXA VERDE ECONOMICA'], pular:true},
+  {campo:'faixaVerde', chaves:['FAIXA VERDE','%FAIXA VERDE']},
+  {campo:'km',         chaves:['DISTANCIA','KM RODADO','KM']},
+  {campo:'litros',     chaves:['CONSUMO','LITROS']},
+  {campo:'co2',        chaves:['CO2','EMISSAO']},
+  {campo:'rendimento', chaves:['RENDIMENTO','KM/L']},
+  {campo:'modelo',     chaves:['MODELO']}
+];
+
+function importarArquivo(input){
+  const f = input.files && input.files[0];
+  input.value = '';
+  if(!f) return;
+  const fr = new FileReader();
+  fr.onload = ev => {
+    try{
+      const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array'});
+      const aba = wb.Sheets[wb.SheetNames[0]];
+      const grade = XLSX.utils.sheet_to_json(aba, {header:1, raw:true, defval:''});
+      prepararImportacao(grade);
+    }catch(e){
+      toast('Não foi possível ler o arquivo');
+    }
+  };
+  fr.readAsArrayBuffer(f);
+}
+
+function prepararImportacao(grade){
+  let iCab = -1;
+  for(let i=0;i<Math.min(12,grade.length);i++){
+    const linha = grade[i].map(norm);
+    if(linha.some(c=>c.includes('MOTORISTA')) && linha.some(c=>c.includes('CONSUMO')||c.includes('LITROS'))){ iCab = i; break; }
+  }
+  if(iCab<0) return toast('Cabeçalho não encontrado — confira se é o relatório de consumo');
+
+  const cab = grade[iCab].map(norm);
+  const idx = {};
+  cab.forEach((c,j)=>{
+    if(!c) return;
+    for(const def of COLUNAS){
+      if(def.pular) continue;
+      if(def.campo==='faixaVerde' && c.includes('ECONOMICA')) return;
+      if(def.chaves.some(k=> c.includes(k)) && idx[def.campo]==null){ idx[def.campo]=j; return; }
+    }
+  });
+  if(idx.motorista==null || idx.km==null || idx.litros==null)
+    return toast('Colunas de motorista, distância ou consumo não localizadas');
+
+  const num = v => {
+    if(typeof v === 'number') return v;
+    const s = String(v).trim().replace(/\./g,'#').replace(',','.').replace(/#/g,'');
+    const n = parseFloat(s.replace(/[^0-9.\-]/g,''));
+    return isFinite(n)?n:0;
+  };
+  const linhas = [];
+  for(let i=iCab+1;i<grade.length;i++){
+    const L = grade[i];
+    const nome = String(L[idx.motorista]||'').trim();
+    if(!nome) continue;
+    linhas.push({
+      motorista:nome,
+      veiculo: String(L[idx.veiculo]??'').trim(),
+      modelo:  String(L[idx.modelo]??'').trim(),
+      km:      num(L[idx.km]),
+      litros:  num(L[idx.litros]),
+      faixaVerde: idx.faixaVerde!=null ? num(L[idx.faixaVerde]) : 0,
+      co2:     idx.co2!=null ? num(L[idx.co2]) : 0
+    });
+  }
+  if(!linhas.length) return toast('Nenhuma linha de consumo encontrada');
+
+  PENDENTE = linhas;
+  const hoje = new Date();
+  const ant  = new Date(hoje.getFullYear(), hoje.getMonth()-1, 1);
+  const sug  = ant.toISOString().slice(0,7);
+  const mots = new Set(linhas.map(l=>norm(l.motorista))).size;
+  const km   = linhas.reduce((s,l)=>s+l.km,0);
+  const novos = Object.keys(modelosNovos(linhas)).length;
+
+  document.getElementById('corpoImport').innerHTML = `
+    <div class="grupo" style="margin-top:0">
+      <label>Período apurado</label>
+      <div class="bloco"><div class="campo">
+        <span>Competência<small>use o mês a que o relatório se refere</small></span>
+        <input type="month" id="impPeriodo" value="${sug}" style="width:150px;border:none;background:var(--card2);color:var(--txt);border-radius:9px;padding:7px 10px;font-size:15px">
+      </div></div>
+    </div>
+    <div class="grupo">
+      <label>Resumo do arquivo</label>
+      <div class="lista">
+        <div class="item"><div class="cen"><b>${linhas.length} linhas</b><span>motorista + veículo</span></div></div>
+        <div class="item"><div class="cen"><b>${mots} motoristas</b><span>nomes distintos</span></div></div>
+        <div class="item"><div class="cen"><b>${nf(km,0)} km</b><span>distância total</span></div></div>
+        ${novos?`<div class="item"><div class="cen"><b>${novos} modelos sem meta</b><span>use “calcular metas a partir do histórico” depois de importar</span></div></div>`:''}
+      </div>
+      <div class="aviso">A importação substitui os dados já gravados nesta competência.</div>
+    </div>
+    <div class="grupo"><button class="btn" onclick="confirmarImportacao()">Importar ${linhas.length} linhas</button></div>
+    <div style="height:calc(20px + var(--safe-bot))"></div>`;
+  document.getElementById('shImport').classList.add('on');
+}
+function modelosNovos(linhas){
+  const n = {};
+  linhas.forEach(l=>{ const k=norm(l.modelo); if(k && CFG.metas[k]==null) n[k]=1; });
+  return n;
+}
+
+async function confirmarImportacao(){
+  const comp = document.getElementById('impPeriodo').value;
+  if(!comp) return toast('Escolha a competência');
+  const btn = document.querySelector('#corpoImport .btn');
+  btn.disabled = true; btn.textContent = 'Importando…';
+  try{
+    await chamar('rkImportar', {competencia:comp, linhas:PENDENTE});
+    LINHAS = PENDENTE; PERIODO = comp;
+    if(!PERIODOS.includes(comp)) PERIODOS.unshift(comp);
+    montarPeriodos(); gravarCache();
+    fecharSheet('shImport'); fecharSheet('shConfig'); desenhar();
+    toast('Relatório importado');
+  }catch(e){
+    LINHAS = PENDENTE; PERIODO = comp;
+    if(!PERIODOS.includes(comp)) PERIODOS.unshift(comp);
+    montarPeriodos(); gravarCache();
+    fecharSheet('shImport'); desenhar();
+    toast('Servidor não respondeu — dados carregados só neste aparelho');
+  }
+}
+
+/* ---------- exportação ---------- */
+function exportarCsv(){
+  if(!LINHAS.length) return toast('Nada para exportar');
+  const r = calcularRanking(LINHAS, CFG);
+  const linhas = [['Posicao','Motorista','Km','Litros','Km/L','Meta km/L','Economia %','Litros economizados','Faixa verde %','Modelo predominante','Premio R$']];
+  r.rank.forEach(x=> linhas.push([x.pos,x.nome,x.km.toFixed(1),x.litros.toFixed(2),x.rend.toFixed(2),x.metaKml.toFixed(2),x.ecoPct.toFixed(2),x.ecoLitros.toFixed(1),x.faixaVerde.toFixed(1),x.modelo,x.premio]));
+  r.fora.forEach(x=> linhas.push(['fora',x.nome,x.km.toFixed(1),x.litros.toFixed(2),x.rend.toFixed(2),x.metaKml.toFixed(2),x.ecoPct.toFixed(2),x.ecoLitros.toFixed(1),x.faixaVerde.toFixed(1),x.modelo,0]));
+  const csv = '\uFEFF' + linhas.map(l=> l.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+  a.download = `ranking_economia_${PERIODO||'periodo'}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+document.addEventListener('click', e=>{
+  if(e.target.classList && e.target.classList.contains('sheet')) e.target.classList.remove('on');
+});
+iniciar();
+</script>
+</body>
+</html>
