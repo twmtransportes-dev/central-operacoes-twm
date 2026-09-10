@@ -613,15 +613,23 @@ async function iniciar(){
     if(PERIODO) await carregarPeriodo(PERIODO); else desenhar();
     carregarHistorico();   // em segundo plano, não trava a tela
   }catch(e){
+    const msg = String(e && e.message || e);
     const c = lerCache();
     if(c){
       CFG = c.cfg; LINHAS = c.linhas; PERIODO = c.periodo; PERIODOS = [c.periodo];
       montarPeriodos(); desenhar();
-      toast('Sem conexão — mostrando os últimos dados salvos');
+      if(USUARIO.admin){
+        document.getElementById('conteudo').insertAdjacentHTML('afterbegin',
+          `<div class="aviso alerta" style="margin-bottom:10px">
+             O servidor não respondeu, então esta tela mostra só o último mês salvo no aparelho.<br>
+             <b>${esc(msg)}</b>
+           </div>`);
+      }
+      toast('Servidor não respondeu — mostrando dados salvos');
     }else{
       CFG = Object.assign({}, CFG_PADRAO);
       desenharVazio('Não foi possível carregar', USUARIO.admin
-        ? 'Verifique a implantação do Apps Script ou importe o relatório de consumo pelas configurações.'
+        ? 'Erro do servidor: ' + msg
         : 'Tente novamente daqui a pouco.');
     }
   }
