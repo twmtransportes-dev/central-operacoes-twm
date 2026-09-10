@@ -141,6 +141,21 @@ input,select{font-family:inherit;font-size:16px}
 .item .av{
   width:34px;height:34px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;
   background:var(--card2);font-size:12px;font-weight:650;color:var(--txt2);letter-spacing:.3px;
+  position:relative;overflow:hidden;
+}
+.av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top}
+.pod .foto{
+  width:46px;height:46px;border-radius:50%;margin:0 auto 7px;position:relative;overflow:hidden;
+  background:var(--card2);display:grid;place-items:center;font-size:15px;font-weight:650;color:var(--txt2);
+  border:2px solid var(--card);box-shadow:0 2px 8px rgba(20,32,27,.14);
+}
+.pod.p1 .foto{width:56px;height:56px;font-size:18px;border-color:var(--ouro)}
+.pod.p2 .foto{border-color:var(--prata)}
+.pod.p3 .foto{border-color:var(--bronze)}
+.meu-foto{
+  width:54px;height:54px;border-radius:50%;flex-shrink:0;position:relative;overflow:hidden;
+  background:rgba(255,255,255,.18);display:grid;place-items:center;
+  font-size:18px;font-weight:650;color:#fff;border:2px solid rgba(255,255,255,.35);
 }
 .item .cen{flex:1;min-width:0}
 .item .cen b{display:block;font-size:14.5px;font-weight:560;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -382,6 +397,10 @@ input,select{font-family:inherit;font-size:16px}
             <span>Ranking visível para os motoristas<small>desligue enquanto estiver conferindo os dados</small></span>
             <div class="switch" id="cfgPublicado" onclick="this.classList.toggle('on')"><i></i></div>
           </div>
+          <div class="campo">
+            <span>Mostrar os valores em reais<small>desligado, cada motorista vê só o próprio prêmio — a administração continua vendo todos</small></span>
+            <div class="switch" id="cfgMostrarPremios" onclick="this.classList.toggle('on')"><i></i></div>
+          </div>
         </div>
         <div class="aviso" id="avisoQualidade"></div>
       </div>
@@ -414,6 +433,16 @@ input,select{font-family:inherit;font-size:16px}
       </div>
 
       <div class="grupo">
+        <label>Fotos dos motoristas</label>
+        <div class="bloco">
+          <div class="campo" style="cursor:pointer" onclick="abrirFotos()">
+            <span style="color:var(--verde);font-weight:560">Gerenciar fotos<small style="color:var(--txt3);font-weight:400" id="txtFotos">—</small></span>
+            <svg width="9" height="15" viewBox="0 0 9 15" style="opacity:.35"><path d="M1 1l6 6.5-6 6.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="grupo">
         <button class="btn sec" onclick="exportarCsv()">Exportar ranking completo (CSV)</button>
       </div>
       <div style="height:calc(20px + var(--safe-bot))"></div>
@@ -433,6 +462,23 @@ input,select{font-family:inherit;font-size:16px}
   </div>
 </div>
 
+<!-- ====== fotos dos motoristas ====== -->
+<div class="sheet" id="shFotos">
+  <div class="sheet-in">
+    <div class="sheet-topo">
+      <span style="width:60px"></span>
+      <h3>Fotos</h3>
+      <button class="btn txt" style="width:auto;padding:4px" onclick="fecharSheet('shFotos')">Fechar</button>
+    </div>
+    <div class="sheet-corpo">
+      <input class="metas-busca" id="buscaFoto" placeholder="Buscar motorista" oninput="renderFotos()">
+      <div class="bloco" id="listaFotos"></div>
+      <div class="aviso">Cole o link direto da imagem — o que termina em .jpg ou .png. Serve ImgBB, Drive público ou qualquer hospedagem. Apagar o link remove a foto e volta às iniciais.</div>
+      <div style="height:calc(20px + var(--safe-bot))"></div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -444,7 +490,7 @@ input,select{font-family:inherit;font-size:16px}
 
 /* >>> COLE AQUI a URL da implantação do Apps Script que está dentro
    da planilha "Consumo de combustivel". Termina em /exec. <<< */
-const API = 'https://script.google.com/macros/s/AKfycbwz7GXrb_OZeaYKq1Pz-ekUmL_a0EWIlM6pkJx2bcx7YkZithlnqTx04U3Min3Od9KN/exec';
+const API = 'COLE_AQUI_A_URL_DO_APPS_SCRIPT';
 
 const TOP_PUBLICO = 20;
 const CACHE = 'rk_cache_v2';
@@ -473,7 +519,7 @@ function usuarioAtual(){
 const USUARIO = usuarioAtual();
 
 /* ---------- estado ---------- */
-let CFG = null, LINHAS = [], PERIODOS = [], PERIODO = '', RANK = [], DESCARTE = null, ABAS = [];
+let CFG = null, LINHAS = [], PERIODOS = [], PERIODO = '', RANK = [], DESCARTE = null, ABAS = [], FOTOS = {};
 let HIST = null, ANOS = [];
 
 const CFG_PADRAO = {
@@ -483,7 +529,7 @@ const CFG_PADRAO = {
   bonus:[500,300,150],
   premioAno:[3000,1500,750], mesesMinAno:6,
   kmMin:2000, kmLinha:50, rendMax:5,
-  publicado:true, metas:{}
+  publicado:true, mostrarPremios:true, metas:{}
 };
 
 const ehAno = p => String(p||'').indexOf('ANO:') === 0;
@@ -504,6 +550,25 @@ function iniciais(nome){
   const p = String(nome).trim().split(/\s+/).filter(w=>w.length>2);
   if(!p.length) return '?';
   return ((p[0][0]||'')+(p.length>1?p[p.length-1][0]:'')).toUpperCase();
+}
+
+/* Foto do motorista, com as iniciais atrás como reserva.
+   Se o link quebrar, o onerror derruba a imagem e sobram as iniciais. */
+function foto(nome){
+  const u = FOTOS[norm(nome)];
+  return u ? `<img src="${esc(u)}" alt="" loading="lazy" onerror="this.remove()">` : '';
+}
+function avatarLista(nome){
+  return `<div class="av">${esc(iniciais(nome))}${foto(nome)}</div>`;
+}
+
+/* Quem pode ver o valor em reais de uma pessoa.
+   Com "mostrar prêmios" desligado, cada um vê só o próprio;
+   a administração continua vendo tudo. */
+function podeVerPremio(x){
+  if(CFG.mostrarPremios !== false) return true;
+  if(USUARIO.admin) return true;
+  return !!USUARIO.nome && norm(x.nome) === norm(USUARIO.nome);
 }
 function rotuloPeriodo(c){
   const m = /^(\d{4})-(\d{2})$/.exec(c||'');
@@ -541,6 +606,7 @@ async function iniciar(){
     CFG = Object.assign({}, CFG_PADRAO, j.config||{});
     CFG.metas = Object.assign({}, j.config && j.config.metas || {});
     ABAS = j.abas || [];
+    FOTOS = j.fotos || FOTOS;
     PERIODOS = j.periodos || [];
     PERIODO  = PERIODOS[0] || '';
     montarPeriodos();
@@ -800,6 +866,7 @@ function cardMotorista(x, r){
   <section class="meu">
     <div class="meu-top">
       <div class="meu-pos">${posTxt}</div>
+      <div class="meu-foto">${esc(iniciais(x.nome))}${foto(x.nome)}</div>
       <div class="meu-info">
         <h2>${esc(primeiroUltimo(x.nome))}</h2>
         <p>${esc(linhaEstado)}</p>
@@ -838,10 +905,11 @@ function blocoPodio(rank){
   <div class="podio">
     ${ordem.map((x,i)=>`
       <div class="pod ${cls[i]}">
+        <div class="foto">${esc(iniciais(x.nome))}${foto(x.nome)}</div>
         <div class="medalha">${med[i]}</div>
         <div class="nome">${esc(primeiroUltimo(x.nome))}</div>
         <div class="eco">${nf(x.ecoPct,1)}%</div>
-        <div class="rs">${x.premio?brl(x.premio):'—'}</div>
+        ${podeVerPremio(x) ? `<div class="rs">${x.premio?brl(x.premio):'—'}</div>` : ''}
       </div>`).join('')}
   </div>`;
 }
@@ -867,14 +935,14 @@ function itemLinha(x, destaque){
   return `
   <div class="item${destaque?' eu':''}">
     <div class="pos">${x.pos||'—'}</div>
-    <div class="av">${esc(iniciais(x.nome))}</div>
+    ${avatarLista(x.nome)}
     <div class="cen">
       <b>${esc(primeiroUltimo(x.nome))}</b>
       <span>${nf(x.rend,2)} km/L · ${nf(x.km,0)} km</span>
     </div>
     <div class="dir">
       <b class="${x.ecoPct<0?'neg':''}">${x.ecoPct>0?'+':''}${nf(x.ecoPct,1)}%</b>
-      <span>${x.premio?brl(x.premio):'—'}</span>
+      ${podeVerPremio(x) ? `<span>${x.premio?brl(x.premio):'—'}</span>` : ''}
     </div>
   </div>`;
 }
@@ -1004,6 +1072,63 @@ function graficoHist(linhas){
 }
 
 /* ============================================================
+   FOTOS DOS MOTORISTAS
+   ============================================================ */
+function nomesConhecidos(){
+  const m = {};
+  (LINHAS||[]).forEach(l=>{ const k = norm(l.motorista); if(k) m[k] = l.motorista; });
+  if(HIST && HIST.nomes) HIST.nomes.forEach(n=>{ const k = norm(n); if(k && !m[k]) m[k] = n; });
+  return Object.keys(m).sort().map(k=>({chave:k, nome:m[k]}));
+}
+
+function abrirFotos(){
+  renderFotos();
+  document.getElementById('shFotos').classList.add('on');
+}
+
+function renderFotos(){
+  const busca = norm(document.getElementById('buscaFoto').value);
+  const lista = nomesConhecidos().filter(p=> !busca || p.chave.includes(busca));
+  document.getElementById('listaFotos').innerHTML = lista.map(p=>`
+    <div class="meta-linha">
+      <div class="av" style="width:38px;height:38px;font-size:13px">${esc(iniciais(p.nome))}${foto(p.nome)}</div>
+      <span style="min-width:0">
+        ${esc(primeiroUltimo(p.nome))}
+        <small style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block">${esc(p.nome)}</small>
+      </span>
+      <input type="url" placeholder="link da imagem" value="${esc(FOTOS[p.chave]||'')}"
+             style="width:132px;text-align:left;font-size:13px"
+             onchange="salvarFoto('${esc(p.nome).replace(/'/g,"\\'")}', this)">
+    </div>`).join('')
+    || '<div class="meta-linha"><span style="color:var(--txt3)">Nenhum motorista encontrado</span></div>';
+  pintarContagemFotos();
+}
+
+async function salvarFoto(nome, input){
+  const url = input.value.trim();
+  input.disabled = true;
+  try{
+    await chamar('rkSalvarFoto', {nome, url});
+    const k = norm(nome);
+    if(url) FOTOS[k] = url; else delete FOTOS[k];
+    toast(url ? 'Foto atualizada' : 'Foto removida');
+    renderFotos();
+    desenhar();
+  }catch(e){
+    toast(String(e.message||e).slice(0,140));
+  }
+  input.disabled = false;
+}
+
+function pintarContagemFotos(){
+  const el = document.getElementById('txtFotos');
+  if(!el) return;
+  const total = nomesConhecidos().length;
+  const com = Object.keys(FOTOS).length;
+  el.textContent = total ? `${com} de ${total} motoristas com foto` : 'sem motoristas carregados';
+}
+
+/* ============================================================
    CONFIGURAÇÕES (admin)
    ============================================================ */
 function abrirConfig(){
@@ -1015,8 +1140,9 @@ function abrirConfig(){
   v('cfgAno1', (CFG.premioAno||[])[0]||0); v('cfgAno2', (CFG.premioAno||[])[1]||0);
   v('cfgAno3', (CFG.premioAno||[])[2]||0); v('cfgMesesAno', CFG.mesesMinAno||6);
   document.getElementById('cfgPublicado').classList.toggle('on', !!CFG.publicado);
+  document.getElementById('cfgMostrarPremios').classList.toggle('on', CFG.mostrarPremios !== false);
   alternarModoMeta(); alternarModoPremio(); renderFaixas(); renderMetas(); avisoQualidade();
-  pintarSync();
+  pintarSync(); pintarContagemFotos();
   document.getElementById('shConfig').classList.add('on');
 }
 
@@ -1041,6 +1167,7 @@ async function recarregarTudo(el){
     const j = await chamar('rkInicio', {});
     CFG = Object.assign({}, CFG_PADRAO, j.config||{}, {metas: CFG.metas});
     ABAS = j.abas || [];
+    FOTOS = j.fotos || FOTOS;
     PERIODOS = j.periodos || [];
     if(!PERIODOS.includes(PERIODO)) PERIODO = PERIODOS[0] || '';
     const total = ABAS.reduce((s,a)=>s+(a.linhas||0),0);
@@ -1134,6 +1261,7 @@ async function salvarConfig(){
   CFG.premioAno  = [n('cfgAno1'), n('cfgAno2'), n('cfgAno3')];
   CFG.mesesMinAno= n('cfgMesesAno') || 1;
   CFG.publicado  = document.getElementById('cfgPublicado').classList.contains('on');
+  CFG.mostrarPremios = document.getElementById('cfgMostrarPremios').classList.contains('on');
   CFG.faixas     = (CFG.faixas||[]).filter(f=> f.de>0 || f.rs>0);
   Object.keys(CFG.metas).forEach(k=>{ if(!CFG.metas[k]) delete CFG.metas[k]; });
 
