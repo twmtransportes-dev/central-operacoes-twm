@@ -6,7 +6,6 @@
 <title>Ranking de Economia · TWM DataLink</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0B3D2E">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
   --bg:#F1F3F2; --card:#FFFFFF; --card2:#F7F8F8;
@@ -388,35 +387,17 @@ input,select{font-family:inherit;font-size:16px}
       </div>
 
       <div class="grupo">
-        <label>Dados de consumo</label>
-        <div class="bloco">
-          <div class="campo">
-            <span>Última atualização<small id="txtSync">—</small></span>
-          </div>
-          <div class="campo" style="cursor:pointer" onclick="sincronizarAgora(this)">
-            <span style="color:var(--verde);font-weight:560">Ler o arquivo do Drive agora<small style="color:var(--txt3);font-weight:400">lê todas as abas — o app já faz isso sozinho toda madrugada</small></span>
-            <svg width="9" height="15" viewBox="0 0 9 15" style="opacity:.35"><path d="M1 1l6 6.5-6 6.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
-          </div>
-          <div class="campo" style="cursor:pointer" onclick="document.getElementById('arquivo').click()">
-            <span>Importar arquivo manualmente<small>use se o Drive falhar — .xls, .xlsx ou .csv</small></span>
-            <svg width="9" height="15" viewBox="0 0 9 15" style="opacity:.35"><path d="M1 1l6 6.5-6 6.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
-          </div>
-        </div>
-        <input type="file" id="arquivo" accept=".xls,.xlsx,.csv" class="oculto" onchange="importarArquivo(this)">
-      </div>
-
-      <div class="grupo">
-        <label>Meses lidos do arquivo</label>
+        <label>Abas da planilha</label>
         <div class="bloco">
           <div class="campo" style="align-items:flex-start">
             <span style="font-size:13px" id="txtAbas">—</span>
           </div>
-          <div class="campo">
-            <span>Forçar um mês<small>só vale para arquivo de aba única — deixe vazio</small></span>
-            <input type="month" id="cfgCompForcada" style="width:150px;border:none;background:var(--card2);color:var(--txt);border-radius:9px;padding:7px 10px;font-size:15px">
+          <div class="campo" style="cursor:pointer" onclick="recarregarTudo(this)">
+            <span style="color:var(--verde);font-weight:560">Reler a planilha agora<small style="color:var(--txt3);font-weight:400">use depois de colar dados numa aba</small></span>
+            <svg width="9" height="15" viewBox="0 0 9 15" style="opacity:.35"><path d="M1 1l6 6.5-6 6.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
           </div>
         </div>
-        <div class="aviso">Cada aba do arquivo vira um mês, pelo próprio nome da aba. Como o relatório é acumulado do dia 1 até a exportação, cada leitura substitui aquele mês por inteiro — corrigir uma aba antiga conserta o histórico sozinho.</div>
+        <div class="aviso">O app lê as abas de mês direto da planilha de consumo, sem cópia. Editou a aba, o ranking muda. Abas vazias ou com nome sem mês são ignoradas.</div>
       </div>
 
       <div class="grupo">
@@ -437,18 +418,6 @@ input,select{font-family:inherit;font-size:16px}
       </div>
       <div style="height:calc(20px + var(--safe-bot))"></div>
     </div>
-  </div>
-</div>
-
-<!-- ====== confirmação de importação ====== -->
-<div class="sheet" id="shImport">
-  <div class="sheet-in">
-    <div class="sheet-topo">
-      <button class="btn txt" style="width:auto;padding:4px" onclick="fecharSheet('shImport')">Cancelar</button>
-      <h3>Conferir importação</h3>
-      <span style="width:60px"></span>
-    </div>
-    <div class="sheet-corpo" id="corpoImport"></div>
   </div>
 </div>
 
@@ -473,9 +442,12 @@ input,select{font-family:inherit;font-size:16px}
    Nenhum dado de frota, motorista ou veículo é fixado no código.
    ============================================================ */
 
-const API = 'https://script.google.com/macros/s/AKfycbw4BZz60sy9BsFACdqKktKpzJOfP8mj0U6s1G7Em5pwhaC_kQHCk-GPbLNZOlwjvrOwsw/exec';
+/* >>> COLE AQUI a URL da implantação do Apps Script que está dentro
+   da planilha "Consumo de combustivel". Termina em /exec. <<< */
+const API = 'https://script.google.com/macros/s/AKfycbwz7GXrb_OZeaYKq1Pz-ekUmL_a0EWIlM6pkJx2bcx7YkZithlnqTx04U3Min3Od9KN/exec';
+
 const TOP_PUBLICO = 20;
-const CACHE = 'rk_cache_v1';
+const CACHE = 'rk_cache_v2';
 
 /* ---------- sessão (mesmo formato do index.html do DataLink) ---------- */
 function getUser(){
@@ -501,7 +473,7 @@ function usuarioAtual(){
 const USUARIO = usuarioAtual();
 
 /* ---------- estado ---------- */
-let CFG = null, LINHAS = [], PERIODOS = [], PERIODO = '', RANK = [], DESCARTE = null, PENDENTE = null, SYNC = null;
+let CFG = null, LINHAS = [], PERIODOS = [], PERIODO = '', RANK = [], DESCARTE = null, ABAS = [];
 let HIST = null, ANOS = [];
 
 const CFG_PADRAO = {
@@ -568,13 +540,12 @@ async function iniciar(){
     const j = await chamar('rkInicio', {});
     CFG = Object.assign({}, CFG_PADRAO, j.config||{});
     CFG.metas = Object.assign({}, j.config && j.config.metas || {});
-    SYNC = j.sync || null;
+    ABAS = j.abas || [];
     PERIODOS = j.periodos || [];
     PERIODO  = PERIODOS[0] || '';
-    try{ HIST = await chamar('rkHistorico', {}); }catch(e){ HIST = null; }
-    montarAnos();
     montarPeriodos();
     if(PERIODO) await carregarPeriodo(PERIODO); else desenhar();
+    carregarHistorico();   // em segundo plano, não trava a tela
   }catch(e){
     const c = lerCache();
     if(c){
@@ -588,6 +559,16 @@ async function iniciar(){
         : 'Tente novamente daqui a pouco.');
     }
   }
+}
+
+/* O histórico varre todas as abas, então demora mais.
+   Carrega depois da tela pronta e só acrescenta a opção de ano. */
+async function carregarHistorico(){
+  try{
+    HIST = await chamar('rkHistorico', {});
+    montarAnos();
+    montarPeriodos();
+  }catch(e){ HIST = null; }
 }
 
 async function carregarPeriodo(p){
@@ -1033,7 +1014,6 @@ function abrirConfig(){
   v('cfgKmMin', CFG.kmMin); v('cfgKmLinha', CFG.kmLinha); v('cfgRendMax', CFG.rendMax);
   v('cfgAno1', (CFG.premioAno||[])[0]||0); v('cfgAno2', (CFG.premioAno||[])[1]||0);
   v('cfgAno3', (CFG.premioAno||[])[2]||0); v('cfgMesesAno', CFG.mesesMinAno||6);
-  v('cfgCompForcada', CFG.competenciaForcada || '');
   document.getElementById('cfgPublicado').classList.toggle('on', !!CFG.publicado);
   alternarModoMeta(); alternarModoPremio(); renderFaixas(); renderMetas(); avisoQualidade();
   pintarSync();
@@ -1041,45 +1021,33 @@ function abrirConfig(){
 }
 
 function pintarSync(){
-  const s = SYNC;
-  document.getElementById('txtSync').textContent = s
-    ? `${s.quando} · ${s.linhas} linhas${s.arquivo?' · '+s.arquivo:''}`
-    : 'nenhuma leitura registrada';
-
   const el = document.getElementById('txtAbas');
-  if(!s || !s.meses || !s.meses.length){
-    el.textContent = '—';
-    el.className = '';
-    return;
-  }
-  el.innerHTML = s.meses.map(m=>
+  if(!ABAS.length){ el.textContent = 'nenhuma aba de mês reconhecida'; return; }
+  el.innerHTML = ABAS.map(a=>
     `<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0">
-       <span>${esc(m.aba)} → ${esc(rotuloPeriodo(m.competencia))}</span>
-       <span style="color:var(--txt3);white-space:nowrap">${m.gravadas} linhas</span>
-     </div>`).join('')
-    + (s.ignoradas && s.ignoradas.length
-        ? `<div style="color:var(--ambar);margin-top:6px">Ignoradas: ${esc(s.ignoradas.join(', '))}</div>`
-        : '');
+       <span>${esc(a.aba)} → ${esc(rotuloPeriodo(a.competencia))}</span>
+       <span style="color:${a.linhas?'var(--txt3)':'var(--ambar)'};white-space:nowrap">
+         ${a.linhas ? a.linhas + ' linhas' : 'vazia'}</span>
+     </div>`).join('');
 }
 
-async function sincronizarAgora(el){
+/* Relê a planilha inteira. Como o backend mora dentro dela,
+   basta pedir de novo — não existe cópia para sincronizar. */
+async function recarregarTudo(el){
   const span = el.querySelector('span');
   const antes = span.innerHTML;
-  span.textContent = 'Lendo o arquivo do Drive…';
+  span.textContent = 'Lendo a planilha…';
   try{
-    const j = await chamar('rkSincronizarJa', {});
-    if(j.semMudanca){
-      toast('O arquivo no Drive não mudou desde a última leitura');
-    }else{
-      SYNC = j.sync || SYNC;
-      const n = (j.meses||[]).length;
-      toast(`${n} ${n===1?'mês lido':'meses lidos'} · ${j.linhas} linhas`);
-      (j.meses||[]).forEach(m=>{ if(!PERIODOS.includes(m.competencia)) PERIODOS.push(m.competencia); });
-      PERIODOS.sort().reverse();
-      try{ HIST = await chamar('rkHistorico', {}); montarAnos(); }catch(e){}
-      montarPeriodos();
-      await carregarPeriodo(j.competencia || PERIODO);
-    }
+    const j = await chamar('rkInicio', {});
+    CFG = Object.assign({}, CFG_PADRAO, j.config||{}, {metas: CFG.metas});
+    ABAS = j.abas || [];
+    PERIODOS = j.periodos || [];
+    if(!PERIODOS.includes(PERIODO)) PERIODO = PERIODOS[0] || '';
+    const total = ABAS.reduce((s,a)=>s+(a.linhas||0),0);
+    toast(`${PERIODOS.length} ${PERIODOS.length===1?'mês':'meses'} com dados · ${total} linhas`);
+    montarPeriodos();
+    await carregarPeriodo(PERIODO);
+    await carregarHistorico();
   }catch(e){
     toast(String(e.message||e).slice(0,140));
   }
@@ -1165,7 +1133,6 @@ async function salvarConfig(){
   CFG.rendMax    = n('cfgRendMax') || 5;
   CFG.premioAno  = [n('cfgAno1'), n('cfgAno2'), n('cfgAno3')];
   CFG.mesesMinAno= n('cfgMesesAno') || 1;
-  CFG.competenciaForcada = document.getElementById('cfgCompForcada').value || '';
   CFG.publicado  = document.getElementById('cfgPublicado').classList.contains('on');
   CFG.faixas     = (CFG.faixas||[]).filter(f=> f.de>0 || f.rs>0);
   Object.keys(CFG.metas).forEach(k=>{ if(!CFG.metas[k]) delete CFG.metas[k]; });
@@ -1177,140 +1144,6 @@ async function salvarConfig(){
   }catch(e){
     gravarCache(); fecharSheet('shConfig'); desenhar();
     toast('Salvo neste aparelho — o servidor não respondeu');
-  }
-}
-
-/* ============================================================
-   IMPORTAÇÃO DO RELATÓRIO
-   ============================================================ */
-const COLUNAS = [
-  {campo:'motorista',  chaves:['MOTORISTA','CONDUTOR','NOME']},
-  {campo:'veiculo',    chaves:['VEICULO','PLACA']},
-  {campo:'faixaVerde', chaves:['FAIXA VERDE ECONOMICA','%FAIXA VERDE ECONOMICA'], pular:true},
-  {campo:'faixaVerde', chaves:['FAIXA VERDE','%FAIXA VERDE']},
-  {campo:'km',         chaves:['DISTANCIA','KM RODADO','KM']},
-  {campo:'litros',     chaves:['CONSUMO','LITROS']},
-  {campo:'co2',        chaves:['CO2','EMISSAO']},
-  {campo:'rendimento', chaves:['RENDIMENTO','KM/L']},
-  {campo:'modelo',     chaves:['MODELO']}
-];
-
-function importarArquivo(input){
-  const f = input.files && input.files[0];
-  input.value = '';
-  if(!f) return;
-  const fr = new FileReader();
-  fr.onload = ev => {
-    try{
-      const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array'});
-      const aba = wb.Sheets[wb.SheetNames[0]];
-      const grade = XLSX.utils.sheet_to_json(aba, {header:1, raw:true, defval:''});
-      prepararImportacao(grade);
-    }catch(e){
-      toast('Não foi possível ler o arquivo');
-    }
-  };
-  fr.readAsArrayBuffer(f);
-}
-
-function prepararImportacao(grade){
-  let iCab = -1;
-  for(let i=0;i<Math.min(12,grade.length);i++){
-    const linha = grade[i].map(norm);
-    if(linha.some(c=>c.includes('MOTORISTA')) && linha.some(c=>c.includes('CONSUMO')||c.includes('LITROS'))){ iCab = i; break; }
-  }
-  if(iCab<0) return toast('Cabeçalho não encontrado — confira se é o relatório de consumo');
-
-  const cab = grade[iCab].map(norm);
-  const idx = {};
-  cab.forEach((c,j)=>{
-    if(!c) return;
-    for(const def of COLUNAS){
-      if(def.pular) continue;
-      if(def.campo==='faixaVerde' && c.includes('ECONOMICA')) return;
-      if(def.chaves.some(k=> c.includes(k)) && idx[def.campo]==null){ idx[def.campo]=j; return; }
-    }
-  });
-  if(idx.motorista==null || idx.km==null || idx.litros==null)
-    return toast('Colunas de motorista, distância ou consumo não localizadas');
-
-  const num = v => {
-    if(typeof v === 'number') return v;
-    const s = String(v).trim().replace(/\./g,'#').replace(',','.').replace(/#/g,'');
-    const n = parseFloat(s.replace(/[^0-9.\-]/g,''));
-    return isFinite(n)?n:0;
-  };
-  const linhas = [];
-  for(let i=iCab+1;i<grade.length;i++){
-    const L = grade[i];
-    const nome = String(L[idx.motorista]||'').trim();
-    if(!nome) continue;
-    linhas.push({
-      motorista:nome,
-      veiculo: String(L[idx.veiculo]??'').trim(),
-      modelo:  String(L[idx.modelo]??'').trim(),
-      km:      num(L[idx.km]),
-      litros:  num(L[idx.litros]),
-      faixaVerde: idx.faixaVerde!=null ? num(L[idx.faixaVerde]) : 0,
-      co2:     idx.co2!=null ? num(L[idx.co2]) : 0
-    });
-  }
-  if(!linhas.length) return toast('Nenhuma linha de consumo encontrada');
-
-  PENDENTE = linhas;
-  const hoje = new Date();
-  const ant  = new Date(hoje.getFullYear(), hoje.getMonth()-1, 1);
-  const sug  = ant.toISOString().slice(0,7);
-  const mots = new Set(linhas.map(l=>norm(l.motorista))).size;
-  const km   = linhas.reduce((s,l)=>s+l.km,0);
-  const novos = Object.keys(modelosNovos(linhas)).length;
-
-  document.getElementById('corpoImport').innerHTML = `
-    <div class="grupo" style="margin-top:0">
-      <label>Período apurado</label>
-      <div class="bloco"><div class="campo">
-        <span>Competência<small>use o mês a que o relatório se refere</small></span>
-        <input type="month" id="impPeriodo" value="${sug}" style="width:150px;border:none;background:var(--card2);color:var(--txt);border-radius:9px;padding:7px 10px;font-size:15px">
-      </div></div>
-    </div>
-    <div class="grupo">
-      <label>Resumo do arquivo</label>
-      <div class="lista">
-        <div class="item"><div class="cen"><b>${linhas.length} linhas</b><span>motorista + veículo</span></div></div>
-        <div class="item"><div class="cen"><b>${mots} motoristas</b><span>nomes distintos</span></div></div>
-        <div class="item"><div class="cen"><b>${nf(km,0)} km</b><span>distância total</span></div></div>
-        ${novos?`<div class="item"><div class="cen"><b>${novos} modelos sem meta</b><span>use “calcular metas a partir do histórico” depois de importar</span></div></div>`:''}
-      </div>
-      <div class="aviso">A importação substitui os dados já gravados nesta competência.</div>
-    </div>
-    <div class="grupo"><button class="btn" onclick="confirmarImportacao()">Importar ${linhas.length} linhas</button></div>
-    <div style="height:calc(20px + var(--safe-bot))"></div>`;
-  document.getElementById('shImport').classList.add('on');
-}
-function modelosNovos(linhas){
-  const n = {};
-  linhas.forEach(l=>{ const k=norm(l.modelo); if(k && CFG.metas[k]==null) n[k]=1; });
-  return n;
-}
-
-async function confirmarImportacao(){
-  const comp = document.getElementById('impPeriodo').value;
-  if(!comp) return toast('Escolha a competência');
-  const btn = document.querySelector('#corpoImport .btn');
-  btn.disabled = true; btn.textContent = 'Importando…';
-  try{
-    await chamar('rkImportar', {competencia:comp, linhas:PENDENTE});
-    LINHAS = PENDENTE; PERIODO = comp;
-    if(!PERIODOS.includes(comp)) PERIODOS.unshift(comp);
-    montarPeriodos(); gravarCache();
-    fecharSheet('shImport'); fecharSheet('shConfig'); desenhar();
-    toast('Relatório importado');
-  }catch(e){
-    LINHAS = PENDENTE; PERIODO = comp;
-    if(!PERIODOS.includes(comp)) PERIODOS.unshift(comp);
-    montarPeriodos(); gravarCache();
-    fecharSheet('shImport'); desenhar();
-    toast('Servidor não respondeu — dados carregados só neste aparelho');
   }
 }
 
