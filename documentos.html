@@ -169,7 +169,7 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 // ═══════════════════════════════════════════════
 //  CONSTANTES
 // ═══════════════════════════════════════════════
-var SCRIPT_URL = 'COLE_AQUI_A_URL_DO_SCRIPT_DOCUMENTOS';
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyY_Yl4IHyvUwtaXPoMWG4mkwkGW8nD36_XLNeeR1O9ncq6UXZDIo841WIGNpKwkoI-AA/exec';
 var vinculoTipoAtual = 'FROTA';
 
 // ═══════════════════════════════════════════════
@@ -234,8 +234,8 @@ function classeValidade(validade) {
   var partes = validade.split('-');
   if (partes.length !== 3) return '';
   var d = new Date(partes[0], partes[1]-1, partes[2]);
-  var hoje = new Date();
-  var dias = Math.floor((d - hoje) / 86400000);
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  var dias = Math.round((d - hoje) / 86400000);
   if (dias < 0) return 'vencido';
   if (dias <= 30) return 'venc';
   return 'ok';
@@ -383,6 +383,7 @@ function goTab(id, el) {
 //  INIT
 // ═══════════════════════════════════════════════
 window.onload = function() {
+  if (SCRIPT_URL.indexOf('COLE_AQUI') === 0) setSyncBar('⚠️ SCRIPT_URL não configurada no documentos.html', 'err');
   var isM = _isAdminMaster();
   var tabCad = document.getElementById('tab-cadastrar');
   var tabGer = document.getElementById('tab-gerenciar');
