@@ -161,6 +161,7 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
   <div class="form-card" style="padding:12px 14px">
     <div class="form-title" style="margin-bottom:4px">🗂️ Todos os Documentos</div>
     <button class="btn-ghost" onclick="carregarTodos()" style="margin-top:6px">🔄 Atualizar lista</button>
+    <div class="cfg-note">Atualizar também puxa os arquivos colocados direto nas pastas do Drive (TWM DataLink - Documentos → "FROTA - VP-183" ou "MOTORISTA - NOME"). Nome do arquivo começando pelo tipo (CRLV, CIV, CIPP, CNH...) e, se quiser, validade no nome: 31-12-2026.</div>
   </div>
   <div id="lista-gerenciar"></div>
 </div>
@@ -216,7 +217,7 @@ function buscarDocumentos() {
   if (motorista) params += '&motorista=' + encodeURIComponent(motorista);
 
   var xhr = new XMLHttpRequest();
-  xhr.timeout = 15000;
+  xhr.timeout = 45000;
   xhr.open('GET', SCRIPT_URL + '?' + params + '&_=' + Date.now(), true);
   xhr.onreadystatechange = function() {
     if (xhr.readyState !== 4) return;
@@ -329,16 +330,18 @@ function cadastrarDocumento() {
 // ═══════════════════════════════════════════════
 function carregarTodos() {
   var el = document.getElementById('lista-gerenciar');
-  el.innerHTML = '<div class="empty">Carregando...</div>';
+  el.innerHTML = '<div class="empty">⏳ Sincronizando com o Drive...</div>';
 
   var xhr = new XMLHttpRequest();
-  xhr.timeout = 15000;
-  xhr.open('GET', SCRIPT_URL + '?action=getDocumentos&_=' + Date.now(), true);
+  xhr.timeout = 90000;
+  xhr.open('GET', SCRIPT_URL + '?action=getDocumentos&sync=1&_=' + Date.now(), true);
   xhr.onreadystatechange = function() {
     if (xhr.readyState !== 4) return;
     try {
       var resp = JSON.parse(xhr.responseText);
-      renderLista(el, (resp.ok && resp.documentos) ? resp.documentos : [], true);
+      if (!resp.ok) { el.innerHTML = '<div class="empty">⚠️ ' + (resp.msg || 'Erro ao carregar.') + '</div>'; return; }
+      renderLista(el, resp.documentos || [], true);
+      if (resp.novos > 0) toast('☁️ ' + resp.novos + ' arquivo(s) novo(s) do Drive registrado(s)', 'ok');
     } catch(e) { el.innerHTML = '<div class="empty">Erro ao carregar.</div>'; }
   };
   xhr.onerror = xhr.ontimeout = function() { el.innerHTML = '<div class="empty">📵 Sem conexão.</div>'; };
