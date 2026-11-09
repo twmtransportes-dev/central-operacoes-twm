@@ -279,7 +279,7 @@ function renderLista(el, docs, comExcluir) {
         '<div class="doc-tipo">' + (NOMES_TIPO[d.tipo]||d.tipo) + '</div>' +
         '<div class="doc-vinculo">' + (d.vinculoTipo==='FROTA'?'🚚 ':'👤 ') + d.vinculoValor + '</div>' +
         (d.nomeArquivo ? '<div class="doc-arquivo">📄 ' + String(d.nomeArquivo).replace(/</g,'&lt;') + '</div>' : '') +
-        (d.validade ? '<div class="doc-validade ' + cv + '">Validade: ' + d.validade + '</div>' : '') +
+        (d.validade ? '<div class="doc-validade ' + cv + '">Validade: ' + String(d.validade).replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1') + '</div>' : '') +
       '</div>' +
       '<button class="doc-abrir" data-idx="' + _docsAbertos.push(d) + '" onclick="abrirDocIdx(this)">Abrir</button>' +
       (comExcluir ? '<button class="doc-del" onclick="excluirDocumento(\'' + d.id + '\')">🗑️</button>' : '') +
@@ -423,7 +423,10 @@ function cadastrarDocumento() {
 // ═══════════════════════════════════════════════
 //  GERENCIAR (admin)
 // ═══════════════════════════════════════════════
+var _carregandoTodos = false;
 function carregarTodos() {
+  if (_carregandoTodos) return;   // evita duas sincronizações ao mesmo tempo
+  _carregandoTodos = true;
   var el = document.getElementById('lista-gerenciar');
   el.innerHTML = '<div class="empty">⏳ Sincronizando com o Drive...</div>';
 
@@ -432,6 +435,7 @@ function carregarTodos() {
   xhr.open('GET', SCRIPT_URL + '?action=getDocumentos&sync=1&_=' + Date.now(), true);
   xhr.onreadystatechange = function() {
     if (xhr.readyState !== 4) return;
+    _carregandoTodos = false;
     try {
       var resp = JSON.parse(xhr.responseText);
       if (!resp.ok) { el.innerHTML = '<div class="empty">⚠️ ' + (resp.msg || 'Erro ao carregar.') + '</div>'; return; }
@@ -439,7 +443,7 @@ function carregarTodos() {
       if (resp.novos > 0) toast('☁️ ' + resp.novos + ' arquivo(s) novo(s) do Drive registrado(s)', 'ok');
     } catch(e) { el.innerHTML = '<div class="empty">Erro ao carregar.</div>'; }
   };
-  xhr.onerror = xhr.ontimeout = function() { el.innerHTML = '<div class="empty">📵 Sem conexão.</div>'; };
+  xhr.onerror = xhr.ontimeout = function() { _carregandoTodos = false; el.innerHTML = '<div class="empty">📵 Sem conexão.</div>'; };
   xhr.send();
 }
 
