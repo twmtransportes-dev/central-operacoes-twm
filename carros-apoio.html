@@ -83,6 +83,16 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--tx);min-he
 .hist-row b{color:var(--tx)}
 .hist-km{font-size:11px;color:var(--green);font-weight:700}
 
+/* Meses do histórico */
+.mes-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;margin:14px 0 8px;background:var(--bg2);border:1px solid var(--brd2);border-left:4px solid var(--blue2);border-radius:12px;cursor:pointer;user-select:none}
+.mes-hd:first-child{margin-top:0}
+.mes-nome{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:900;text-transform:uppercase;letter-spacing:.8px;color:var(--tx)}
+.mes-info{font-size:11px;color:var(--mu);text-align:right;line-height:1.4}
+.mes-info b{color:var(--green)}
+.mes-seta{font-size:12px;color:var(--mu);transition:.2s;flex-shrink:0}
+.mes-hd.fechado .mes-seta{transform:rotate(-90deg)}
+.mes-corpo.fechado{display:none}
+
 </style>
 </head>
 <body>
@@ -177,6 +187,18 @@ var _carroAtual     = null;
 var _registroAtual  = null;
 var _fotoSaida      = '';
 var _fotoRetorno    = '';
+
+// ── POST para o Apps Script (texto puro = sem bloqueio de CORS) ──
+async function enviarScript(payload){
+  var resp = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  var txt = await resp.text();
+  try { return JSON.parse(txt); }
+  catch(e){ throw new Error('Resposta inválida do Apps Script'); }
+}
 
 // ── TOAST ─────────────────────────────────────────────────────
 var _toastT;
@@ -295,7 +317,7 @@ async function confirmarSaida(){
   if(!local)    { toast('Preencha o destino','err');   return; }
   if(!km)       { toast('Preencha a KM','err');        return; }
 
-  var dados=new URLSearchParams({
+  var dados={
     action:'saida_servico',
     id:Date.now().toString(36),
     placa:_carroAtual.placa,
@@ -303,11 +325,11 @@ async function confirmarSaida(){
     local:local,
     km_saida:km,
     data_saida:agora(),
-    status:'EM USO'
-  });
+    foto_saida:_fotoSaida||''
+  };
 
   // Atualiza status local imediatamente (sem esperar o servidor)
-  var idGerado = dados.get('id');
+  var idGerado = dados.id;
   registrosServico.push({
     id: idGerado,
     placa: _carroAtual.placa,
@@ -322,18 +344,16 @@ async function confirmarSaida(){
 
   toast('⏳ Registrando saída...');
   try{
-    var resp = await fetch(SCRIPT_URL+'?'+dados.toString());
-    var json = await resp.json();
+    var json = await enviarScript(dados);
     if(json.ok){
-      // Atualiza o ID com o retornado pelo servidor
       var reg = registrosServico.find(function(r){ return r.id===idGerado; });
       if(reg && json.id) reg.id = json.id;
       toast('✅ Saída registrada na planilha!','ok');
     } else {
       toast('⚠️ Erro: '+(json.msg||'tente novamente'),'err');
     }
-  }catch(e){ toast('⚠️ Salvo localmente — sem internet',''); }
-  render();
+  }catch(e){ toast('❌ Não foi salvo — verifique a internet','err'); }
+  carregar(); // recarrega da planilha para mostrar o estado real
 }
 
 // ── FORM RETORNO ───────────────────────────────────────────────
@@ -352,14 +372,18 @@ async function confirmarRetorno(){
   var km=(document.getElementById('mr-km').value||'').trim();
   if(!km){ toast('Preencha a KM de retorno','err'); return; }
 
-  var dados=new URLSearchParams({
+  if(_registroAtual.km_saida && parseInt(km,10) < parseInt(_registroAtual.km_saida,10)){
+    toast('KM de retorno menor que a de saída','err'); return;
+  }
+
+  var dados={
     action:'retorno_servico',
     placa:_carroAtual.placa,
     registro_id:_registroAtual.id||'',
     km_retorno:km,
     data_retorno:agora(),
-    status:'DISPONÍVEL'
-  });
+    foto_retorno:_fotoRetorno||''
+  };
 
   // Atualiza status local imediatamente
   var idx = registrosServico.findIndex(function(r){ return r.id===(_registroAtual.id||''); });
@@ -369,15 +393,14 @@ async function confirmarRetorno(){
 
   toast('⏳ Registrando retorno...');
   try{
-    var respR = await fetch(SCRIPT_URL+'?'+dados.toString());
-    var jsonR = await respR.json();
+    var jsonR = await enviarScript(dados);
     if(jsonR.ok){
       toast('✅ Retorno registrado na planilha!','ok');
     } else {
       toast('⚠️ Erro: '+(jsonR.msg||'tente novamente'),'err');
     }
-  }catch(e){ toast('⚠️ Salvo localmente — sem internet',''); }
-  render();
+  }catch(e){ toast('❌ Não foi salvo — verifique a internet','err'); }
+  carregar(); // recarrega da planilha para mostrar o estado real
 }
 
 
@@ -403,9 +426,10 @@ async function carregarHist(){
     return;
   }
   try{
-    var res  = await fetch(SCRIPT_URL + '?action=historico_apoio');
+    var res  = await fetch(SCRIPT_URL + '?action=historico_apoio&_=' + Date.now());
     var data = await res.json();
-    if(!data.ok){ div.innerHTML='<div class="empty">'+data.msg+'</div>'; return; }
+    if(!data.ok){ div.innerHTML='<div class="empty">'+(data.msg||'Erro')+'</div>'; return; }
+    if(!data.registros){ div.innerHTML='<div class="empty">⚠️ O Apps Script não tem a função de histórico.<br>Atualize o script do módulo.</div>'; return; }
     _todosRegistros = data.registros || [];
     renderHist(_todosRegistros);
   }catch(e){
@@ -413,28 +437,94 @@ async function carregarHist(){
   }
 }
 
-function renderHist(lista){
+var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+var _mesesAbertos = {};   // lembra quais meses o usuário abriu/fechou
+
+// "08/11/2026 10:00:00" → "2026-11"
+function chaveMes(data){
+  var m = String(data||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m) return m[3] + '-' + ('0'+m[2]).slice(-2);
+  var d = new Date(data);
+  if(data && !isNaN(d.getTime())) return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2);
+  return 'sem-data';
+}
+function nomeMes(chave){
+  if(chave === 'sem-data') return 'Sem data';
+  var p = chave.split('-');
+  return MESES[parseInt(p[1],10)-1] + ' ' + p[0];
+}
+function kmRodado(r){
+  var a = parseInt(r.km_saida,10), b = parseInt(r.km_retorno,10);
+  return (!isNaN(a) && !isNaN(b) && b >= a) ? (b - a) : 0;
+}
+
+function cardHist(r){
+  var km = r.km_retorno ? 'KM percorrida: <b>'+kmRodado(r)+'</b>' : '🔴 Em uso';
+  return '<div class="hist-card">'+
+    '<div class="hist-placa">🚗 '+(r.placa||'—')+'</div>'+
+    '<div class="hist-row"><span>👤 <b>'+(r.motorista||'—')+'</b></span><span>📍 '+(r.local||'—')+'</span></div>'+
+    '<div class="hist-row"><span>🕐 Saída: <b>'+(r.data_saida||'—')+'</b></span><span>KM: <b>'+(r.km_saida||'—')+'</b></span></div>'+
+    (r.data_retorno ? '<div class="hist-row"><span>🏁 Retorno: <b>'+r.data_retorno+'</b></span><span class="hist-km">'+km+'</span></div>' : '<div class="hist-row"><span style="color:var(--red)">🔴 Em viagem</span></div>')+
+    ((r.foto_saida||r.foto_retorno) ? '<div class="hist-row" style="justify-content:flex-start;gap:14px;margin-top:4px">'+
+      (r.foto_saida ? '<a href="'+r.foto_saida+'" target="_blank" style="color:var(--blue2);text-decoration:none">📷 Foto saída</a>' : '')+
+      (r.foto_retorno ? '<a href="'+r.foto_retorno+'" target="_blank" style="color:var(--blue2);text-decoration:none">📷 Foto retorno</a>' : '')+
+    '</div>' : '')+
+  '</div>';
+}
+
+function renderHist(lista, buscando){
   var div = document.getElementById('hist-cards');
   if(!lista.length){ div.innerHTML='<div class="empty">Nenhum registro encontrado.</div>'; return; }
-  div.innerHTML = lista.map(function(r){
-    var emUso = (r.status||'').toUpperCase() === 'EM USO';
-    var km = r.km_retorno ? 'KM percorrida: <b>'+(parseInt(r.km_retorno||0)-parseInt(r.km_saida||0))+'</b>' : '🔴 Em uso';
-    return '<div class="hist-card">'+
-      '<div class="hist-placa">🚗 '+(r.placa||'—')+'</div>'+
-      '<div class="hist-row"><span>👤 <b>'+(r.motorista||'—')+'</b></span><span>📍 '+(r.local||'—')+'</span></div>'+
-      '<div class="hist-row"><span>🕐 Saída: <b>'+(r.data_saida||'—')+'</b></span><span>KM: <b>'+(r.km_saida||'—')+'</b></span></div>'+
-      (r.data_retorno ? '<div class="hist-row"><span>🏁 Retorno: <b>'+r.data_retorno+'</b></span><span class="hist-km">'+km+'</span></div>' : '<div class="hist-row"><span style="color:var(--red)">🔴 Em viagem</span></div>')+
-    '</div>';
-  }).join('');
+
+  // Agrupa por mês da saída
+  var grupos = {}, ordem = [];
+  lista.forEach(function(r){
+    var k = chaveMes(r.data_saida);
+    if(!grupos[k]){ grupos[k] = []; ordem.push(k); }
+    grupos[k].push(r);
+  });
+  // Mais recente primeiro; "Sem data" por último
+  ordem.sort(function(a,b){
+    if(a==='sem-data') return 1; if(b==='sem-data') return -1;
+    return a < b ? 1 : a > b ? -1 : 0;
+  });
+
+  var html = '';
+  ordem.forEach(function(k, idx){
+    var regs = grupos[k];
+    var kmTotal = regs.reduce(function(s,r){ return s + kmRodado(r); }, 0);
+    var emUso = regs.filter(function(r){ return (r.status||'').toUpperCase()==='EM USO'; }).length;
+    // Aberto: mês mais recente, ou todos durante uma busca, ou o que o usuário abriu
+    var aberto = (k in _mesesAbertos) ? _mesesAbertos[k] : (buscando || idx === 0);
+    var cls = aberto ? '' : ' fechado';
+    html += '<div class="mes-hd'+cls+'" onclick="toggleMes(this,\''+k+'\')">'+
+        '<div><div class="mes-nome">📅 '+nomeMes(k)+'</div></div>'+
+        '<div style="display:flex;align-items:center;gap:10px">'+
+          '<div class="mes-info">'+regs.length+' viagem(ns)'+(emUso?' · <span style="color:var(--red)">'+emUso+' em uso</span>':'')+
+          '<br>KM rodada: <b>'+kmTotal.toLocaleString('pt-BR')+'</b></div>'+
+          '<span class="mes-seta">▼</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="mes-corpo'+cls+'">'+regs.map(cardHist).join('')+'</div>';
+  });
+  div.innerHTML = html;
+}
+
+function toggleMes(hd, chave){
+  var corpo = hd.nextElementSibling;
+  var fechar = !hd.classList.contains('fechado');
+  hd.classList.toggle('fechado', fechar);
+  corpo.classList.toggle('fechado', fechar);
+  _mesesAbertos[chave] = !fechar;
 }
 
 function filtrarHist(q){
-  if(!q.trim()){ renderHist(_todosRegistros); return; }
+  if(!q.trim()){ renderHist(_todosRegistros, false); return; }
   var norm = function(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); };
   var nq = norm(q);
   renderHist(_todosRegistros.filter(function(r){
     return norm(r.placa+' '+r.motorista+' '+r.local).includes(nq);
-  }));
+  }), true);
 }
 
 // ── INIT ───────────────────────────────────────────────────────
