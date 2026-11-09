@@ -1,326 +1,535 @@
-/* ============================================================
-   TWM Apps Script — MÓDULO DOCUMENTAÇÃO
-   ------------------------------------------------------------
-   PROJETO SEPARADO — não mexe nos outros scripts.
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0A0A0F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>TWM — Documentação</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icone-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0A0A0F;--bg2:#0F0F18;--bg3:#13131E;--border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.14);--text:#F0EEF8;--muted:#7A7890;--green:#10B981;--red:#EF4444;--amber:#F59E0B;--doc:#30D158}
+body.light{--bg:#F4F3FF;--bg2:#FFFFFF;--bg3:#FAFAFA;--border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);--text:#1A1A2E;--muted:#6B6880}
+body.light .app-header{box-shadow:0 1px 8px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 
-   COMO USAR:
-   1) Crie uma planilha Google nova e vazia, chame de "TWM Documentos".
-      Copie o ID dela (trecho da URL entre /d/ e /edit) e cole na
-      constante DOCUMENTOS_ID abaixo.
-   2) Vá em script.google.com/home → "Novo projeto", apague o
-      conteúdo padrão e cole este arquivo inteiro.
-   3) Implantar → Nova implantação → Aplicativo da Web
-      - Executar como: Eu
-      - Quem pode acessar: Qualquer pessoa
-      Implantar → autorizar.
-      (Nas próximas alterações: Gerenciar implantações → Editar →
-       Nova versão — assim a URL não muda.)
-   4) Copie a URL /exec e cole em documentos.html na constante
-      SCRIPT_URL.
+.app-header{background:var(--bg2);border-bottom:2px solid var(--doc);padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-badge{width:34px;height:34px;background:linear-gradient(135deg,#7B3FE4,#A855F7);border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:900;color:#fff}
+.logo-title{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+.btn-back{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:4px}
 
-   Os arquivos ficam salvos no Google Drive, numa pasta raiz
-   "TWM DataLink - Documentos" (criada automaticamente na primeira
-   vez), organizada em subpastas por frota/motorista.
-   ============================================================ */
+.nav-tabs{background:var(--bg2);border-bottom:1px solid var(--border2);display:flex;overflow-x:auto;scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:10px 14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.15s;display:flex;align-items:center;gap:5px}
+.nav-tab.on{color:var(--doc);border-bottom-color:var(--doc)}
 
-// Planilha Frota (a aba DOCUMENTOS é criada automaticamente)
-var DOCUMENTOS_ID   = '1Q1XHvwuho8nNFAUMd3XcZx70njgU7kKatVnbk45X5Xg';
-var ABA_DOCUMENTOS  = 'DOCUMENTOS';
-var PASTA_RAIZ_DOCS = 'Documentos Cavalos e Carretas'; // nome da pasta principal no Drive
-// opcional: ID da pasta (mais seguro que o nome). Se vazio, procura pelo nome.
-var PASTA_RAIZ_ID   = '';
+.page{display:none;padding:14px;max-width:600px;margin:0 auto;padding-bottom:40px}
+.page.on{display:block}
 
-var TIPOS_VALIDOS = ['CRLV','CIV','CIPP','CNH','CTE','NOTA_CARGA','ROTOGRAMA','OUTRO'];
+.form-card{background:var(--bg3);border:1px solid var(--border2);border-radius:14px;padding:16px;margin-bottom:14px}
+.form-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--doc);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.field{margin-bottom:12px}
+.field label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);display:block;margin-bottom:5px}
+.field input,.field select{width:100%;background:var(--bg);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:11px 13px;outline:none;-webkit-appearance:none;appearance:none}
+.field input:focus,.field select:focus{border-color:var(--doc)}
+.radio-row{display:flex;gap:8px}
+.radio-opt{flex:1;text-align:center;padding:10px;border:1.5px solid var(--border2);border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);cursor:pointer}
+.radio-opt.on{border-color:var(--doc);color:var(--doc);background:rgba(48,209,88,.08)}
 
-function out(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+.btn-reg{width:100%;padding:14px;background:linear-gradient(135deg,#0D9C4A,#30D158);border:none;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#03170A;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 20px rgba(48,209,88,.25)}
+.btn-ghost{padding:10px 16px;background:rgba(255,255,255,.05);border:1px solid var(--border2);border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);cursor:pointer;width:100%}
+
+.doc-card{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px}
+.doc-icon{width:40px;height:40px;border-radius:10px;background:rgba(48,209,88,.1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.doc-info{flex:1;min-width:0}
+.doc-tipo{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:var(--text)}
+.doc-vinculo{font-size:10px;color:var(--muted);margin-top:1px}
+.doc-arquivo{font-size:10px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.8}
+.doc-validade{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:4px;display:inline-block;padding:2px 8px;border-radius:20px}
+.doc-validade.ok{background:rgba(16,185,129,.12);color:var(--green)}
+.doc-validade.venc{background:rgba(245,158,11,.12);color:var(--amber)}
+.doc-validade.vencido{background:rgba(239,68,68,.12);color:var(--red)}
+.doc-abrir{cursor:pointer;background:var(--doc);color:#03170A;border:none;border-radius:8px;padding:8px 14px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;text-decoration:none;white-space:nowrap}
+.doc-del{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:8px 10px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;cursor:pointer}
+
+.empty{text-align:center;padding:32px 16px;color:var(--muted);font-size:12px;line-height:1.6}
+.cfg-note{font-size:10px;color:var(--muted);line-height:1.6;margin-top:6px}
+
+.sync-bar{display:none;text-align:center;padding:6px 16px;font-size:11px;font-weight:600;letter-spacing:.5px;position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--bg2);border-top:1px solid var(--border2)}
+.sync-bar.on{display:block}
+.sync-bar.ok{color:var(--green)}.sync-bar.err{color:var(--red)}
+.toast{position:fixed;bottom:50px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:10px 20px;font-size:12px;font-weight:600;z-index:999;transition:.3s;white-space:nowrap;max-width:90vw;text-align:center}
+.toast.on{transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:rgba(16,185,129,.4);color:var(--green)}
+.toast.err{border-color:rgba(239,68,68,.4);color:var(--red)}
+
+/* VISUALIZADOR DE DOCUMENTO (dentro do app) */
+.viewer{position:fixed;inset:0;z-index:500;background:var(--bg);display:none;flex-direction:column}
+.viewer.on{display:flex}
+.viewer-bar{height:52px;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--bg2);border-bottom:2px solid var(--doc)}
+.viewer-close{width:36px;height:36px;border-radius:10px;border:1px solid var(--border2);background:rgba(255,255,255,.06);color:var(--text);font-size:18px;cursor:pointer;flex-shrink:0}
+.viewer-title{flex:1;min-width:0;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.viewer-ext{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-decoration:none;border:1px solid var(--border2);border-radius:8px;padding:7px 9px;white-space:nowrap}
+.viewer-body{flex:1;position:relative;background:#525659}
+.viewer-body iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.viewer-load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#ddd;font-size:13px;pointer-events:none}
+</style>
+<script>
+(function() {
+  var pref = localStorage.getItem('twm_tema') || 'auto';
+  var claro;
+  if (pref === 'claro') claro = true;
+  else if (pref === 'escuro') claro = false;
+  else { var h = new Date().getHours(); claro = h >= 6 && h < 18; }
+  function aplicar() { if (claro) document.body.classList.add('light'); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', aplicar);
+  else aplicar();
+})();
+</script>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+<div class="sync-bar" id="syncBar"></div>
+
+<div class="viewer" id="viewer">
+  <div class="viewer-bar">
+    <button class="viewer-close" onclick="fecharDoc()" aria-label="Fechar">✕</button>
+    <div class="viewer-title" id="viewer-title">Documento</div>
+    <a class="viewer-ext" id="viewer-ext" href="#" target="_blank" rel="noopener">Abrir fora ↗</a>
+  </div>
+  <div class="viewer-body">
+    <div class="viewer-load" id="viewer-load">⏳ Carregando documento...</div>
+    <iframe id="viewer-frame" title="Documento" allow="autoplay"></iframe>
+  </div>
+</div>
+
+<div class="app-header">
+  <div class="logo">
+    <div class="logo-badge">TWM</div>
+    <div class="logo-title">Documentação</div>
+  </div>
+  <a class="btn-back" href="index.html">← Central</a>
+</div>
+
+<div class="nav-tabs">
+  <div class="nav-tab on" id="tab-buscar" onclick="goTab('buscar',this)">🔍 Buscar</div>
+  <div class="nav-tab" id="tab-cadastrar" onclick="goTab('cadastrar',this)">➕ Cadastrar</div>
+  <div class="nav-tab" id="tab-gerenciar" onclick="goTab('gerenciar',this)">🗂️ Gerenciar</div>
+</div>
+
+<!-- ABA BUSCAR (todos) -->
+<div class="page on" id="page-buscar">
+  <div class="form-card">
+    <div class="form-title">🔍 Buscar Documentos</div>
+    <div class="field">
+      <label>Frota / Prefixo</label>
+      <input type="text" id="bs-frota" placeholder="Ex: VP-183" oninput="this.value=this.value.toUpperCase()">
+    </div>
+    <div class="field">
+      <label>Ou Motorista</label>
+      <input type="text" id="bs-motorista" placeholder="Nome do motorista" oninput="this.value=this.value.toUpperCase()">
+    </div>
+    <button class="btn-reg" onclick="buscarDocumentos()">🔍 Buscar</button>
+  </div>
+  <div id="lista-busca"></div>
+</div>
+
+<!-- ABA CADASTRAR (admin) -->
+<div class="page" id="page-cadastrar">
+  <div class="form-card">
+    <div class="form-title">➕ Novo Documento</div>
+    <div class="field">
+      <label>Tipo de Documento *</label>
+      <select id="cad-tipo">
+        <option value="CRLV">CRLV</option>
+        <option value="CIV">CIV</option>
+        <option value="CIPP">CIPP</option>
+        <option value="CNH">CNH</option>
+        <option value="CTE">CT-e</option>
+        <option value="NOTA_CARGA">Nota da Carga</option>
+        <option value="ROTOGRAMA">Rotograma</option>
+        <option value="OUTRO">Outro</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Vincular a</label>
+      <div class="radio-row">
+        <div class="radio-opt on" id="rd-frota" onclick="setVinculoTipo('FROTA')">🚚 Frota</div>
+        <div class="radio-opt" id="rd-motorista" onclick="setVinculoTipo('MOTORISTA')">👤 Motorista</div>
+      </div>
+    </div>
+    <div class="field">
+      <label id="cad-valor-label">Frota / Prefixo *</label>
+      <input type="text" id="cad-valor" placeholder="Ex: VP-183" oninput="this.value=this.value.toUpperCase()">
+    </div>
+    <div class="field">
+      <label>Validade (opcional)</label>
+      <input type="date" id="cad-validade">
+    </div>
+    <div class="field">
+      <label>Arquivo *</label>
+      <input type="file" id="cad-arquivo" accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp,.heic,.heif,.tif,.tiff,.doc,.docx,.odt,.rtf,.txt,.xls,.xlsx,.ods,.csv,.ppt,.pptx,.xml,application/pdf,image/*">
+      <div class="cfg-note">Aceita PDF, fotos (JPG, PNG, HEIC...), Word, Excel, PowerPoint, TXT e XML (CT-e/NF-e). Máximo 25 MB.</div>
+    </div>
+    <button class="btn-reg" onclick="cadastrarDocumento()">☁️ Enviar para o Drive</button>
+    <div class="cfg-note">O arquivo é salvo no Google Drive automaticamente, organizado por frota/motorista.</div>
+  </div>
+</div>
+
+<!-- ABA GERENCIAR (admin) -->
+<div class="page" id="page-gerenciar">
+  <div class="form-card" style="padding:12px 14px">
+    <div class="form-title" style="margin-bottom:4px">🗂️ Todos os Documentos</div>
+    <button class="btn-ghost" onclick="carregarTodos()" style="margin-top:6px">🔄 Atualizar lista</button>
+    <div class="cfg-note">Atualizar também puxa os arquivos colocados direto nas pastas do Drive (TWM DataLink - Documentos → "FROTA - VP-183" ou "MOTORISTA - NOME"). Nome do arquivo começando pelo tipo (CRLV, CIV, CIPP, CNH...) e, se quiser, validade no nome: 31-12-2026.</div>
+  </div>
+  <div id="lista-gerenciar"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONSTANTES
+// ═══════════════════════════════════════════════
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxjkcMq_vb7LVDEswagv8XPlpujjNg_AzwKeDn_Qcq0jpXZlInQ3Lto3Bk3k8SLI_hSlg/exec';
+var vinculoTipoAtual = 'FROTA';
+
+// ═══════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════
+function toast(msg, tipo) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast on' + (tipo ? ' ' + tipo : '');
+  setTimeout(function(){ el.className = 'toast'; }, 3500);
+}
+function setSyncBar(msg, tipo) {
+  var el = document.getElementById('syncBar');
+  el.textContent = msg;
+  el.className = 'sync-bar on' + (tipo ? ' ' + tipo : '');
+  if (tipo === 'ok') setTimeout(function(){ el.className = 'sync-bar'; }, 3000);
+}
+function _isAdminMaster(){
+  try{
+    var pStr = localStorage.getItem('twm_permissoes');
+    if(pStr){ var p2=JSON.parse(pStr); if(p2.admin_master) return true; }
+    var u=JSON.parse(localStorage.getItem('twm_user_cache')||'{}');
+    var p=u.permissoes||{};
+    return !!(p.admin_master||p.ADMIN_MASTER);
+  }catch(e){return false;}
 }
 
-function doGet(e) {
-  var action = e.parameter.action || '';
-  try {
-    if (action === 'getDocumentos') return getDocumentos(e);
-    if (action === 'ping') return out({ ok: true, msg: 'Documentos Script ativo!' });
-    return out({ ok: true, msg: 'Documentos Script ativo!' });
-  } catch (err) { return out({ ok: false, msg: 'Erro: ' + err.toString() }); }
+var NOMES_TIPO = {CRLV:'CRLV',CIV:'CIV',CIPP:'CIPP',CNH:'CNH',CTE:'CT-e',NOTA_CARGA:'Nota da Carga',ROTOGRAMA:'Rotograma',OUTRO:'Outro'};
+var ICONE_TIPO = {CRLV:'🚚',CIV:'📋',CIPP:'📋',CNH:'🪪',CTE:'📄',NOTA_CARGA:'🧾',ROTOGRAMA:'🗺️',OUTRO:'📎'};
+
+// ═══════════════════════════════════════════════
+//  BUSCAR
+// ═══════════════════════════════════════════════
+function buscarDocumentos() {
+  var frota     = document.getElementById('bs-frota').value.trim();
+  var motorista = document.getElementById('bs-motorista').value.trim();
+  var el = document.getElementById('lista-busca');
+
+  if (!frota && !motorista) { toast('⚠️ Informe frota ou motorista', 'err'); return; }
+
+  el.innerHTML = '<div class="empty">Buscando...</div>';
+  var params = 'action=getDocumentos';
+  if (frota)     params += '&frota=' + encodeURIComponent(frota);
+  if (motorista) params += '&motorista=' + encodeURIComponent(motorista);
+
+  var xhr = new XMLHttpRequest();
+  xhr.timeout = 45000;
+  xhr.open('GET', SCRIPT_URL + '?' + params + '&_=' + Date.now(), true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    try {
+      var resp = JSON.parse(xhr.responseText);
+      renderLista(el, (resp.ok && resp.documentos) ? resp.documentos : [], false);
+    } catch(e) { el.innerHTML = '<div class="empty">Erro ao buscar documentos.</div>'; }
+  };
+  xhr.onerror = xhr.ontimeout = function() { el.innerHTML = '<div class="empty">📵 Sem conexão.</div>'; };
+  xhr.send();
 }
 
-function doPost(e) {
-  try {
-    var body = JSON.parse(e.postData.contents || '{}');
-    var action = body.action || '';
-    if (action === 'uploadDocumento')   return uploadDocumento(body);
-    if (action === 'excluirDocumento')  return excluirDocumento(body);
-    return out({ ok: false, msg: 'Ação inválida.' });
-  } catch (err) { return out({ ok: false, msg: 'Erro: ' + err.toString() }); }
+function classeValidade(validade) {
+  if (!validade) return '';
+  var partes = validade.split('-');
+  if (partes.length !== 3) return '';
+  var d = new Date(partes[0], partes[1]-1, partes[2]);
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  var dias = Math.round((d - hoje) / 86400000);
+  if (dias < 0) return 'vencido';
+  if (dias <= 30) return 'venc';
+  return 'ok';
 }
 
-function _sheetDocumentos() {
-  var ss = SpreadsheetApp.openById(DOCUMENTOS_ID);
-  var sh = ss.getSheetByName(ABA_DOCUMENTOS);
-  if (!sh) {
-    sh = ss.insertSheet(ABA_DOCUMENTOS);
-    var cab = ['ID','TIPO','VINCULO_TIPO','VINCULO_VALOR','NOME_ARQUIVO','URL_DRIVE','DATA_VALIDADE','DATA_UPLOAD'];
-    sh.appendRow(cab);
-    var hh = sh.getRange(1,1,1,cab.length);
-    hh.setBackground('#1a1a2e'); hh.setFontColor('#FFFFFF'); hh.setFontWeight('bold'); hh.setFontSize(10);
-    sh.setFrozenRows(1);
-  }
-  return sh;
+function renderLista(el, docs, comExcluir) {
+  _docsAbertos = [];
+  if (!docs.length) { el.innerHTML = '<div class="empty">Nenhum documento encontrado.</div>'; return; }
+  var html = '';
+  docs.forEach(function(d) {
+    var cv = classeValidade(d.validade);
+    html += '<div class="doc-card">' +
+      '<div class="doc-icon">' + (ICONE_TIPO[d.tipo]||'📎') + '</div>' +
+      '<div class="doc-info">' +
+        '<div class="doc-tipo">' + (NOMES_TIPO[d.tipo]||d.tipo) + '</div>' +
+        '<div class="doc-vinculo">' + (d.vinculoTipo==='FROTA'?'🚚 ':'👤 ') + d.vinculoValor + '</div>' +
+        (d.nomeArquivo ? '<div class="doc-arquivo">📄 ' + String(d.nomeArquivo).replace(/</g,'&lt;') + '</div>' : '') +
+        (d.validade ? '<div class="doc-validade ' + cv + '">Validade: ' + d.validade + '</div>' : '') +
+      '</div>' +
+      '<button class="doc-abrir" data-idx="' + _docsAbertos.push(d) + '" onclick="abrirDocIdx(this)">Abrir</button>' +
+      (comExcluir ? '<button class="doc-del" onclick="excluirDocumento(\'' + d.id + '\')">🗑️</button>' : '') +
+    '</div>';
+  });
+  el.innerHTML = html;
 }
 
-// Compara nomes ignorando maiúsculas, acentos e espaços duplos
-function _normNome(n) {
-  return String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ').trim().toUpperCase();
+// ═══════════════════════════════════════════════
+//  VISUALIZADOR (abre o documento dentro do app)
+// ═══════════════════════════════════════════════
+var _docsAbertos = [];
+var _viewerAberto = false;
+
+function _driveId(url) {
+  var m = String(url || '').match(/\/d\/([-\w]{25,})/) || String(url || '').match(/[?&]id=([-\w]{25,})/) || String(url || '').match(/([-\w]{25,})/);
+  return m ? m[1] : '';
 }
 
-function _pastaRaiz() {
-  if (PASTA_RAIZ_ID) return DriveApp.getFolderById(PASTA_RAIZ_ID);
-  var alvos = [_normNome(PASTA_RAIZ_DOCS), _normNome('TWM DataLink - Documentos')];
-  var cand = DriveApp.searchFolders('trashed = false and (title contains "Cavalos" or title contains "TWM DataLink")');
-  var achadas = {};
-  while (cand.hasNext()) {
-    var f = cand.next();
-    var n = _normNome(f.getName());
-    if (alvos.indexOf(n) >= 0 && !achadas[n]) achadas[n] = f;
-  }
-  for (var i = 0; i < alvos.length; i++) if (achadas[alvos[i]]) return achadas[alvos[i]];
-  return DriveApp.createFolder(PASTA_RAIZ_DOCS);
+function abrirDocIdx(btn) {
+  var d = _docsAbertos[parseInt(btn.getAttribute('data-idx'), 10) - 1];
+  if (d) abrirDoc(d);
 }
 
-// Acha a subpasta da frota/motorista. Aceita "VP-183", "VP-183 RML-0I14" ou "FROTA - VP-183".
-function _subPasta(vinculoTipo, vinculoValor) {
-  var raiz = _pastaRaiz();
-  var v = _normNome(vinculoValor);
-  var subs = raiz.getFolders();
-  while (subs.hasNext()) {
-    var f = subs.next();
-    var n = _normNome(f.getName()).replace(/^(FROTA|MOTORISTA)\s*-\s*/, '');
-    if (n === v || n.indexOf(v + ' ') === 0) return f;
-  }
-  return raiz.createFolder(vinculoTipo === 'FROTA' ? vinculoValor : ('MOTORISTA - ' + vinculoValor));
+function abrirDoc(d) {
+  var id = _driveId(d.url);
+  var titulo = (NOMES_TIPO[d.tipo] || d.tipo || 'Documento') + ' · ' + (d.vinculoValor || '');
+  if (!id) { window.open(d.url, '_blank'); return; }
+
+  document.getElementById('viewer-title').textContent = titulo;
+  document.getElementById('viewer-ext').href = 'https://drive.google.com/file/d/' + id + '/view';
+  var load = document.getElementById('viewer-load');
+  var frame = document.getElementById('viewer-frame');
+  load.style.display = 'flex';
+  frame.onload = function(){ load.style.display = 'none'; };
+  frame.src = 'https://drive.google.com/file/d/' + id + '/preview';
+  document.getElementById('viewer').className = 'viewer on';
+  document.body.style.overflow = 'hidden';
+
+  // Botão "voltar" do celular fecha o documento em vez de sair do módulo
+  if (!_viewerAberto) { try { history.pushState({ viewer: 1 }, ''); } catch(e) {} }
+  _viewerAberto = true;
 }
 
-// Normaliza validade para "aaaa-mm-dd" (o Sheets converte texto de data em Date)
-function _fmtValidade(v) {
-  if (!v) return '';
-  if (Object.prototype.toString.call(v) === '[object Date]') {
-    if (isNaN(v.getTime())) return '';
-    return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-  }
-  var s = String(v).trim();
-  var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); // dd/mm/aaaa → aaaa-mm-dd
-  if (m) return m[3] + '-' + m[2] + '-' + m[1];
-  return s;
+function _fecharViewerUI() {
+  document.getElementById('viewer').className = 'viewer';
+  document.getElementById('viewer-frame').src = 'about:blank';
+  document.body.style.overflow = '';
+  _viewerAberto = false;
 }
 
-/* ── UPLOAD (POST — arquivo em base64) ────────────────────────
-   Espera no corpo (JSON): tipo, vinculoTipo (FROTA|MOTORISTA),
-   vinculoValor, validade (opcional, aaaa-mm-dd), nomeArquivo,
-   mimeType, base64 (sem o prefixo data:...;base64,)
-------------------------------------------------------------- */
-function uploadDocumento(p) {
-  var tipo         = String(p.tipo || '').trim().toUpperCase();
-  var vinculoTipo  = String(p.vinculoTipo || '').trim().toUpperCase();
-  var vinculoValor = String(p.vinculoValor || '').trim().toUpperCase();
-  var validade     = String(p.validade || '').trim();
-  var nomeArquivo  = p.nomeArquivo || ('documento_' + Date.now());
-  var mimeType     = p.mimeType || 'application/octet-stream';
-  var base64       = p.base64 || '';
-
-  if (!tipo || !vinculoTipo || !vinculoValor || !base64) {
-    return out({ ok: false, msg: 'Dados incompletos para o upload.' });
-  }
-  if (TIPOS_VALIDOS.indexOf(tipo) < 0) tipo = 'OUTRO';
-
-  try {
-    var bytes = Utilities.base64Decode(base64);
-    var blob = Utilities.newBlob(bytes, mimeType, nomeArquivo);
-
-    var pasta = _subPasta(vinculoTipo, vinculoValor);
-    var arquivo = pasta.createFile(blob);
-    arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    var id = Utilities.getUuid();
-    var sh = _sheetDocumentos();
-    sh.appendRow([id, tipo, vinculoTipo, vinculoValor, nomeArquivo,
-                  arquivo.getUrl(), validade, new Date().toLocaleString('pt-BR')]);
-
-    return out({ ok: true, id: id, url: arquivo.getUrl() });
-  } catch (err) {
-    return out({ ok: false, msg: 'Erro ao salvar no Drive: ' + err.toString() });
-  }
+function fecharDoc() {
+  if (_viewerAberto) { try { history.back(); return; } catch(e) {} }
+  _fecharViewerUI();
 }
 
-/* ── EXCLUIR (POST) ───────────────────────────────────────── */
-function excluirDocumento(p) {
-  var id = String(p.id || '');
-  var sh = _sheetDocumentos();
-  var dados = sh.getDataRange().getValues();
-  for (var i = 1; i < dados.length; i++) {
-    if (String(dados[i][0]) === id) {
-      try {
-        var url = String(dados[i][5] || '');
-        var fid = url.match(/[-\w]{25,}/);
-        if (fid) DriveApp.getFileById(fid[0]).setTrashed(true);
-      } catch (e) {}
-      sh.deleteRow(i + 1);
-      return out({ ok: true });
-    }
-  }
-  return out({ ok: false, msg: 'Documento não encontrado.' });
+window.addEventListener('popstate', function() { if (_viewerAberto) _fecharViewerUI(); });
+
+// ═══════════════════════════════════════════════
+//  CADASTRAR (admin)
+// ═══════════════════════════════════════════════
+function setVinculoTipo(tipo) {
+  vinculoTipoAtual = tipo;
+  document.getElementById('rd-frota').className = 'radio-opt' + (tipo==='FROTA'?' on':'');
+  document.getElementById('rd-motorista').className = 'radio-opt' + (tipo==='MOTORISTA'?' on':'');
+  document.getElementById('cad-valor-label').textContent = tipo==='FROTA' ? 'Frota / Prefixo *' : 'Nome do Motorista *';
+  document.getElementById('cad-valor').placeholder = tipo==='FROTA' ? 'Ex: VP-183' : 'Nome completo';
 }
 
-/* ── SINCRONIZAR DRIVE ────────────────────────────────────────
-   Arquivos colocados direto nas pastas do Drive são registrados
-   na planilha automaticamente.
-   Padrão de pastas (dentro de "TWM DataLink - Documentos"):
-     "FROTA - VP-183"       → vinculado à frota VP-183
-     "MOTORISTA - JOAO"     → vinculado ao motorista JOAO
-     "VP-183" (sem prefixo) → tratado como frota
-   Tipo: pelo início do nome do arquivo (CRLV, CIV, CIPP, CNH,
-   CTE, NOTA, ROTOGRAMA). Se não reconhecer → OUTRO.
-   Validade (opcional): data no nome, ex: "CRLV VP-183 31-12-2026.pdf"
-------------------------------------------------------------- */
-// Arquivos de sistema que o Windows/Mac colocam nas pastas e não são documentos
-function _ehLixo(nome) {
-  var n = String(nome || '').trim().toLowerCase();
-  if (!n) return true;
-  if (n === 'thumbs.db' || n === 'desktop.ini' || n === 'ehthumbs.db') return true;
-  if (n.charAt(0) === '.') return true;          // .DS_Store, ._arquivo, etc.
-  if (n.indexOf('~$') === 0) return true;        // temporário do Office
-  if (/\.(db|ini|tmp|lnk|url)$/.test(n)) return true;
-  return false;
+// Alguns celulares não informam o tipo do arquivo (ex: HEIC, XML).
+// Sem o tipo certo, o Drive não consegue mostrar a pré-visualização.
+var MIME_EXT = {
+  pdf:'application/pdf', jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', gif:'image/gif',
+  bmp:'image/bmp', webp:'image/webp', heic:'image/heic', heif:'image/heif', tif:'image/tiff', tiff:'image/tiff',
+  doc:'application/msword', docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  odt:'application/vnd.oasis.opendocument.text', rtf:'application/rtf', txt:'text/plain',
+  xls:'application/vnd.ms-excel', xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ods:'application/vnd.oasis.opendocument.spreadsheet', csv:'text/csv',
+  ppt:'application/vnd.ms-powerpoint', pptx:'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  xml:'text/xml'
+};
+function _mimeDoArquivo(file) {
+  var ext = String(file.name || '').split('.').pop().toLowerCase();
+  return MIME_EXT[ext] || file.type || 'application/octet-stream';
 }
 
-function _fileIdDaUrl(url) {
-  var m = String(url || '').match(/[-\w]{25,}/);
-  return m ? m[0] : '';
-}
+function cadastrarDocumento() {
+  var tipo     = document.getElementById('cad-tipo').value;
+  var valor    = document.getElementById('cad-valor').value.trim();
+  var validade = document.getElementById('cad-validade').value;
+  var fileInput = document.getElementById('cad-arquivo');
+  var file = fileInput.files[0];
 
-function _tipoPeloNome(nome) {
-  var n = String(nome || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
-  if (n.indexOf('CRLV') === 0)       return 'CRLV';
-  if (n.indexOf('CIPP') === 0)       return 'CIPP';
-  if (n.indexOf('CIV') === 0)        return 'CIV';
-  if (n.indexOf('CNH') === 0)        return 'CNH';
-  if (/^CT-?E/.test(n))              return 'CTE';
-  if (n.indexOf('NOTA') === 0 || /^NF[\s_-]/.test(n)) return 'NOTA_CARGA';
-  if (n.indexOf('ROTOGRAMA') === 0)  return 'ROTOGRAMA';
-  return 'OUTRO';
-}
+  if (!valor) { toast('⚠️ Informe a frota ou o motorista', 'err'); return; }
+  if (!file)  { toast('⚠️ Selecione um arquivo', 'err'); return; }
+  if (file.size > 25 * 1024 * 1024) { toast('⚠️ Arquivo maior que 25 MB', 'err'); return; }
 
-function _validadePeloNome(nome) {
-  var m = String(nome || '').match(/(\d{2})[-._](\d{2})[-._](\d{4})/);
-  return m ? (m[3] + '-' + m[2] + '-' + m[1]) : '';
-}
+  setSyncBar('⏳ Enviando arquivo...', '');
 
-function _vinculoDaPasta(nomePasta) {
-  var n = String(nomePasta || '').trim().toUpperCase();
-  var m = n.match(/^(FROTA|MOTORISTA)\s*-\s*(.+)$/);
-  if (m) return { tipo: m[1], valor: m[2].trim() };
-  return { tipo: 'FROTA', valor: n };
-}
-
-// Registra os arquivos de UMA pasta que ainda não estão na planilha
-function _sincronizarPasta(pasta, sh, idsExistentes) {
-  var vinc = _vinculoDaPasta(pasta.getName());
-  var novos = 0;
-  var arquivos = pasta.getFiles();
-  while (arquivos.hasNext()) {
-    var arq = arquivos.next();
-    if (arq.isTrashed()) continue;
-    var fid = arq.getId();
-    if (idsExistentes[fid]) continue;
-    if (_ehLixo(arq.getName())) continue;
-    try { arq.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
-    var nome = arq.getName();
-    sh.appendRow([Utilities.getUuid(), _tipoPeloNome(nome), vinc.tipo, vinc.valor, nome,
-                  arq.getUrl(), _validadePeloNome(nome), new Date().toLocaleString('pt-BR')]);
-    idsExistentes[fid] = true;
-    novos++;
-  }
-  return novos;
-}
-
-// filtro opcional: {tipo:'FROTA'|'MOTORISTA', valor:'VP-183'} → só pastas que batem
-function sincronizarDrive(filtro) {
-  var sh = _sheetDocumentos();
-  var dados = sh.getDataRange().getValues();
-  // Limpa linhas de arquivos de sistema registradas antes (ex: Thumbs.db)
-  for (var j = dados.length - 1; j >= 1; j--) {
-    if (dados[j][0] && _ehLixo(dados[j][4])) sh.deleteRow(j + 1);
-  }
-  dados = sh.getDataRange().getValues();
-  var ids = {};
-  for (var i = 1; i < dados.length; i++) {
-    var fid = _fileIdDaUrl(dados[i][5]);
-    if (fid) ids[fid] = true;
-  }
-  var novos = 0;
-  var subs = _pastaRaiz().getFolders();
-  while (subs.hasNext()) {
-    var pasta = subs.next();
-    if (filtro) {
-      var v = _vinculoDaPasta(pasta.getName());
-      if (v.tipo !== filtro.tipo || v.valor.indexOf(filtro.valor) < 0) continue;
-    }
-    novos += _sincronizarPasta(pasta, sh, ids);
-  }
-  return novos;
-}
-
-/* ── BUSCAR (GET) ─────────────────────────────────────────────
-   Se "frota" for informado, retorna só documentos vinculados a
-   essa frota. Se "motorista" for informado, só os vinculados a
-   esse motorista. Sem nenhum dos dois, retorna todos (usado na
-   aba "Gerenciar", só para admin).
-------------------------------------------------------------- */
-function getDocumentos(e) {
-  var p = e.parameter || {};
-  var frota     = String(p.frota || '').trim().toUpperCase();
-  var motorista = String(p.motorista || '').trim().toUpperCase();
-
-  // Sincroniza com o Drive antes de listar:
-  //  - Gerenciar (sync=1): todas as pastas
-  //  - Busca por frota/motorista: só a pasta correspondente (rápido)
-  var novos = 0;
-  try {
-    if (p.sync === '1')   novos = sincronizarDrive(null);
-    else if (frota)       novos = sincronizarDrive({ tipo: 'FROTA', valor: frota });
-    else if (motorista)   novos = sincronizarDrive({ tipo: 'MOTORISTA', valor: motorista });
-  } catch (errSync) { Logger.log('Erro sync Drive: ' + errSync); }
-
-  var sh = _sheetDocumentos();
-  var dados = sh.getDataRange().getValues();
-  var lista = [];
-
-  for (var i = 1; i < dados.length; i++) {
-    var r = dados[i];
-    if (!r[0]) continue;
-    if (_ehLixo(r[4])) continue;
-    var item = {
-      id:           String(r[0]),
-      tipo:         String(r[1] || ''),
-      vinculoTipo:  String(r[2] || ''),
-      vinculoValor: String(r[3] || ''),
-      nomeArquivo:  String(r[4] || ''),
-      url:          String(r[5] || ''),
-      validade:     _fmtValidade(r[6]),
-      dataUpload:   String(r[7] || '')
+  var reader = new FileReader();
+  reader.onload = function() {
+    var base64 = reader.result.split(',')[1];
+    var payload = {
+      action: 'uploadDocumento',
+      tipo: tipo,
+      vinculoTipo: vinculoTipoAtual,
+      vinculoValor: valor,
+      validade: validade,
+      nomeArquivo: file.name,
+      mimeType: _mimeDoArquivo(file),
+      base64: base64
     };
 
-    if (frota) {
-      if (item.vinculoTipo === 'FROTA' && item.vinculoValor.indexOf(frota) >= 0) lista.push(item);
-      continue;
-    }
-    if (motorista) {
-      if (item.vinculoTipo === 'MOTORISTA' && item.vinculoValor.indexOf(motorista) >= 0) lista.push(item);
-      continue;
-    }
-    lista.push(item); // sem filtro: lista tudo
-  }
-  return out({ ok: true, documentos: lista, novos: novos });
+    var xhr = new XMLHttpRequest();
+    xhr.timeout = 60000;
+    xhr.open('POST', SCRIPT_URL, true);
+    xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState !== 4) return;
+      try {
+        var resp = JSON.parse(xhr.responseText);
+        if (resp.ok) {
+          setSyncBar('✅ Documento salvo!', 'ok');
+          toast('☁️ Documento enviado com sucesso!', 'ok');
+          document.getElementById('cad-valor').value = '';
+          document.getElementById('cad-validade').value = '';
+          fileInput.value = '';
+        } else {
+          setSyncBar('⚠️ ' + (resp.msg||'Erro'), 'err');
+          toast('⚠️ ' + (resp.msg||'Erro ao enviar'), 'err');
+        }
+      } catch(e) { setSyncBar('⚠️ Erro ao processar resposta', 'err'); }
+    };
+    xhr.onerror   = function() { setSyncBar('📵 Sem conexão', 'err'); };
+    xhr.ontimeout = function() { setSyncBar('⏱️ Timeout — arquivo grande demora mais', 'err'); };
+    xhr.send(JSON.stringify(payload));
+  };
+  reader.readAsDataURL(file);
 }
+
+// ═══════════════════════════════════════════════
+//  GERENCIAR (admin)
+// ═══════════════════════════════════════════════
+function carregarTodos() {
+  var el = document.getElementById('lista-gerenciar');
+  el.innerHTML = '<div class="empty">⏳ Sincronizando com o Drive...</div>';
+
+  var xhr = new XMLHttpRequest();
+  xhr.timeout = 90000;
+  xhr.open('GET', SCRIPT_URL + '?action=getDocumentos&sync=1&_=' + Date.now(), true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    try {
+      var resp = JSON.parse(xhr.responseText);
+      if (!resp.ok) { el.innerHTML = '<div class="empty">⚠️ ' + (resp.msg || 'Erro ao carregar.') + '</div>'; return; }
+      renderLista(el, resp.documentos || [], true);
+      if (resp.novos > 0) toast('☁️ ' + resp.novos + ' arquivo(s) novo(s) do Drive registrado(s)', 'ok');
+    } catch(e) { el.innerHTML = '<div class="empty">Erro ao carregar.</div>'; }
+  };
+  xhr.onerror = xhr.ontimeout = function() { el.innerHTML = '<div class="empty">📵 Sem conexão.</div>'; };
+  xhr.send();
+}
+
+function excluirDocumento(id) {
+  if (!confirm('Excluir este documento? Isso também remove o arquivo do Drive.')) return;
+  setSyncBar('⏳ Excluindo...', '');
+
+  var xhr = new XMLHttpRequest();
+  xhr.timeout = 15000;
+  xhr.open('POST', SCRIPT_URL, true);
+  xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    try {
+      var resp = JSON.parse(xhr.responseText);
+      if (resp.ok) { setSyncBar('✅ Excluído!', 'ok'); carregarTodos(); }
+      else { setSyncBar('⚠️ ' + (resp.msg||'Erro'), 'err'); }
+    } catch(e) { setSyncBar('⚠️ Erro ao excluir', 'err'); }
+  };
+  xhr.onerror = xhr.ontimeout = function() { setSyncBar('📵 Sem conexão', 'err'); };
+  xhr.send(JSON.stringify({ action: 'excluirDocumento', id: id }));
+}
+
+// ═══════════════════════════════════════════════
+//  NAVEGAÇÃO
+// ═══════════════════════════════════════════════
+function goTab(id, el) {
+  var pages = document.querySelectorAll('.page');
+  var tabs  = document.querySelectorAll('.nav-tab');
+  for (var i = 0; i < pages.length; i++) pages[i].className = 'page';
+  for (var i = 0; i < tabs.length;  i++) tabs[i].className  = 'nav-tab';
+  var pg = document.getElementById('page-' + id);
+  if (pg) pg.className = 'page on';
+  if (el) el.className = 'nav-tab on';
+  if (id === 'gerenciar') carregarTodos();
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+window.onload = function() {
+  if (SCRIPT_URL.indexOf('COLE_AQUI') === 0) setSyncBar('⚠️ SCRIPT_URL não configurada no documentos.html', 'err');
+  var isM = _isAdminMaster();
+  var tabCad = document.getElementById('tab-cadastrar');
+  var tabGer = document.getElementById('tab-gerenciar');
+  if (tabCad) tabCad.style.display = isM ? '' : 'none';
+  if (tabGer) tabGer.style.display = isM ? '' : 'none';
+};
+</script>
+<script>
+// ══ SERVICE WORKER + AUTO-ATUALIZAÇÃO SILENCIOSA ══
+// Garante que o usuário SEMPRE tenha a versão mais recente,
+// sem precisar limpar cache ou fechar o app.
+if ('serviceWorker' in navigator) {
+  var _swReloaded = false;
+
+  // Quando um novo SW assume o controle, recarrega 1x automaticamente
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    if (_swReloaded) return;
+    _swReloaded = true;
+    window.location.reload();
+  });
+
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('service-worker.js').then(function(reg) {
+      // Força verificação de atualização toda vez que abre
+      reg.update();
+
+      // Se já existe um SW esperando, ativa na hora
+      if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+
+      // Detecta quando uma nova versão termina de baixar
+      reg.addEventListener('updatefound', function() {
+        var nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', function() {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            nw.postMessage('SKIP_WAITING'); // ativa → dispara controllerchange → reload
+          }
+        });
+      });
+
+      // Verifica atualização também quando o app volta ao foco
+      document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) reg.update();
+      });
+    }).catch(function(){});
+  });
+}
+</script>
+
+</body>
+</html>
