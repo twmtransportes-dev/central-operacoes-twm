@@ -169,20 +169,13 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--tx);min-he
 </div>
 
 <script>
-var SCRIPT_URL = (function(){
-  // 1. URL hardcoded (principal)
-  var url = 'https://script.google.com/macros/s/AKfycbzubtzuifnCgK_POE_fiLr0YKDQyl7dur1EzuX5nmlHTEl4f5UFST8V2t-mkQDeHAJdsg/exec';
-  // 2. Sobrescreve se tiver configurado manualmente
-  try{
-    var cfg = JSON.parse(localStorage.getItem('twm_config')||'{}');
-    if(cfg.scriptUrl) url = cfg.scriptUrl;
-  }catch(e){}
-  return url;
-})();
+// Script do projeto "Carros de apoio" (implantação AKfycbw0MV12...).
+// Grava saída/retorno na planilha Frota → aba REGISTROS DE VIAGEM.
+// Não usa o "scriptUrl" das configurações gerais: este módulo tem script próprio.
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0MV12-u6kgSlKLOzKZKP3JRThfQT3ubThUY_JG3ViKabz-Iru0IPfTIdJGG9Cg1Ry7w/exec';
 
-// Histórico: usa SEMPRE o script do projeto "Carros de apoio" (tem a função historico_apoio).
-// Fica separado do SCRIPT_URL para não mexer na saída/retorno, que já funcionam.
-var HIST_URL = 'https://script.google.com/macros/s/AKfycbw0MV12-u6kgSlKLOzKZKP3JRThfQT3ubThUY_JG3ViKabz-Iru0IPfTIdJGG9Cg1Ry7w/exec';
+// Histórico usa o mesmo script
+var HIST_URL = SCRIPT_URL;
 
 // Dados
 var carrosServico   = [];
