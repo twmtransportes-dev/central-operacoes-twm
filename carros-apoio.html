@@ -180,6 +180,10 @@ var SCRIPT_URL = (function(){
   return url;
 })();
 
+// Histórico: usa SEMPRE o script do projeto "Carros de apoio" (tem a função historico_apoio).
+// Fica separado do SCRIPT_URL para não mexer na saída/retorno, que já funcionam.
+var HIST_URL = 'https://script.google.com/macros/s/AKfycbw0MV12-u6kgSlKLOzKZKP3JRThfQT3ubThUY_JG3ViKabz-Iru0IPfTIdJGG9Cg1Ry7w/exec';
+
 // Dados
 var carrosServico   = [];
 var registrosServico = [];
@@ -408,12 +412,12 @@ async function carregarHist(){
   var div = document.getElementById('hist-cards');
   div.innerHTML = '<div class="loading">⏳ Carregando...</div>';
 
-  if(!SCRIPT_URL || !navigator.onLine){
+  if(!navigator.onLine){
     div.innerHTML = '<div class="empty">📵 Sem conexão.</div>';
     return;
   }
   try{
-    var res  = await fetch(SCRIPT_URL + '?action=historico_apoio&_=' + Date.now());
+    var res  = await fetch(HIST_URL + '?action=historico_apoio&_=' + Date.now());
     var data = await res.json();
     if(!data.ok){ div.innerHTML='<div class="empty">'+(data.msg||'Erro')+'</div>'; return; }
     if(!data.registros){ div.innerHTML='<div class="empty">⚠️ O Apps Script ainda não tem a função de histórico.<br>Atualize o script do módulo.</div>'; return; }
