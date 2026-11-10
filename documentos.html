@@ -67,6 +67,23 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .toast.ok{border-color:rgba(16,185,129,.4);color:var(--green)}
 .toast.err{border-color:rgba(239,68,68,.4);color:var(--red)}
 
+/* ENVIO EM LOTE (pasta / vários arquivos) */
+.lote-btns{display:flex;gap:8px;flex-wrap:wrap}
+.lote-btns .btn-ghost{flex:1;min-width:150px;color:var(--text)}
+.lote-grupo{border:1px solid var(--border2);border-radius:12px;padding:10px 12px;margin-top:12px;background:var(--bg)}
+.lote-grupo-hd{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.lote-grupo-hd label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);white-space:nowrap}
+.lote-grupo-hd input{flex:1;min-width:0;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;font-weight:600;padding:7px 10px;outline:none}
+.lote-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--border);font-size:11px}
+.lote-item:first-of-type{border-top:none}
+.lote-nome{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lote-tag{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:6px;background:rgba(48,209,88,.1);color:var(--doc);white-space:nowrap}
+.lote-st{width:22px;text-align:center;flex-shrink:0}
+.lote-prog{height:6px;border-radius:6px;background:var(--border2);overflow:hidden;margin-top:12px;display:none}
+.lote-prog.on{display:block}
+.lote-prog div{height:100%;width:0;background:var(--doc);transition:width .3s}
+.lote-resumo{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5}
+
 /* VISUALIZADOR DE DOCUMENTO (dentro do app) */
 .viewer{position:fixed;inset:0;z-index:500;background:var(--bg);display:none;flex-direction:column}
 .viewer.on{display:flex}
@@ -139,8 +156,23 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
   <div id="lista-busca"></div>
 </div>
 
-<!-- ABA CADASTRAR (admin) -->
+<!-- ABA CADASTRAR (admin / permissão documentos_enviar) -->
 <div class="page" id="page-cadastrar">
+  <div class="form-card">
+    <div class="form-title">📂 Enviar pasta ou vários arquivos</div>
+    <div class="lote-btns">
+      <button class="btn-ghost" onclick="document.getElementById('lote-pasta').click()">📂 Selecionar pasta</button>
+      <button class="btn-ghost" onclick="document.getElementById('lote-arquivos').click()">📄 Selecionar vários arquivos</button>
+    </div>
+    <input type="file" id="lote-pasta" webkitdirectory directory multiple style="display:none" onchange="loteSelecionar(this)">
+    <input type="file" id="lote-arquivos" multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp,.heic,.heif,.tif,.tiff,.doc,.docx,.odt,.rtf,.txt,.xls,.xlsx,.ods,.csv,.ppt,.pptx,.xml,application/pdf,image/*" style="display:none" onchange="loteSelecionar(this)">
+    <div class="cfg-note">"Selecionar pasta" funciona no computador. No celular, use "Selecionar vários arquivos". Arquivo com o <b>mesmo nome</b> de um que já existe na pasta da frota <b>substitui o antigo</b> — não duplica.</div>
+    <div id="lote-lista"></div>
+    <div class="lote-prog" id="lote-prog"><div id="lote-barra"></div></div>
+    <div class="lote-resumo" id="lote-resumo"></div>
+    <button class="btn-reg" id="lote-enviar" style="display:none;margin-top:12px" onclick="loteEnviar()">☁️ Enviar arquivos</button>
+  </div>
+
   <div class="form-card">
     <div class="form-title">➕ Novo Documento</div>
     <div class="field">
@@ -221,6 +253,18 @@ function _isAdminMaster(){
     var p=u.permissoes||{};
     return !!(p.admin_master||p.ADMIN_MASTER);
   }catch(e){return false;}
+}
+
+// Pode enviar documentos: admin master OU coluna DOCUMENTOS_ENVIAR = SIM na planilha de usuários
+function _podeEnviar(){
+  if (_isAdminMaster()) return true;
+  function ativo(v){ return v===true||v===1||/^(SIM|S|TRUE|X|1)$/i.test(String(v||'').trim()); }
+  function tem(p){ p=p||{}; return ativo(p.documentos_enviar)||ativo(p.DOCUMENTOS_ENVIAR)||ativo(p['DOCUMENTOS ENVIAR'])||ativo(p['DOCUMENTOS_ENVIAR ']); }
+  try{
+    if (tem(JSON.parse(localStorage.getItem('twm_permissoes')||'{}'))) return true;
+    var u = JSON.parse(localStorage.getItem('twm_user_cache')||'{}');
+    return tem(u.permissoes) || tem(u);
+  }catch(e){ return false; }
 }
 
 var NOMES_TIPO = {CRLV:'CRLV',CIV:'CIV',CIPP:'CIPP',CNH:'CNH',CTE:'CT-e',NOTA_CARGA:'Nota da Carga',ROTOGRAMA:'Rotograma',OUTRO:'Outro'};
@@ -421,6 +465,158 @@ function cadastrarDocumento() {
 }
 
 // ═══════════════════════════════════════════════
+//  ENVIO EM LOTE (pasta / vários arquivos) — substitui pelo nome
+// ═══════════════════════════════════════════════
+var _lote = [];          // [{nomeGrupo, valor, tipoVinc, arquivos:[{file, tipo, validade, st}]}]
+var _loteEnviando = false;
+
+function _loteLixo(nome){
+  var n = String(nome||'').trim().toLowerCase();
+  return !n || n==='thumbs.db' || n==='desktop.ini' || n==='ehthumbs.db' || n.charAt(0)==='.' ||
+         n.indexOf('~$')===0 || /\.(db|ini|tmp|lnk|url|zip|rar|7z|tar|gz)$/.test(n);
+}
+function _loteTipo(nome){
+  var n = String(nome||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
+  if (n.indexOf('CRLV')===0) return 'CRLV';
+  if (n.indexOf('CIPP')===0) return 'CIPP';
+  if (n.indexOf('CIV')===0)  return 'CIV';
+  if (n.indexOf('CNH')===0)  return 'CNH';
+  if (/^CT-?E/.test(n))      return 'CTE';
+  if (n.indexOf('NOTA')===0 || /^NF[\s_-]/.test(n)) return 'NOTA_CARGA';
+  if (n.indexOf('ROTOGRAMA')===0) return 'ROTOGRAMA';
+  return 'OUTRO';
+}
+function _loteValidade(nome){
+  var m = String(nome||'').match(/(\d{2})[-._](\d{2})[-._](\d{4})/);
+  return m ? (m[3]+'-'+m[2]+'-'+m[1]) : '';
+}
+// "VP-183 RML-0I14" → FROTA "VP-183" ; "MOTORISTA - JOÃO" → MOTORISTA "JOÃO"
+function _loteVinculo(nomePasta){
+  var n = String(nomePasta||'').trim().toUpperCase();
+  var m = n.match(/^(FROTA|MOTORISTA)\s*-\s*(.+)$/);
+  if (m) return { tipo:m[1], valor:m[2].trim() };
+  var c = n.match(/\b(VPL|VP|VA|RBL|RB|RA)\s*-?\s*(\d+)\b/);
+  if (c) return { tipo:'FROTA', valor:c[1]+'-'+c[2] };
+  return { tipo:'FROTA', valor:n };
+}
+function _esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+function loteSelecionar(input){
+  if (_loteEnviando) return;
+  var files = Array.prototype.slice.call(input.files || []);
+  input.value = '';
+  var grupos = {}, ordem = [], ignorados = 0, grandes = 0;
+  files.forEach(function(f){
+    if (_loteLixo(f.name)) { ignorados++; return; }
+    if (f.size > 25*1024*1024) { grandes++; return; }
+    var partes = String(f.webkitRelativePath||'').split('/');
+    // Pasta imediata do arquivo (permite escolher uma pasta com várias subpastas de frota)
+    var pasta = partes.length >= 2 ? partes[partes.length-2] : '';
+    if (!grupos[pasta]) { grupos[pasta] = []; ordem.push(pasta); }
+    grupos[pasta].push({ file:f, tipo:_loteTipo(f.name), validade:_loteValidade(f.name), st:'' });
+  });
+  _lote = ordem.map(function(pasta){
+    var v = pasta ? _loteVinculo(pasta) : { tipo:'FROTA', valor:'' };
+    return { nomeGrupo:pasta, valor:v.valor, tipoVinc:v.tipo, arquivos:grupos[pasta] };
+  });
+  var aviso = [];
+  if (ignorados) aviso.push(ignorados+' arquivo(s) de sistema/compactado(s) ignorado(s)');
+  if (grandes)   aviso.push(grandes+' arquivo(s) acima de 25 MB ignorado(s)');
+  document.getElementById('lote-resumo').textContent = aviso.join(' · ');
+  document.getElementById('lote-prog').className = 'lote-prog';
+  loteRender();
+}
+
+function loteRender(){
+  var el = document.getElementById('lote-lista');
+  var btn = document.getElementById('lote-enviar');
+  var total = _lote.reduce(function(s,g){ return s+g.arquivos.length; },0);
+  if (!total) { el.innerHTML = _lote.length===0 ? '' : '<div class="empty">Nenhum arquivo válido.</div>'; btn.style.display='none'; return; }
+  el.innerHTML = _lote.map(function(g, gi){
+    return '<div class="lote-grupo">'+
+      '<div class="lote-grupo-hd"><label>'+(g.tipoVinc==='MOTORISTA'?'👤 Motorista':'🚚 Frota')+'</label>'+
+      '<input value="'+_esc(g.valor)+'" placeholder="Ex: VP-183" oninput="this.value=this.value.toUpperCase();_lote['+gi+'].valor=this.value.trim()"'+(_loteEnviando?' disabled':'')+'></div>'+
+      (g.nomeGrupo ? '<div class="cfg-note" style="margin:-4px 0 6px">Pasta: '+_esc(g.nomeGrupo)+'</div>' : '')+
+      g.arquivos.map(function(a){
+        return '<div class="lote-item"><span class="lote-st">'+(a.st||'•')+'</span>'+
+          '<span class="lote-nome">'+_esc(a.file.name)+'</span>'+
+          '<span class="lote-tag">'+(NOMES_TIPO[a.tipo]||a.tipo)+'</span>'+
+          (a.validade ? '<span class="lote-tag" style="color:var(--amber);background:rgba(245,158,11,.1)">'+a.validade.split('-').reverse().join('/')+'</span>' : '')+
+        '</div>';
+      }).join('')+
+    '</div>';
+  }).join('');
+  btn.style.display = '';
+  btn.disabled = _loteEnviando;
+  var pend = _lote.reduce(function(s,g){ return s+g.arquivos.filter(function(a){ return a.st!=='✅'&&a.st!=='♻️'; }).length; },0);
+  btn.textContent = _loteEnviando ? '⏳ Enviando...' : (pend ? '☁️ Enviar ' + pend + ' arquivo(s)' : '✅ Tudo enviado');
+}
+
+function _loteLer(file){
+  return new Promise(function(ok, erro){
+    var r = new FileReader();
+    r.onload = function(){ ok(String(r.result).split(',')[1]); };
+    r.onerror = function(){ erro(new Error('Não foi possível ler o arquivo')); };
+    r.readAsDataURL(file);
+  });
+}
+function _lotePost(payload){
+  return new Promise(function(ok){
+    var xhr = new XMLHttpRequest();
+    xhr.timeout = 120000;
+    xhr.open('POST', SCRIPT_URL, true);
+    xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
+    xhr.onreadystatechange = function(){
+      if (xhr.readyState !== 4) return;
+      try { ok(JSON.parse(xhr.responseText)); } catch(e){ ok({ ok:false, msg:'Resposta inválida do servidor' }); }
+    };
+    xhr.onerror   = function(){ ok({ ok:false, msg:'Sem conexão' }); };
+    xhr.ontimeout = function(){ ok({ ok:false, msg:'Tempo esgotado' }); };
+    xhr.send(JSON.stringify(payload));
+  });
+}
+
+async function loteEnviar(){
+  if (_loteEnviando) return;
+  for (var i = 0; i < _lote.length; i++) {
+    if (!_lote[i].valor) { toast('⚠️ Informe a frota de todos os grupos', 'err'); return; }
+  }
+  var fila = [];
+  _lote.forEach(function(g){ g.arquivos.forEach(function(a){ if (a.st !== '✅' && a.st !== '♻️') fila.push({ g:g, a:a }); }); });
+  if (!fila.length) { toast('✅ Todos os arquivos já foram enviados', 'ok'); return; }
+
+  _loteEnviando = true; loteRender();
+  var prog = document.getElementById('lote-prog'), barra = document.getElementById('lote-barra');
+  prog.className = 'lote-prog on'; barra.style.width = '0%';
+  var novos = 0, subst = 0, falhas = 0;
+
+  for (var k = 0; k < fila.length; k++) {
+    var it = fila[k];
+    it.a.st = '⏳'; loteRender();
+    var resp;
+    try {
+      var b64 = await _loteLer(it.a.file);
+      resp = await _lotePost({
+        action: 'uploadDocumento', substituir: true,
+        tipo: it.a.tipo, vinculoTipo: it.g.tipoVinc, vinculoValor: it.g.valor,
+        validade: it.a.validade, nomeArquivo: it.a.file.name,
+        mimeType: _mimeDoArquivo(it.a.file), base64: b64
+      });
+    } catch(e) { resp = { ok:false, msg:e.message }; }
+    if (resp.ok) { if (resp.substituido) { it.a.st = '♻️'; subst++; } else { it.a.st = '✅'; novos++; } }
+    else { it.a.st = '❌'; falhas++; it.a.erro = resp.msg; }
+    barra.style.width = Math.round((k+1) / fila.length * 100) + '%';
+    loteRender();
+  }
+
+  _loteEnviando = false; loteRender();
+  var txt = '✅ ' + novos + ' novo(s) · ♻️ ' + subst + ' substituído(s)' + (falhas ? ' · ❌ ' + falhas + ' com erro (toque em Enviar de novo para tentar só os que falharam)' : '');
+  document.getElementById('lote-resumo').textContent = txt;
+  setSyncBar(falhas ? '⚠️ Envio concluído com erros' : '✅ Envio concluído', falhas ? 'err' : 'ok');
+  toast(falhas ? '⚠️ ' + falhas + ' arquivo(s) não enviado(s)' : '☁️ Arquivos enviados!', falhas ? 'err' : 'ok');
+}
+
+// ═══════════════════════════════════════════════
 //  GERENCIAR (admin)
 // ═══════════════════════════════════════════════
 var _carregandoTodos = false;
@@ -489,7 +685,7 @@ window.onload = function() {
   var isM = _isAdminMaster();
   var tabCad = document.getElementById('tab-cadastrar');
   var tabGer = document.getElementById('tab-gerenciar');
-  if (tabCad) tabCad.style.display = isM ? '' : 'none';
+  if (tabCad) tabCad.style.display = _podeEnviar() ? '' : 'none';
   if (tabGer) tabGer.style.display = isM ? '' : 'none';
 };
 </script>
