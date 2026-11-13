@@ -62,6 +62,26 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--tx);min-he
 .foto-area{margin-top:8px;border:2px dashed var(--blue2);border-radius:10px;padding:12px;text-align:center;cursor:pointer;background:rgba(37,99,235,.05)}
 .foto-preview{width:100%;border-radius:8px;max-height:140px;object-fit:cover;margin-bottom:8px}
 
+/* BUSCA DE MOTORISTA */
+.busca-wrap{position:relative}
+.busca-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none}
+.busca-wrap .inp{padding-left:38px;padding-right:36px}
+.busca-limpar{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--mu);font-size:16px;cursor:pointer;padding:6px;display:none}
+.inp.sel-ok{border-color:var(--green);background:rgba(16,185,129,.07);font-weight:700}
+.sug-lista{margin-top:6px;border:1px solid var(--brd2);border-radius:10px;background:var(--bg2);max-height:230px;overflow-y:auto;display:none}
+.sug-item{padding:11px 12px;font-size:14px;border-bottom:1px solid var(--brd);cursor:pointer}
+.sug-item:last-child{border-bottom:none}
+.sug-item:active,.sug-item:hover{background:rgba(37,99,235,.12)}
+.sug-item b{color:var(--blue2)}
+.sug-vazio{padding:11px 12px;font-size:12px;color:var(--mu)}
+.mot-ok{font-size:11px;color:var(--green);font-weight:700;margin-top:5px;display:none}
+.cad-box{margin-top:8px;border:1.5px dashed var(--go);border-radius:10px;padding:10px;display:none;background:rgba(245,158,11,.06)}
+.cad-box .lbl{color:var(--go)}
+.cad-row{display:flex;gap:8px}
+.cad-row .inp{flex:1;min-width:0}
+.cad-ok{padding:0 16px;border:none;border-radius:10px;background:var(--go);color:#1a1200;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;cursor:pointer}
+.cad-ok:disabled{opacity:.5}
+
 /* TOAST */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bg3);border:1px solid var(--brd2);border-radius:12px;padding:10px 20px;font-size:12px;font-weight:600;z-index:999;transition:.3s;pointer-events:none;white-space:nowrap}
 .toast.on{transform:translateX(-50%) translateY(0)}
@@ -129,7 +149,23 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--tx);min-he
 <div class="overlay" id="modal-saida">
   <div class="modal">
     <div class="modal-title"><span id="ms-titulo">Registrar Saída</span><button class="modal-x" onclick="fecharModal('modal-saida')">✕</button></div>
-    <div class="fld"><label class="lbl">Motorista *</label><input class="inp" id="ms-motorista" type="text" placeholder="Nome completo"></div>
+    <div class="fld">
+      <label class="lbl">Motorista *</label>
+      <div class="busca-wrap">
+        <span class="busca-ico">🔍</span>
+        <input class="inp" id="ms-motorista" type="text" placeholder="Digite o nome para buscar..." autocomplete="off" oninput="motDigitando()" onfocus="motDigitando()">
+        <button type="button" class="busca-limpar" id="ms-limpar" onclick="motLimpar()" aria-label="Limpar">✕</button>
+      </div>
+      <div class="sug-lista" id="ms-sugestoes"></div>
+      <div class="mot-ok" id="ms-mot-ok">✅ Motorista selecionado</div>
+      <div class="cad-box" id="ms-cad-box">
+        <label class="lbl">Não encontrou? Cadastrar nome</label>
+        <div class="cad-row">
+          <input class="inp" id="ms-cad-nome" type="text" placeholder="Nome completo" autocomplete="off">
+          <button type="button" class="cad-ok" id="ms-cad-ok" onclick="motCadastrar()">OK</button>
+        </div>
+      </div>
+    </div>
     <div class="fld"><label class="lbl">Destino / Local *</label><input class="inp" id="ms-local" type="text" placeholder="Para onde vai?"></div>
     <div class="fld"><label class="lbl">KM de Saída *</label><input class="inp" id="ms-km" type="number" placeholder="Ex: 45230"></div>
     <div class="fld">
@@ -286,6 +322,8 @@ function abrirCarro(placa){
 function abrirSaida(carro){
   document.getElementById('ms-titulo').textContent='🚗 '+carro.placa+' — Saída';
   document.getElementById('ms-motorista').value='';
+  motLimpar(true);
+  motCarregarLista();   // atualiza a lista de nomes da planilha
   document.getElementById('ms-local').value='';
   document.getElementById('ms-km').value='';
   document.getElementById('ms-foto-img').style.display='none';
@@ -295,10 +333,10 @@ function abrirSaida(carro){
 }
 
 async function confirmarSaida(){
-  var motorista=(document.getElementById('ms-motorista').value||'').trim();
+  var motorista=motNomeFinal();
   var local    =(document.getElementById('ms-local').value||'').trim();
   var km       =(document.getElementById('ms-km').value||'').trim();
-  if(!motorista){ toast('Preencha o motorista','err'); return; }
+  if(!motorista){ toast('Selecione o motorista na lista (ou cadastre o nome)','err'); return; }
   if(!local)    { toast('Preencha o destino','err');   return; }
   if(!km)       { toast('Preencha a KM','err');        return; }
 
@@ -511,8 +549,152 @@ function filtrarHist(q){
   }), true);
 }
 
+// ── MOTORISTAS: busca com sugestões + cadastro ─────────────────
+var _motoristas   = [];      // [{nome, matricula}] vindos da planilha MOTORISTAS
+var _motListaOk   = false;   // a lista foi carregada do servidor (ou do cache)?
+var _motSel       = '';      // nome selecionado na lista
+var _motCadastrando = false;
+
+(function(){ // lista guardada da última vez: aparece na hora, mesmo antes do servidor responder
+  try{
+    var c = JSON.parse(localStorage.getItem('twm_apoio_motoristas')||'null');
+    if(c && c.length){ _motoristas = c; _motListaOk = true; }
+  }catch(e){}
+})();
+
+function motNorm(s){
+  return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+}
+function motEsc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+async function motCarregarLista(){
+  try{
+    var res  = await fetch(SCRIPT_URL+'?action=listar_motoristas&_='+Date.now());
+    var data = await res.json();
+    if(data.ok && Array.isArray(data.motoristas)){
+      _motoristas = data.motoristas;
+      _motListaOk = true;
+      try{ localStorage.setItem('twm_apoio_motoristas', JSON.stringify(_motoristas)); }catch(e){}
+      if(document.getElementById('modal-saida').classList.contains('on') && !_motSel) motDigitando();
+    }
+  }catch(e){ /* sem conexão: segue com a lista guardada */ }
+}
+
+function motDigitando(){
+  var inp   = document.getElementById('ms-motorista');
+  var lista = document.getElementById('ms-sugestoes');
+  var cad   = document.getElementById('ms-cad-box');
+  var q     = motNorm(inp.value);
+
+  // Digitou depois de selecionar → desfaz a seleção
+  if(_motSel && inp.value !== _motSel){ _motSel=''; }
+  inp.classList.toggle('sel-ok', !!_motSel);
+  document.getElementById('ms-mot-ok').style.display = _motSel ? 'block' : 'none';
+  document.getElementById('ms-limpar').style.display = inp.value ? 'block' : 'none';
+
+  if(_motSel || !q){ lista.style.display='none'; cad.style.display='none'; return; }
+
+  // Sugestões: todas as palavras digitadas precisam aparecer no nome
+  var partes = q.split(' ');
+  var achados = _motoristas.filter(function(m){
+    var n = motNorm(m.nome);
+    return partes.every(function(p){ return n.indexOf(p) >= 0; });
+  });
+  achados.sort(function(a,b){   // quem começa com o que foi digitado vem primeiro
+    var sa = motNorm(a.nome).indexOf(q)===0 ? 0 : 1, sb = motNorm(b.nome).indexOf(q)===0 ? 0 : 1;
+    return sa - sb || (motNorm(a.nome) < motNorm(b.nome) ? -1 : 1);
+  });
+
+  if(!_motListaOk){
+    lista.innerHTML = '<div class="sug-vazio">⏳ Carregando lista de nomes...</div>';
+  } else if(!achados.length){
+    lista.innerHTML = '<div class="sug-vazio">Nenhum nome encontrado com "'+motEsc(inp.value.trim())+'"</div>';
+  } else {
+    lista.innerHTML = achados.slice(0,8).map(function(m, i){
+      return '<div class="sug-item" data-i="'+i+'" onclick="motEscolher(this)">👤 '+motEsc(m.nome)+'</div>';
+    }).join('');
+    lista._achados = achados.slice(0,8);
+  }
+  lista.style.display = 'block';
+
+  // Campo de cadastro: aparece quando já digitou 3+ letras e NENHUM nome da lista corresponde
+  if(q.length >= 3 && !achados.length && _motListaOk){
+    var cn = document.getElementById('ms-cad-nome');
+    if(!cn._editado) cn.value = inp.value.replace(/\s+/g,' ').trim();
+    cad.style.display = 'block';
+  } else {
+    cad.style.display = 'none';
+  }
+}
+
+function motEscolher(el){
+  var lista = document.getElementById('ms-sugestoes');
+  var m = (lista._achados||[])[parseInt(el.getAttribute('data-i'),10)];
+  if(!m) return;
+  motSelecionar(m.nome);
+}
+
+function motSelecionar(nome){
+  _motSel = nome;
+  var inp = document.getElementById('ms-motorista');
+  inp.value = nome;
+  document.getElementById('ms-cad-nome')._editado = false;
+  motDigitando();
+  inp.blur();
+}
+
+function motLimpar(semFoco){
+  _motSel = '';
+  var inp = document.getElementById('ms-motorista');
+  inp.value = '';
+  var cn = document.getElementById('ms-cad-nome');
+  cn.value = ''; cn._editado = false;
+  motDigitando();
+  if(!semFoco) inp.focus();
+}
+
+// Nome que vai para a saída: o selecionado; sem lista (sem internet), aceita o digitado
+function motNomeFinal(){
+  if(_motSel) return _motSel;
+  // Digitou o nome exatamente igual ao da lista, sem tocar na sugestão: aceita
+  var q = motNorm(document.getElementById('ms-motorista').value);
+  var exato = _motoristas.filter(function(m){ return motNorm(m.nome) === q; });
+  if(q && exato.length === 1) return exato[0].nome;
+  if(!_motListaOk) return (document.getElementById('ms-motorista').value||'').replace(/\s+/g,' ').trim();
+  return '';
+}
+
+async function motCadastrar(){
+  if(_motCadastrando) return;
+  var nome = (document.getElementById('ms-cad-nome').value||'').replace(/\s+/g,' ').trim();
+  if(nome.length < 3){ toast('Digite o nome completo','err'); return; }
+  var btn = document.getElementById('ms-cad-ok');
+  _motCadastrando = true; btn.disabled = true; btn.textContent = '⏳';
+  try{
+    var res  = await fetch(SCRIPT_URL+'?action=cadastrar_motorista&nome='+encodeURIComponent(nome)+'&_='+Date.now());
+    var data = await res.json();
+    if(data.ok && data.nome){
+      if(!_motoristas.some(function(m){ return motNorm(m.nome) === motNorm(data.nome); })){
+        _motoristas.push({ nome:data.nome, matricula:'' });
+        _motoristas.sort(function(a,b){ return motNorm(a.nome) < motNorm(b.nome) ? -1 : 1; });
+        try{ localStorage.setItem('twm_apoio_motoristas', JSON.stringify(_motoristas)); }catch(e){}
+      }
+      motSelecionar(data.nome);
+      toast(data.jaExistia ? '✅ Nome já estava na lista — selecionado' : '✅ Nome cadastrado e selecionado', 'ok');
+    } else {
+      toast('⚠️ '+(data.msg||'Não foi possível cadastrar'),'err');
+    }
+  }catch(e){
+    toast('❌ Sem conexão — não foi possível cadastrar','err');
+  }
+  _motCadastrando = false; btn.disabled = false; btn.textContent = 'OK';
+}
+
+document.getElementById('ms-cad-nome').addEventListener('input', function(){ this._editado = true; });
+
 // ── INIT ───────────────────────────────────────────────────────
 carregar();
+motCarregarLista();
 </script>
 <script>
 // ══ SERVICE WORKER + AUTO-ATUALIZAÇÃO SILENCIOSA ══
